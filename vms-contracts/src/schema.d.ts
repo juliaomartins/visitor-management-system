@@ -3,10 +3,274 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+    "/api/v1/auth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin login
+         * @description `POST /api/v1/auth/token` — admin login.
+         */
+        post: operations["auth_token_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/token/blacklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log out
+         * @description `POST /api/v1/auth/token/blacklist` — logout.
+         *
+         *     Blacklisting an already-dead token still clears the cookie: a logout must not
+         *     leave the browser holding something that looks like a session.
+         */
+        post: operations["auth_token_blacklist_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/token/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh the access token
+         * @description `POST /api/v1/auth/token/refresh` — rotate on the cookie.
+         *
+         *     `ROTATE_REFRESH_TOKENS` + `BLACKLIST_AFTER_ROTATION` mean every call issues a
+         *     new refresh token and kills the old one, so the cookie is rewritten here.
+         */
+        post: operations["auth_token_refresh_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List paired devices */
+        get: operations["devices_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a device
+         * @description The device's scan history stays; its token stops working.
+         */
+        post: operations["devices_revoke_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a pairing code
+         * @description Returns the permanent device token. It is stored only as a SHA-256 digest, so this response is the single chance to capture it.
+         */
+        post: operations["devices_pair_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/pairing-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a pairing code
+         * @description Short-lived, single-use. Read it off the dashboard and type it into the device standing next to you.
+         */
+        post: operations["devices_pairing_code_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a badge scan
+         * @description Always 200 — read `result`, not the status code. A revoked or forged badge is a business outcome (`revoked` / `invalid`), which keeps the scanner app's error handling to genuine network failures. A visitor re-presented within the dedupe window returns `duplicate`: still logged, but kept off the lobby screen.
+         */
+        post: operations["scans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screen/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Backfill arrivals after a reconnect
+         * @description Everything the screen missed while it was not listening.
+         */
+        get: operations["screen_feed_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/visitors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List visitors */
+        get: operations["visitors_list"];
+        put?: never;
+        /**
+         * Register a visitor and issue a badge
+         * @description Returns `badge_token`, the raw value for the QR code. It is stored only as a SHA-256 digest, so this response is the single chance to capture it — generate the badge PDF from it immediately.
+         */
+        post: operations["visitors_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/visitors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Visitor detail, with scan history */
+        get: operations["visitors_retrieve"];
+        put?: never;
+        post?: never;
+        /** Soft-delete a visitor (also revokes the badge) */
+        delete: operations["visitors_destroy"];
+        options?: never;
+        head?: never;
+        /** Edit a visitor */
+        patch: operations["visitors_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/visitors/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a lost badge
+         * @description The visitor stays on the list and keeps their scan history; the badge stops working. Reprinting means issuing a new token.
+         */
+        post: operations["visitors_revoke_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description The auth response body.
+         *
+         *     Only the access token is returned. The refresh token goes out as an httpOnly
+         *     cookie so no JavaScript on the dashboard can read it.
+         */
+        AccessToken: {
+            readonly access: string;
+        };
+        /**
+         * @description Username + password → JWT pair, for administrators only.
+         *
+         *     A non-staff account would receive a token that `IsAdmin` rejects on every
+         *     endpoint, which reads as a broken dashboard. Failing at login instead says
+         *     what actually happened.
+         */
+        AdminTokenObtainPairRequest: {
+            username: string;
+            password: string;
+        };
         /**
          * @description * `normal` - Normal
          *     * `vip` - VIP
@@ -27,6 +291,34 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /** @description What a device posts to `/devices/pair` — the only endpoint with no token. */
+        DevicePairRequestRequest: {
+            /** @description The 6-character code shown on the dashboard. */
+            code: string;
+            /** @description Optional label, e.g. 'North door'. Defaults to 'Scanner 2'. */
+            name?: string;
+        };
+        /**
+         * @description The pairing response — the one and only sight of the raw device token.
+         *
+         *     The scanner writes `token` to expo-secure-store; the screen keeps it in its
+         *     local config. It cannot be recovered afterwards, only reissued by pairing again.
+         */
+        DevicePaired: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            kind: components["schemas"]["KindEnum"];
+            is_active?: boolean;
+            /** Format: date-time */
+            readonly last_seen_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Permanent device token. Sent as `Authorization: Device <token>`. */
+            readonly token: string;
+        };
         /**
          * @description * `scanner` - Scanner
          *     * `screen` - Screen
@@ -39,13 +331,39 @@ export interface components {
             readonly code: string;
             kind: components["schemas"]["KindEnum"];
             /** Format: date-time */
-            expires_at: string;
+            readonly expires_at: string;
             /** Format: date-time */
             readonly used_at: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        PairingCodeRequest: {
+            kind: components["schemas"]["KindEnum"];
+        };
+        /**
+         * @description `token_hash` is deliberately absent — it never leaves the database.
+         *
+         *     `is_active` is read-only: a badge is killed through `POST /visitors/{id}/revoke`
+         *     so the action lands in the audit log as a revocation, not as a field edit.
+         */
+        PatchedVisitorRequest: {
+            full_name?: string;
+            country?: string;
+            organization?: string;
+            /** Format: binary */
+            photo?: string;
+            category?: components["schemas"]["CategoryEnum"];
+        };
+        /**
+         * @description Body for refresh/blacklist.
+         *
+         *     Normally empty — the refresh token arrives in the `vms_refresh` cookie. The
+         *     explicit field exists for non-browser clients (curl during a rehearsal).
+         */
+        RefreshTokenRequest: {
+            refresh?: string;
         };
         /**
          * @description * `valid` - Valid
@@ -70,6 +388,38 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /** @description What the guard's phone posts for each badge it sees. */
+        ScanRequestRequest: {
+            /** @description The raw token read out of the QR code. */
+            token: string;
+            /**
+             * Format: date-time
+             * @description When the badge was presented. Sent by the device, because the offline queue may sync minutes later. Defaults to now.
+             */
+            scanned_at?: string;
+        };
+        /**
+         * @description The answer to `POST /scans` — always 200, with the verdict in `result`.
+         *
+         *     `visitor` is null for an `invalid` scan; a forged badge resolves to nobody.
+         */
+        ScanResponse: {
+            readonly event_id: number;
+            result: components["schemas"]["ResultEnum"];
+            /** Format: date-time */
+            scanned_at: string;
+            readonly visitor: components["schemas"]["ScanVisitor"];
+        };
+        /** @description The little the guard's phone needs: enough to match a face to a name. */
+        ScanVisitor: {
+            /** Format: uuid */
+            readonly id: string;
+            full_name: string;
+            country: string;
+            organization?: string;
+            category?: components["schemas"]["CategoryEnum"];
+            badge_serial: string;
+        };
         /**
          * @description What the lobby screen renders, and nothing more.
          *
@@ -80,11 +430,29 @@ export interface components {
             readonly id: number;
             readonly full_name: string;
             readonly country: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Always absolute, always built from MEDIA_BASE_URL.
+             *
+             *     Never from `self.context["request"]`: `services.py` serializes this for the
+             *     WebSocket push with no request in scope, so a request-derived URL would
+             *     make the two delivery paths disagree for the same event.
+             */
             readonly photo_url: string;
             readonly category: string;
             /** Format: date-time */
             scanned_at: string;
+        };
+        /**
+         * @description `GET /screen/feed?since=` — the reconnect backfill.
+         *
+         *     `last_id` is the cursor to send next. It advances even when the page was
+         *     truncated, so a screen that has been down for an hour catches up over
+         *     several polls instead of one huge response.
+         */
+        ScreenFeed: {
+            readonly events: components["schemas"]["ScreenEvent"][];
+            readonly last_id: number;
         };
         /** @description Admin account, as the dashboard sees it. Never exposes the password hash. */
         User: {
@@ -115,7 +483,12 @@ export interface components {
             /** Format: date-time */
             readonly last_login: string | null;
         };
-        /** @description `token_hash` is deliberately absent — it never leaves the database. */
+        /**
+         * @description `token_hash` is deliberately absent — it never leaves the database.
+         *
+         *     `is_active` is read-only: a badge is killed through `POST /visitors/{id}/revoke`
+         *     so the action lands in the audit log as a revocation, not as a field edit.
+         */
         Visitor: {
             /** Format: uuid */
             readonly id: string;
@@ -126,11 +499,67 @@ export interface components {
             photo: string;
             category?: components["schemas"]["CategoryEnum"];
             readonly badge_serial: string;
-            is_active?: boolean;
+            readonly is_active: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /** @description `GET /visitors/{id}` — the registration plus every scan it produced. */
+        VisitorDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            full_name: string;
+            country: string;
+            organization?: string;
+            /** Format: uri */
+            photo: string;
+            category?: components["schemas"]["CategoryEnum"];
+            readonly badge_serial: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly scan_events: components["schemas"]["ScanEvent"][];
+        };
+        /**
+         * @description The response to `POST /visitors` — the one and only sight of the raw token.
+         *
+         *     `badge_token` is what goes into the QR. It is not stored anywhere and cannot
+         *     be recovered: the caller must print the card now (CLAUDE.md constraint #3).
+         */
+        VisitorIssued: {
+            /** Format: uuid */
+            readonly id: string;
+            full_name: string;
+            country: string;
+            organization?: string;
+            /** Format: uri */
+            photo: string;
+            category?: components["schemas"]["CategoryEnum"];
+            readonly badge_serial: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Raw badge token for the QR code. Shown once, never again. */
+            readonly badge_token: string;
+        };
+        /**
+         * @description The response to `POST /visitors` — the one and only sight of the raw token.
+         *
+         *     `badge_token` is what goes into the QR. It is not stored anywhere and cannot
+         *     be recovered: the caller must print the card now (CLAUDE.md constraint #3).
+         */
+        VisitorIssuedRequest: {
+            full_name: string;
+            country: string;
+            organization?: string;
+            /** Format: binary */
+            photo: string;
+            category?: components["schemas"]["CategoryEnum"];
         };
     };
     responses: never;
@@ -140,4 +569,365 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    auth_token_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTokenObtainPairRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdminTokenObtainPairRequest"];
+                "multipart/form-data": components["schemas"]["AdminTokenObtainPairRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessToken"];
+                };
+            };
+        };
+    };
+    auth_token_blacklist_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RefreshTokenRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RefreshTokenRequest"];
+                "multipart/form-data": components["schemas"]["RefreshTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            205: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_token_refresh_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RefreshTokenRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RefreshTokenRequest"];
+                "multipart/form-data": components["schemas"]["RefreshTokenRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessToken"];
+                };
+            };
+        };
+    };
+    devices_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Device"][];
+                };
+            };
+        };
+    };
+    devices_revoke_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this device. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Device"];
+                };
+            };
+        };
+    };
+    devices_pair_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicePairRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DevicePairRequestRequest"];
+                "multipart/form-data": components["schemas"]["DevicePairRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevicePaired"];
+                };
+            };
+        };
+    };
+    devices_pairing_code_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairingCodeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PairingCodeRequest"];
+                "multipart/form-data": components["schemas"]["PairingCodeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairingCode"];
+                };
+            };
+        };
+    };
+    scans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ScanRequestRequest"];
+                "multipart/form-data": components["schemas"]["ScanRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResponse"];
+                };
+            };
+        };
+    };
+    screen_feed_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Last `id` the screen has already rendered. Omit or pass 0 on a cold start. */
+                since?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreenFeed"];
+                };
+            };
+        };
+    };
+    visitors_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by badge category. */
+                category?: "normal" | "vip";
+                /** @description Exact country match, case-insensitive. */
+                country?: string;
+                /** @description Filter by badge state. `false` lists revoked badges. */
+                is_active?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visitor"][];
+                };
+            };
+        };
+    };
+    visitors_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["VisitorIssuedRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["VisitorIssuedRequest"];
+                "application/json": components["schemas"]["VisitorIssuedRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisitorIssued"];
+                };
+            };
+        };
+    };
+    visitors_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this visitor. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisitorDetail"];
+                };
+            };
+        };
+    };
+    visitors_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this visitor. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    visitors_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this visitor. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["PatchedVisitorRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedVisitorRequest"];
+                "application/json": components["schemas"]["PatchedVisitorRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visitor"];
+                };
+            };
+        };
+    };
+    visitors_revoke_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this visitor. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visitor"];
+                };
+            };
+        };
+    };
+}
