@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * A wall display, three to five metres from the reader.
+ *
+ * Everything here is scaled for that distance and for a room whose lights nobody
+ * controls. Dark ground so the screen is not a lamp in a dim lobby; a name that
+ * clears 72px at any window size; one accent for VIP and nothing else competing
+ * with it.
+ *
+ * No light mode. A kiosk has no reader preference to respect, and a display that
+ * changes appearance during an event looks broken.
+ */
+@theme {
+  --color-stage: #0a0f16;
+  --color-stage-raised: #131b26;
+  --color-edge: #24303f;
+
+  --color-ink: #f4f8fb;
+  --color-ink-soft: #9db0c4;
+  --color-ink-faint: #5b6d80;
+
+  --color-live: #24c07a;
+  --color-down: #e0455c;
+
+  /* VIP gold. The one saturated colour on the screen, so it means something. */
+  --color-vip: #e0a92c;
+  --color-vip-deep: #2a1f06;
+
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html,
+body {
+  height: 100%;
+  background: var(--color-stage);
+  color: var(--color-ink);
+  overflow: hidden;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Kiosk: nothing here is selectable or draggable, and there is no cursor to see. */
+body {
+  cursor: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-arrive {
+  animation: arrive 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 3.5s ease-in-out infinite;
 }
