@@ -10,6 +10,8 @@ from pathlib import Path
 
 import environ
 
+from apps.common.network import default_media_base_url
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -53,7 +56,10 @@ INSTALLED_APPS = [
     "apps.reports",
 ]
 
+CORS_ALLOW_ALL_ORIGINS = True
+
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -120,7 +126,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # --------------------------------------------------------------------------
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+# The event runs in Timor-Leste. Storage stays UTC (USE_TZ is on); this is what
+# the server GROUPS and PRESENTS in, and getting it wrong is silent: hourly
+# arrival buckets would be nine hours out and "today" would start at 09:00.
+TIME_ZONE = env("VMS_TIME_ZONE", default="Asia/Dili")
 USE_I18N = True
 USE_TZ = True
 
@@ -130,12 +139,17 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Absolute origin for visitor photos. The lobby screen is served from :3000 while
-# media comes from :8000, so a relative URL would resolve against the screen's own
-# origin and 404. Building from a fixed base rather than the request also keeps the
-# WebSocket push and the /screen/feed backfill byte-identical — the WS path has no
-# request to build from. Set this to the server's LAN address in production.
-MEDIA_BASE_URL = env("VMS_MEDIA_BASE_URL", default="http://localhost:8000")
+# Absolute origin for visitor photos. The lobby screen and the guard's phone are
+# other machines, so a relative URL would resolve against THEIR origin and 404.
+# Building from a fixed base rather than the request also keeps the WebSocket push
+# and the /screen/feed backfill byte-identical — the WS path has no request to
+# build from.
+#
+# Detected, not hardcoded: this address is DHCP unless someone reserved it, and a
+# stale value here fails silently as missing photos on every device at once. Set
+# VMS_MEDIA_BASE_URL explicitly only when the guess is wrong — several NICs, a VPN
+# adapter, or a reverse proxy in front.
+MEDIA_BASE_URL = env("VMS_MEDIA_BASE_URL", default=default_media_base_url())
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -152,7 +166,10 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_THROTTLE_RATES": {
         "scans": "30/min",  # a real guard does ~10
-        "pairing": "5/hour",
+        # FAILED pairing attempts per IP; a success clears the count. Every device
+        # at the event shares the router's address, so this budget is shared —
+        # which is why it counts only failures and why it is not 5.
+        "pairing": "20/hour",
     },
 }
 
