@@ -380,6 +380,7 @@ export interface components {
             visitor?: string | null;
             /** Format: uuid */
             device: string;
+            readonly device_name: string;
             /** Format: date-time */
             scanned_at: string;
             result: components["schemas"]["ResultEnum"];
