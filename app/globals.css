@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Visual language: an event credential desk, not a SaaS dashboard.
+ *
+ * Ink-navy chrome frames a warm paper workspace, the way a badge sheet sits on a
+ * registration table. Amber belongs to VIP and nothing else; rose belongs to a
+ * revoked badge and nothing else. Both are meanings the operator must read across
+ * a room, so neither is spent on decoration.
+ */
+@theme {
+  --color-ink-950: #0f1720;
+  --color-ink-900: #17212b;
+  --color-ink-800: #202d3a;
+  --color-ink-700: #33465a;
+  --color-ink-500: #6b8299;
+  --color-ink-300: #a9bccd;
+
+  --color-paper: #f7f6f3;
+  --color-card: #ffffff;
+  --color-rule: #e2dfd8;
+  --color-rule-strong: #cbc7bd;
+
+  --color-accent: #1d5c8f;
+  --color-accent-pressed: #164a73;
+
+  --color-vip: #a16207;
+  --color-vip-soft: #fdf6e6;
+  --color-revoked: #9f1239;
+  --color-revoked-soft: #fdf2f5;
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Serials, tokens and counts are machine-issued strings. Set them as such. */
+.serial {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * The signature: cut marks.
+ *
+ * The bulk badge print lays 10 cards on an A4 sheet with cut marks at the corners.
+ * The same four ticks frame every photo chip here, so a row in the table reads as a
+ * card still attached to the sheet — and the login card as the first one off it.
+ */
+.cutmarks {
+  position: relative;
+}
+
+.cutmarks::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  pointer-events: none;
+  --tick: var(--cutmark-color, var(--color-rule-strong));
+  background-image:
+    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0),
+    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0),
+    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0),
+    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0);
+  background-size:
+    1px 9px, 9px 1px, 1px 9px, 9px 1px,
+    1px 9px, 9px 1px, 1px 9px, 9px 1px;
+  background-position:
+    left top, left top, right top, right top,
+    left bottom, left bottom, right bottom, right bottom;
+  background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
