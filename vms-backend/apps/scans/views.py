@@ -59,6 +59,7 @@ class ScanView(APIView):
             raw_token=serializer.validated_data["token"],
             device=request.auth,
             scanned_at=serializer.validated_data.get("scanned_at"),
+            client_uuid=serializer.validated_data.get("client_uuid"),
         )
         return Response(ScanResponseSerializer(scan).data)
 
