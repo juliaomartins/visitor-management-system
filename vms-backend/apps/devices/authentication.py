@@ -11,20 +11,15 @@ The WebSocket equivalent lives in `middleware.py` (phase 2) — the browser
 string instead.
 """
 
-from django.utils import timezone
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework import authentication, exceptions
 
 from apps.common.utils import hash_token
 
 from .models import Device
+from .services import touch_device
 
 KEYWORD = "Device"
-
-# `last_seen_at` is a dashboard convenience, not an audit record. Writing it on
-# every scan would add a needless UPDATE to the hot path.
-LAST_SEEN_RESOLUTION_SECONDS = 60
-
 
 class DeviceAuthentication(authentication.BaseAuthentication):
     """Resolve `Authorization: Device <token>` to a `Device`.
@@ -63,20 +58,11 @@ class DeviceAuthentication(authentication.BaseAuthentication):
             # is holding it, and "revoked" is more actionable than "unauthorized".
             raise exceptions.AuthenticationFailed("This device has been revoked.")
 
-        self._touch(device)
+        touch_device(device)
         return (device, device)
 
     def authenticate_header(self, request):
         return self.keyword
-
-    @staticmethod
-    def _touch(device: Device) -> None:
-        now = timezone.now()
-        last = device.last_seen_at
-        if last and (now - last).total_seconds() < LAST_SEEN_RESOLUTION_SECONDS:
-            return
-        device.last_seen_at = now
-        device.save(update_fields=["last_seen_at", "updated_at"])
 
 
 class DeviceAuthenticationScheme(OpenApiAuthenticationExtension):
