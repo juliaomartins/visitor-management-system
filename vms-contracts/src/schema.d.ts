@@ -70,6 +70,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/badges/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Render a single badge PDF
+         * @description Takes the raw badge token returned once by `POST /visitors` and returns a CR80 card as a PDF. The token draws the QR and is then discarded; it is never stored, and the visitor is resolved from its digest.
+         *
+         *     There is no GET equivalent. Only the digest is kept, so the server cannot reprint a card without being handed the token again.
+         */
+        post: operations["badges_card_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/badges/reissue-sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reissue badges and render an A4 sheet
+         * @description DESTRUCTIVE. Every listed visitor is given a NEW badge token, which invalidates the QR on any card already printed for them, including one they are currently wearing.
+         *
+         *     This is not a choice the endpoint makes: the raw token exists only at the moment it is created, so reprinting is impossible and reissuing is the only thing the server can do.
+         *
+         *     Ten cards per A4 sheet with cut marks; more than ten paginates.
+         */
+        post: operations["badges_reissue_sheet_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices": {
         parameters: {
             query?: never;
@@ -141,6 +187,68 @@ export interface paths {
          * @description Short-lived, single-use. Read it off the dashboard and type it into the device standing next to you.
          */
         post: operations["devices_pairing_code_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Liveness and identity probe
+         * @description Public. Used by the scanner and the lobby screen to find the server when its address has changed. Returns the LAN address the server believes it has, which is what devices should be pointed at.
+         */
+        get: operations["health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Entrance log with totals
+         * @description Every badge presented in the range — `valid`, `duplicate`, `revoked` and `invalid` alike. This is the security audit as well as the attendance record, so refusals are in the default view rather than behind a filter.
+         *
+         *     Hours are bucketed in the event's timezone, which the response names in `timezone`. Unfiltered and unpaginated: a day of a 250-visitor event is a few thousand rows on a LAN.
+         */
+        get: operations["reports_entries_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/entries.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the entrance log as CSV
+         * @description The same filters as `/reports/entries`. Timestamps are in the event's timezone with the offset attached; visitor columns are blank for an `invalid` scan, which matched no badge.
+         */
+        get: operations["reports_entries_csv_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -272,11 +380,42 @@ export interface components {
             password: string;
         };
         /**
+         * @description What the registration receipt posts back to get a printable card.
+         *
+         *     The raw token, and only the raw token. The server resolves the visitor from
+         *     its SHA-256 digest exactly as `/scans` does, so this is not an oracle: a
+         *     caller who does not already hold the token gets nothing, and one who does is
+         *     holding the badge anyway.
+         */
+        BadgeCardRequestRequest: {
+            /** @description The raw badge token, as returned once by POST /visitors. Not stored; used to draw the QR and then discarded. */
+            token: string;
+        };
+        /**
+         * @description Which visitors to put on the sheet.
+         *
+         *     Every one of them gets a NEW token — see the endpoint description. There is no
+         *     way to reprint an existing card, because the raw token it carries was never
+         *     stored.
+         */
+        BadgeReissueSheetRequestRequest: {
+            /** @description Visitors to reissue and print, in the order they appear on the sheet. */
+            visitor_ids: string[];
+        };
+        CategoryCount: {
+            readonly category: string;
+            readonly total: number;
+        };
+        /**
          * @description * `normal` - Normal
          *     * `vip` - VIP
          * @enum {string}
          */
         CategoryEnum: "normal" | "vip";
+        CountryCount: {
+            readonly country: string;
+            readonly total: number;
+        };
         /** @description `token_hash` is deliberately absent — the raw token is shown once, at pairing. */
         Device: {
             /** Format: uuid */
@@ -318,6 +457,56 @@ export interface components {
             readonly updated_at: string;
             /** @description Permanent device token. Sent as `Authorization: Device <token>`. */
             readonly token: string;
+        };
+        /** @description One badge presentation, valid or not. */
+        Entry: {
+            readonly id: number;
+            /** Format: date-time */
+            scanned_at: string;
+            result: components["schemas"]["ResultEnum"];
+            /** Format: uuid */
+            visitor?: string | null;
+            readonly full_name: string | null;
+            readonly country: string | null;
+            readonly organization: string | null;
+            readonly category: string | null;
+            readonly badge_serial: string | null;
+            readonly device_name: string;
+        };
+        /** @description `GET /reports/entries` — the log and its totals, from one filtered query. */
+        EntryReport: {
+            readonly timezone: string;
+            /** Format: date */
+            readonly date_from: string;
+            /** Format: date */
+            readonly date_to: string;
+            readonly summary: components["schemas"]["EntrySummary"];
+            readonly entries: components["schemas"]["Entry"][];
+        };
+        EntrySummary: {
+            readonly total: number;
+            readonly unique_visitors: number;
+            readonly by_result: components["schemas"]["ResultCounts"];
+            readonly by_hour: components["schemas"]["HourBucket"][];
+            readonly by_country: components["schemas"]["CountryCount"][];
+            readonly by_category: components["schemas"]["CategoryCount"][];
+        };
+        /** @description What a device gets back when it finds the server. */
+        Health: {
+            readonly service: string;
+            readonly status: string;
+            /** Format: date-time */
+            readonly server_time: string;
+            readonly lan_ip: string;
+        };
+        /** @description One local hour. `hour` carries its offset, so the client never guesses. */
+        HourBucket: {
+            /** Format: date-time */
+            readonly hour: string;
+            readonly total: number;
+            readonly valid: number;
+            readonly duplicate: number;
+            readonly refused: number;
         };
         /**
          * @description * `scanner` - Scanner
@@ -365,6 +554,13 @@ export interface components {
         RefreshTokenRequest: {
             refresh?: string;
         };
+        /** @description Always all four keys, zero-filled — see counts_by_result(). */
+        ResultCounts: {
+            readonly valid: number;
+            readonly invalid: number;
+            readonly revoked: number;
+            readonly duplicate: number;
+        };
         /**
          * @description * `valid` - Valid
          *     * `invalid` - Invalid
@@ -398,6 +594,11 @@ export interface components {
              * @description When the badge was presented. Sent by the device, because the offline queue may sync minutes later. Defaults to now.
              */
             scanned_at?: string;
+            /**
+             * Format: uuid
+             * @description Identifier the device generated for this scan. Posting it twice returns the scan already recorded rather than creating a second one — the offline queue retries, and a lost response must not become a second arrival.
+             */
+            client_uuid?: string | null;
         };
         /**
          * @description The answer to `POST /scans` — always 200, with the verdict in `result`.
@@ -409,9 +610,14 @@ export interface components {
             result: components["schemas"]["ResultEnum"];
             /** Format: date-time */
             scanned_at: string;
-            readonly visitor: components["schemas"]["ScanVisitor"];
+            readonly visitor: components["schemas"]["ScanVisitor"] | null;
         };
-        /** @description The little the guard's phone needs: enough to match a face to a name. */
+        /**
+         * @description What the guard's phone shows: enough to match the face to the card.
+         *
+         *     The photo is the point. A name tells a guard who the badge claims to be; only
+         *     the photo tells them whether the person holding it is that person.
+         */
         ScanVisitor: {
             /** Format: uuid */
             readonly id: string;
@@ -420,6 +626,8 @@ export interface components {
             organization?: string;
             category?: components["schemas"]["CategoryEnum"];
             badge_serial: string;
+            /** Format: uri */
+            readonly photo_url: string;
         };
         /**
          * @description What the lobby screen renders, and nothing more.
@@ -431,13 +639,10 @@ export interface components {
             readonly id: number;
             readonly full_name: string;
             readonly country: string;
+            readonly organization: string;
             /**
              * Format: uri
-             * @description Always absolute, always built from MEDIA_BASE_URL.
-             *
-             *     Never from `self.context["request"]`: `services.py` serializes this for the
-             *     WebSocket push with no request in scope, so a request-derived URL would
-             *     make the two delivery paths disagree for the same event.
+             * @description Absolute, and never derived from the request — see apps/common/media.py.
              */
             readonly photo_url: string;
             readonly category: string;
@@ -645,6 +850,65 @@ export interface operations {
             };
         };
     };
+    badges_card_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BadgeCardRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BadgeCardRequestRequest"];
+                "multipart/form-data": components["schemas"]["BadgeCardRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description A CR80 badge PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description No visitor holds that token. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    badges_reissue_sheet_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BadgeReissueSheetRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BadgeReissueSheetRequestRequest"];
+                "multipart/form-data": components["schemas"]["BadgeReissueSheetRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description An A4 sheet of badges as a PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     devices_list: {
         parameters: {
             query?: never;
@@ -732,6 +996,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PairingCode"];
+                };
+            };
+        };
+    };
+    health_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    reports_entries_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Visitor category. Also excludes `invalid` scans. */
+                category?: "normal" | "vip";
+                /** @description Exact country, case-insensitive. Excludes `invalid` scans, which match no visitor and so have no country. */
+                country?: string;
+                /** @description First day to include, inclusive. Defaults to today. */
+                from?: string;
+                /** @description Scan outcome. Omit to see every badge presented. */
+                result?: "duplicate" | "invalid" | "revoked" | "valid";
+                /** @description Last day to include, inclusive. Defaults to today. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryReport"];
+                };
+            };
+        };
+    };
+    reports_entries_csv_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Visitor category. Also excludes `invalid` scans. */
+                category?: "normal" | "vip";
+                /** @description Exact country, case-insensitive. Excludes `invalid` scans, which match no visitor and so have no country. */
+                country?: string;
+                /** @description First day to include, inclusive. Defaults to today. */
+                from?: string;
+                /** @description Scan outcome. Omit to see every badge presented. */
+                result?: "duplicate" | "invalid" | "revoked" | "valid";
+                /** @description Last day to include, inclusive. Defaults to today. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description text/csv */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
