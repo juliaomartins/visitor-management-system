@@ -6,15 +6,17 @@ import { usePathname } from "next/navigation";
 /**
  * The whole product, listed honestly.
  *
- * Sections that do not exist yet are shown but not linked. Hiding them would make
- * the shell lie about what this tool is; making them clickable would make it lie
- * about what it does. Dimmed and inert says both true things at once.
+ * Every section is live as of phase 6, so the "shown but not linked" branch that
+ * used to sit here is gone — TypeScript flagged it as unreachable, which is the
+ * right answer once nothing is unbuilt. A future unbuilt section should come back
+ * dimmed and inert rather than hidden: that tells the truth about what the tool is
+ * and what it does at the same time.
  */
 const SECTIONS = [
   { href: "/visitors", label: "Visitors", note: "Register and print" },
-  { href: null, label: "Badges", note: "Print queue" },
-  { href: null, label: "Devices", note: "Pairing codes" },
-  { href: null, label: "Reports", note: "Entrance log" },
+  { href: "/badges", label: "Badges", note: "Print queue" },
+  { href: "/devices", label: "Devices", note: "Pairing codes" },
+  { href: "/reports", label: "Reports", note: "Entrance log" },
 ] as const;
 
 export function Sidebar() {
@@ -34,24 +36,7 @@ export function Sidebar() {
 
       <ul className="flex-1 px-3 py-4">
         {SECTIONS.map((section) => {
-          const active = section.href !== null && pathname.startsWith(section.href);
-
-          if (section.href === null) {
-            return (
-              <li key={section.label}>
-                <span
-                  aria-disabled="true"
-                  title="Not built yet"
-                  className="block cursor-default rounded-md px-3 py-2.5 text-sm text-ink-700"
-                >
-                  {section.label}
-                  <span className="mt-0.5 block text-[11px] text-ink-800">
-                    {section.note}
-                  </span>
-                </span>
-              </li>
-            );
-          }
+          const active = pathname.startsWith(section.href);
 
           return (
             <li key={section.label}>
