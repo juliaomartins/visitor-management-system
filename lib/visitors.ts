@@ -13,6 +13,7 @@ import type { components } from "@vms/contracts";
 import { ensureAccessToken } from "@/lib/auth";
 import { queryKeys } from "@/lib/query-client";
 
+export type Visitor = components["schemas"]["Visitor"];
 export type VisitorDetail = components["schemas"]["VisitorDetail"];
 export type VisitorIssued = components["schemas"]["VisitorIssued"];
 export type ScanEvent = components["schemas"]["ScanEvent"];
@@ -127,7 +128,7 @@ export function useUpdateVisitor(id: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (values: VisitorFormValues): Promise<VisitorDetail> => {
+    mutationFn: async (values: VisitorFormValues): Promise<Visitor> => {
       await ensureAccessToken();
 
       const body: Record<string, unknown> = {
@@ -146,10 +147,26 @@ export function useUpdateVisitor(id: string) {
       });
 
       if (error) fail(error, "The changes could not be saved.");
-      return data as VisitorDetail;
+      return data;
     },
-    onSuccess: (visitor) => {
-      queryClient.setQueryData(queryKeys.visitor(id), visitor);
+    onSuccess: (updated) => {
+      /*
+       * MERGE, never replace.
+       *
+       * PATCH answers with a `Visitor` — no `scan_events`, because the edit
+       * endpoint has no reason to send a scan history back. Writing that straight
+       * into the detail cache replaced a `VisitorDetail` with something missing a
+       * field the detail page reads, and the page crashed on
+       * `visitor.scan_events.filter(...)` until a reload refetched the full shape.
+       *
+       * Spreading over the previous entry keeps the history and takes the edited
+       * fields. The invalidate then reconciles with the server, so the merge only
+       * has to be right for the moment between the two.
+       */
+      queryClient.setQueryData<VisitorDetail>(queryKeys.visitor(id), (previous) =>
+        previous ? { ...previous, ...updated } : previous,
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.visitor(id) });
       queryClient.invalidateQueries({ queryKey: ["visitors"] });
     },
   });
