@@ -1,69 +1,168 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+
+import { ConnectionDot } from "@/components/ConnectionDot";
+import { ServerSetup } from "@/components/ServerSetup";
+import { IdleScreen } from "@/components/IdleScreen";
+import { VipWelcomeCard } from "@/components/VipWelcomeCard";
+import { WelcomeCard } from "@/components/WelcomeCard";
+import { useArrivalFeed } from "@/hooks/useArrivalFeed";
+import { useServer } from "@/hooks/useServer";
+import type { ScreenEvent } from "@/lib/api";
+import { getDeviceToken } from "@/lib/device-token";
+
+/** Long enough to read a name across a lobby and look up at the person. */
+const DISPLAY_MS = 8000;
+
+/**
+ * A rush shortens each card so the queue drains. Ten arrivals at 8s each is 80
+ * seconds of backlog, and a welcome shown a minute after someone walked past is
+ * worse than no welcome.
+ */
+const BUSY_DISPLAY_MS = 3500;
+const BUSY_QUEUE = 3;
+
+/** Same window the backend uses, applied again here — see the note below. */
+const REPEAT_SUPPRESSION_MS = 60_000;
+
+/**
+ * Arrivals older than this are never shown on a cold start.
+ *
+ * The backfill hands over everything since the last cursor, which on a fresh boot
+ * is the whole day. Replaying this morning's arrivals onto the wall at 4pm would
+ * be a bizarre thing for a lobby screen to do.
+ */
+const STALE_ARRIVAL_MS = 2 * 60_000;
+
+/** localStorage never changes under us here, so there is nothing to subscribe to. */
+const subscribeNothing = () => () => {};
+
+export default function ScreenPage() {
+  const router = useRouter();
+
+  // Read through useSyncExternalStore rather than an effect: localStorage is a
+  // client-only external store, and this gives the value during render without a
+  // mount-then-setState round trip.
+  const deviceToken = useSyncExternalStore(
+    subscribeNothing,
+    getDeviceToken,
+    () => null,
+  );
+
+  useEffect(() => {
+    if (!deviceToken) router.replace("/pair");
+  }, [deviceToken, router]);
+
+  // Where the backend is, before anything tries to talk to it. Falls back to
+  // this page's own hostname, which on a single-machine deployment is always the
+  // server — so the screen usually reconfigures itself when the IP changes.
+  const server = useServer();
+  const { arrivals, connected, ready } = useArrivalFeed(deviceToken, server.origin);
+
+  const [showing, setShowing] = useState<ScreenEvent | null>(null);
+  const queue = useRef<ScreenEvent[]>([]);
+  const handled = useRef<Set<number>>(new Set());
+  const lastShownFor = useRef<Map<string, number>>(new Map());
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Newest arrivals first from the hook; take them oldest-first so a burst plays
+  // in the order people actually walked through the door.
+  const incoming = useMemo(() => [...arrivals].reverse(), [arrivals]);
+
+  useEffect(() => {
+    if (!ready) return;
+
+    for (const event of incoming) {
+      if (handled.current.has(event.id)) continue;
+      handled.current.add(event.id);
+
+      // Do not replay history onto the wall after a restart.
+      const age = Date.now() - new Date(event.scanned_at).getTime();
+      if (age > STALE_ARRIVAL_MS) continue;
+
+      /*
+       * Suppress a repeat of the same visitor within a minute.
+       *
+       * The backend already marks a rescan `duplicate` and keeps it out of the
+       * feed, so this is the second line rather than the first — it catches the
+       * case that one cannot: the same guest scanned at two different doors, which
+       * the server sees as two legitimate arrivals but the lobby would show as the
+       * same face twice in a row.
+       *
+       * Keyed on photo_url and falling back to the name, because ScreenEvent
+       * carries no visitor id.
+       */
+      const identity = event.photo_url || event.full_name;
+      const previous = lastShownFor.current.get(identity);
+      const scannedAt = new Date(event.scanned_at).getTime();
+      if (previous !== undefined && scannedAt - previous < REPEAT_SUPPRESSION_MS) {
+        continue;
+      }
+      lastShownFor.current.set(identity, scannedAt);
+
+      queue.current.push(event);
+    }
+
+    if (!showing && queue.current.length > 0) {
+      setShowing(queue.current.shift() ?? null);
+    }
+  }, [incoming, ready, showing]);
+
+  // Hold the current card, then move on.
+  useEffect(() => {
+    if (!showing) return;
+
+    const duration = queue.current.length >= BUSY_QUEUE ? BUSY_DISPLAY_MS : DISPLAY_MS;
+    timer.current = setTimeout(() => {
+      setShowing(queue.current.shift() ?? null);
+    }, duration);
+
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [showing]);
+
+  // Unpaired, or the very first paint before hydration resolves the token.
+  if (!deviceToken) {
+    return <main className="h-dvh w-dvw bg-stage" />;
+  }
+
+  // Every candidate address failed. Nothing else on this screen can work until
+  // somebody says where the server is, so it is the whole screen rather than a
+  // banner over a clock that will never update.
+  if (server.lost) {
+    return (
+      <ServerSetup attempted={server.attempted} onResolved={server.adopt} />
+    );
+  }
+
+  if (server.searching && !server.origin) {
+    return (
+      <main className="flex h-dvh w-dvw items-center justify-center bg-stage">
+        <p className="text-2xl tracking-[0.2em] text-ink-faint uppercase">
+          Finding the server
+        </p>
       </main>
-    </div>
+    );
+  }
+
+  return (
+    <main className="relative h-dvh w-dvw overflow-hidden bg-stage">
+      {showing ? (
+        // Keyed on the event id so React remounts the card and the entry
+        // animation replays for each arrival rather than only the first.
+        showing.category === "vip" ? (
+          <VipWelcomeCard key={showing.id} event={showing} />
+        ) : (
+          <WelcomeCard key={showing.id} event={showing} />
+        )
+      ) : (
+        <IdleScreen waiting={connected} />
+      )}
+
+      <ConnectionDot connected={connected} />
+    </main>
   );
 }
