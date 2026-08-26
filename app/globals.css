@@ -90,3 +90,46 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * The interim badge, until phase 5 renders a real PDF.
+ *
+ * `#badge-print` is parked off-screen rather than `display: none`, so the browser
+ * actually loads the visitor's photo — a hidden image is often never fetched, and
+ * a badge that prints with a blank photo is worse than no badge.
+ *
+ * The page is CR80: 85.6 x 54 mm, zero margin, the same geometry the phase 5
+ * templates will lay out against.
+ */
+#badge-print {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+}
+
+@media print {
+  @page {
+    size: 85.6mm 54mm;
+    margin: 0;
+  }
+
+  /* Only the badge prints. The dashboard around it is not part of the badge. */
+  body * {
+    visibility: hidden;
+  }
+
+  #badge-print,
+  #badge-print * {
+    visibility: visible;
+  }
+
+  #badge-print {
+    position: fixed;
+    inset: 0;
+    left: 0;
+    /* Keep the VIP band and rules; a printer dropping backgrounds would strip
+       the one thing that distinguishes a VIP card across a room. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
