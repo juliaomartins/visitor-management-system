@@ -663,6 +663,9 @@ components:
         device:
           type: string
           format: uuid
+        device_name:
+          type: string
+          readOnly: true
         scanned_at:
           type: string
           format: date-time
@@ -679,6 +682,7 @@ components:
       required:
       - created_at
       - device
+      - device_name
       - id
       - result
       - scanned_at
