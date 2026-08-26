@@ -112,3 +112,29 @@ def revoke_device(device: Device, *, actor=None) -> Device:
         device.name,
     )
     return device
+
+
+# `last_seen_at` is a dashboard convenience, not an audit record. Writing it on
+# every request would add a needless UPDATE to the scan hot path.
+LAST_SEEN_RESOLUTION_SECONDS = 60
+
+
+def touch_device(device: Device) -> None:
+    """Record that a device just spoke to us.
+
+    This is the only signal the dashboard has for whether a door is alive, so it
+    has to be written from every path a device can reach: the HTTP authenticator
+    for scans and the backfill, and the WebSocket consumer for a screen that is
+    holding a socket open and therefore making no HTTP requests at all.
+
+    Throttled, because a phone scanning steadily would otherwise write this row
+    once per badge for no added information.
+    """
+    now = timezone.now()
+    last = device.last_seen_at
+
+    if last and (now - last).total_seconds() < LAST_SEEN_RESOLUTION_SECONDS:
+        return
+
+    device.last_seen_at = now
+    device.save(update_fields=["last_seen_at", "updated_at"])
