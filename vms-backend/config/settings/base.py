@@ -130,6 +130,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Absolute origin for visitor photos. The lobby screen is served from :3000 while
+# media comes from :8000, so a relative URL would resolve against the screen's own
+# origin and 404. Building from a fixed base rather than the request also keeps the
+# WebSocket push and the /screen/feed backfill byte-identical — the WS path has no
+# request to build from. Set this to the server's LAN address in production.
+MEDIA_BASE_URL = env("VMS_MEDIA_BASE_URL", default="http://localhost:8000")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --------------------------------------------------------------------------
