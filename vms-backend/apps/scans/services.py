@@ -18,7 +18,7 @@ import logging
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.common.utils import hash_token
@@ -97,27 +97,49 @@ def _publish_arrival(scan: ScanEvent) -> None:
     )
 
 
-def record_scan(*, raw_token: str, device, scanned_at=None) -> ScanEvent:
+def record_scan(*, raw_token: str, device, scanned_at=None, client_uuid=None) -> ScanEvent:
     """Validate a badge and log the attempt. Always returns a row.
 
     `scanned_at` comes from the device, not the server: the scanner queues
     offline and syncs later, so the time the badge was presented is the only
     time worth recording.
+
+    `client_uuid` makes the call idempotent. The offline queue retries until the
+    server confirms, and a request that lands but whose response is lost would
+    otherwise be replayed into a second ScanEvent — one presentation of one card
+    counted twice in the entrance report. Replaying returns the original row
+    with its original verdict, and deliberately does not broadcast again: the
+    lobby screen already welcomed that visitor.
     """
+    if client_uuid:
+        existing = ScanEvent.objects.filter(client_uuid=client_uuid).first()
+        if existing is not None:
+            return existing
+
     scanned_at = scanned_at or timezone.now()
 
     visitor = resolve_visitor(raw_token)
     result = classify(visitor, scanned_at)
 
-    with transaction.atomic():
-        scan = ScanEvent.objects.create(
-            visitor=visitor,
-            device=device,
-            scanned_at=scanned_at,
-            result=result,
-        )
-        if result == ScanResult.VALID:
-            _publish_arrival(scan)
+    try:
+        with transaction.atomic():
+            scan = ScanEvent.objects.create(
+                visitor=visitor,
+                device=device,
+                scanned_at=scanned_at,
+                result=result,
+                client_uuid=client_uuid,
+            )
+            if result == ScanResult.VALID:
+                _publish_arrival(scan)
+    except IntegrityError:
+        # Two retries of the same queued scan raced past the check above. The
+        # row the winner wrote is the authoritative one; the atomic block rolled
+        # this attempt back, so nothing was broadcast for it either.
+        existing = ScanEvent.objects.filter(client_uuid=client_uuid).first()
+        if existing is None:
+            raise
+        return existing
 
     if result != ScanResult.VALID:
         # Failed scans are the interesting half of the security review.
