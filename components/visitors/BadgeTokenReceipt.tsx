@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import QRCode from "qrcode";
+import { useEffect, useRef, useState } from "react";
 
-import type { VisitorIssued } from "@/lib/visitors";
+import { downloadBadgeCard } from "@/lib/badges";
+import { ApiError, type VisitorIssued } from "@/lib/visitors";
 
 /**
  * The one and only sight of a badge token.
@@ -14,13 +16,28 @@ import type { VisitorIssued } from "@/lib/visitors";
  * visitor has to be registered again from scratch.
  *
  * That is why registering does not redirect on success. The registrar leaves this
- * screen deliberately, having copied the token, not because a router decided the
+ * screen deliberately, having printed the badge, not because a router decided the
  * job was finished.
  *
- * Phase 5 makes most of this unnecessary: `GET /visitors/{id}/badge` will render
- * the PDF directly and the token will go straight into a QR without a human ever
- * seeing it.
+ * Phase 5 replaces the print button below with a server-rendered PDF and an A4
+ * bulk sheet. Until then this is a real, working badge.
  */
+
+/**
+ * The QR carries the raw token STRING and nothing else — no JSON, no envelope,
+ * no id (CLAUDE.md constraint #3). The scanner posts exactly what it reads, so
+ * anything wrapped around the token would have to be unwrapped by every reader
+ * that ever touches a badge.
+ *
+ * Error correction M: a badge picks up scuffs and lanyard creases, and M recovers
+ * ~15% while keeping the modules large enough to read across a doorway.
+ */
+const QR_OPTIONS = {
+  errorCorrectionLevel: "M" as const,
+  margin: 1,
+  color: { dark: "#000000", light: "#ffffff" },
+};
+
 export function BadgeTokenReceipt({
   visitor,
   onRegisterAnother,
@@ -29,6 +46,48 @@ export function BadgeTokenReceipt({
   onRegisterAnother: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [qrFailed, setQrFailed] = useState(false);
+  const screenQr = useRef<HTMLCanvasElement | null>(null);
+  const printQr = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const targets: [HTMLCanvasElement | null, number][] = [
+      [screenQr.current, 208],
+      // Rendered large and scaled down by CSS, so the print stays crisp at 20 mm.
+      [printQr.current, 320],
+    ];
+
+    Promise.all(
+      targets.map(([canvas, width]) =>
+        canvas
+          ? QRCode.toCanvas(canvas, visitor.badge_token, { ...QR_OPTIONS, width })
+          : Promise.resolve(),
+      ),
+    ).catch(() => setQrFailed(true));
+  }, [visitor.badge_token]);
+
+  /**
+   * The one moment a badge PDF costs nothing.
+   *
+   * This screen still holds the raw token, so the server can draw the QR without
+   * issuing a new one. Once this page is gone, every later print is a reissue
+   * that kills the card in the visitor's hand.
+   */
+  async function savePdf() {
+    setSaving(true);
+    setPdfError(null);
+    try {
+      await downloadBadgeCard(visitor.badge_token, visitor.badge_serial);
+    } catch (cause) {
+      setPdfError(
+        cause instanceof ApiError ? cause.message : "The badge could not be rendered.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function copy() {
     try {
@@ -41,31 +100,79 @@ export function BadgeTokenReceipt({
     }
   }
 
+  const vip = visitor.category === "vip";
+
   return (
     <div className="max-w-2xl">
       <div className="rounded-lg border border-vip bg-vip-soft px-6 py-6">
-        <p className="serial text-[11px] uppercase text-vip">Copy this now</p>
+        <p className="serial text-[11px] uppercase text-vip">Print this now</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink-900">
           {visitor.full_name} is registered
         </h2>
         <p className="mt-2 text-sm text-ink-700">
-          The badge token below goes into the QR code. It is stored only as a hash,
-          so this is the only time it can be read. Leave this page without it and the
-          badge cannot be printed — you would have to register {visitor.full_name}{" "}
-          again.
+          The badge below is the only copy. The token behind the QR is stored as a
+          hash, so once you leave this page it cannot be recovered — you would have
+          to register {visitor.full_name} again.
         </p>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <code className="serial min-w-0 flex-1 overflow-x-auto rounded border border-vip/40 bg-card px-3 py-2.5 text-sm text-ink-900">
-            {visitor.badge_token}
-          </code>
-          <button
-            type="button"
-            onClick={copy}
-            className="shrink-0 rounded-md bg-ink-900 px-3.5 py-2.5 text-sm font-medium text-white hover:bg-ink-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
-            {copied ? "Copied" : "Copy token"}
-          </button>
+        <div className="mt-5 flex flex-wrap items-start gap-5">
+          <div className="rounded-md border border-vip/40 bg-card p-3">
+            <canvas
+              ref={screenQr}
+              className="block h-52 w-52"
+              role="img"
+              aria-label={`QR code for badge ${visitor.badge_serial}`}
+            />
+          </div>
+
+          <div className="min-w-56 flex-1 space-y-3">
+            <div>
+              <p className="text-xs text-ink-500">Badge token</p>
+              <code className="serial mt-1 block overflow-x-auto rounded border border-vip/40 bg-card px-3 py-2 text-xs text-ink-900">
+                {visitor.badge_token}
+              </code>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={savePdf}
+                disabled={saving}
+                className="rounded-md bg-ink-900 px-3.5 py-2.5 text-sm font-medium text-white hover:bg-ink-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
+              >
+                {saving ? "Rendering…" : "Download badge PDF"}
+              </button>
+              {/* Kept alongside the PDF: this one needs nothing but a browser, so
+                  it still works if the server cannot render. */}
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-700 hover:text-ink-900"
+              >
+                Print from browser
+              </button>
+              <button
+                type="button"
+                onClick={copy}
+                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-700 hover:text-ink-900"
+              >
+                {copied ? "Copied" : "Copy token"}
+              </button>
+            </div>
+
+            {pdfError ? (
+              <p role="alert" className="text-xs text-revoked">
+                {pdfError}
+              </p>
+            ) : null}
+
+            {qrFailed ? (
+              <p role="alert" className="text-xs text-revoked">
+                The QR code could not be drawn. Copy the token and print the badge
+                from another machine rather than issuing a card without a code.
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <p aria-live="polite" className="sr-only">
@@ -76,10 +183,7 @@ export function BadgeTokenReceipt({
       <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
         <Row label="Badge serial" value={visitor.badge_serial} mono />
         <Row label="Country" value={visitor.country} />
-        <Row
-          label="Category"
-          value={visitor.category === "vip" ? "VIP" : "Normal"}
-        />
+        <Row label="Category" value={vip ? "VIP" : "Normal"} />
       </dl>
 
       <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -102,6 +206,95 @@ export function BadgeTokenReceipt({
         >
           Back to all visitors
         </Link>
+      </div>
+
+      {/*
+        The badge itself. Parked off-screen rather than hidden, so the photo is
+        actually fetched — see the #badge-print rules in globals.css. Sized in
+        millimetres because this is a physical object, not a layout.
+      */}
+      <div id="badge-print" aria-hidden="true">
+        <div
+          style={{
+            width: "85.6mm",
+            height: "54mm",
+            boxSizing: "border-box",
+            padding: "3.5mm",
+            display: "flex",
+            gap: "3mm",
+            alignItems: "stretch",
+            background: "#ffffff",
+            color: "#000000",
+            fontFamily: "var(--font-archivo), sans-serif",
+            borderLeft: vip ? "3mm solid #a16207" : "3mm solid #17212b",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={visitor.photo}
+            alt=""
+            style={{
+              width: "24mm",
+              height: "32mm",
+              objectFit: "cover",
+              alignSelf: "flex-start",
+            }}
+          />
+
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            {vip ? (
+              <span
+                style={{
+                  fontSize: "2.6mm",
+                  fontWeight: 800,
+                  letterSpacing: "0.6mm",
+                  color: "#a16207",
+                }}
+              >
+                VIP
+              </span>
+            ) : null}
+
+            <span
+              style={{
+                fontSize: "4.6mm",
+                fontWeight: 800,
+                lineHeight: 1.1,
+                marginTop: "0.5mm",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {visitor.full_name}
+            </span>
+
+            <span style={{ fontSize: "3.4mm", marginTop: "1mm" }}>
+              {visitor.country}
+            </span>
+
+            {visitor.organization ? (
+              <span style={{ fontSize: "2.8mm", marginTop: "0.5mm", color: "#4a5560" }}>
+                {visitor.organization}
+              </span>
+            ) : null}
+
+            <span
+              style={{
+                marginTop: "auto",
+                fontSize: "3mm",
+                fontWeight: 600,
+                letterSpacing: "0.3mm",
+                fontFamily: "var(--font-plex-mono), monospace",
+              }}
+            >
+              {visitor.badge_serial}
+            </span>
+          </div>
+
+          <canvas
+            ref={printQr}
+            style={{ width: "20mm", height: "20mm", alignSelf: "flex-end" }}
+          />
+        </div>
       </div>
     </div>
   );
