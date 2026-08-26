@@ -6,7 +6,9 @@ import { useState } from "react";
 
 import { useSetPageMeta } from "@/components/page-meta";
 import { PHOTO_ASPECT } from "@/components/visitors/PhotoUpload";
+import { ReissueDialog } from "@/components/badges/ReissueDialog";
 import { RevokeDialog } from "@/components/visitors/RevokeDialog";
+import { downloadReissuedSheet } from "@/lib/badges";
 import {
   ApiError,
   useRevokeVisitor,
@@ -27,6 +29,9 @@ export default function VisitorDetailPage() {
   const { data: visitor, isPending, isError, error } = useVisitor(id);
   const revoke = useRevokeVisitor(id);
   const [confirming, setConfirming] = useState(false);
+  const [reissuing, setReissuing] = useState(false);
+  const [reissuePending, setReissuePending] = useState(false);
+  const [reissueError, setReissueError] = useState<string | undefined>();
 
   useSetPageMeta({
     title: visitor?.full_name ?? "Visitor",
@@ -57,7 +62,13 @@ export default function VisitorDetailPage() {
   }
 
   const revoked = !visitor.is_active;
-  const arrivals = visitor.scan_events.filter((scan) => scan.result === "valid");
+
+  // Read once, defaulted once. A cache entry written by a mutation whose response
+  // does not carry the scan history would otherwise crash this page rather than
+  // simply showing it empty for the moment before the refetch lands — which is
+  // exactly what used to happen after saving an edit.
+  const scans = visitor.scan_events ?? [];
+  const arrivals = scans.filter((scan) => scan.result === "valid");
 
   return (
     <div className="max-w-4xl">
@@ -122,20 +133,18 @@ export default function VisitorDetailPage() {
             </Link>
 
             {/*
-              GET /visitors/{id}/badge does not exist until phase 5. The button is
-              here because this is where it belongs, and disabled because pressing
-              it today would 404.
+              Not "download" — there is nothing to download. The raw token behind
+              this visitor's QR was never stored, so the server cannot redraw the
+              card it issued; it can only issue a new one. The label says so, and
+              the dialog spells out the consequence.
             */}
-            <span title="Badge PDFs arrive in phase 5" className="inline-block">
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                className="cursor-not-allowed rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-500 opacity-60"
-              >
-                Download badge PDF
-              </button>
-            </span>
+            <button
+              type="button"
+              onClick={() => setReissuing(true)}
+              className="rounded-md border border-vip/50 px-3.5 py-2.5 text-sm text-vip transition-colors hover:bg-vip-soft focus-visible:ring-2 focus-visible:ring-vip focus-visible:outline-none"
+            >
+              Reissue &amp; print badge
+            </button>
 
             {revoked ? null : (
               <button
@@ -148,9 +157,10 @@ export default function VisitorDetailPage() {
             )}
           </div>
 
-          <p className="mt-2 text-xs text-ink-500">
-            Badge PDFs arrive in phase 5. Until then the badge token is shown once,
-            when the visitor is registered.
+          <p className="mt-2 max-w-lg text-xs text-ink-500">
+            Reissuing prints a new card and kills the old one — badge tokens are
+            stored only as a hash, so an issued card can never be reprinted. Collect
+            the old card when you hand over the new one.
           </p>
         </div>
       </div>
@@ -164,7 +174,7 @@ export default function VisitorDetailPage() {
         </p>
 
         <div className="mt-3 overflow-hidden rounded-lg border border-rule bg-card">
-          {visitor.scan_events.length === 0 ? (
+          {scans.length === 0 ? (
             <p className="px-6 py-12 text-center text-sm text-ink-500">
               This badge has not been scanned yet.
             </p>
@@ -180,7 +190,7 @@ export default function VisitorDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visitor.scan_events.map((scan) => (
+                  {scans.map((scan) => (
                     <ScanRow key={scan.id} scan={scan} />
                   ))}
                 </tbody>
@@ -189,6 +199,36 @@ export default function VisitorDetailPage() {
           )}
         </div>
       </section>
+
+      <ReissueDialog
+        open={reissuing}
+        count={1}
+        name={visitor.full_name}
+        pending={reissuePending}
+        error={reissueError}
+        onConfirm={async () => {
+          setReissuePending(true);
+          setReissueError(undefined);
+          try {
+            await downloadReissuedSheet([visitor.id]);
+            setReissuing(false);
+          } catch (cause) {
+            setReissueError(
+              cause instanceof ApiError
+                ? cause.message
+                : "The badge could not be rendered.",
+            );
+          } finally {
+            setReissuePending(false);
+          }
+        }}
+        onCancel={() => {
+          if (!reissuePending) {
+            setReissuing(false);
+            setReissueError(undefined);
+          }
+        }}
+      />
 
       <RevokeDialog
         open={confirming}
