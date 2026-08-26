@@ -1,0 +1,226 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>VMS screen smoke test</title>
+
+<!--
+  Single file, no build step. Open it straight off disk:
+
+      file:///.../vms-backend/scripts/smoke_screen.html#<screen-device-token>
+
+  `manage.py seed_demo` prints a token and the exact URL to paste.
+
+  This is a wire check for the backend, not the lobby screen — that is vms-screen,
+  phase 4. It does what CLAUDE.md says the real screen must do: WebSocket for
+  speed, `/screen/feed?since=` for recovery, dedupe on `id`, ping every 30s,
+  reconnect after 2s.
+
+  NOTE ON THE BACKFILL: over file:// the browser sends `Origin: null`, and the
+  Authorization header makes the fetch preflight. The backend emits no CORS
+  headers today — `CORS_ALLOW_ALL_ORIGINS` is set in dev.py but django-cors-headers
+  is not installed, so the setting does nothing. The WebSocket is unaffected (no
+  preflight), so live arrivals work; the backfill will report a CORS failure in the
+  log below. See the banner the page shows when that happens.
+-->
+
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 24px;
+    background: #0b0e14; color: #e6e9ef;
+    font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  #dot { width: 12px; height: 12px; border-radius: 50%; background: #64748b; flex: none; }
+  #dot.up { background: #22c55e; }
+  #dot.down { background: #ef4444; }
+  #state { color: #94a3b8; font-size: 14px; }
+  .banner {
+    margin: 16px 0; padding: 12px 14px; border-radius: 8px;
+    background: #422006; border: 1px solid #a16207; color: #fde68a; font-size: 14px;
+  }
+  .banner code { color: #fff; }
+  .arrival {
+    display: flex; align-items: center; gap: 16px;
+    margin-top: 12px; padding: 12px; border-radius: 10px;
+    background: #151a23; border: 1px solid #232a36;
+  }
+  .arrival.vip { border-color: #a16207; background: #1c1708; }
+  .arrival img {
+    width: 96px; height: 128px; object-fit: cover;
+    border-radius: 6px; background: #232a36; flex: none;
+  }
+  .name { font-size: 22px; font-weight: 600; }
+  .meta { color: #94a3b8; font-size: 14px; }
+  .tag { color: #fbbf24; font-size: 13px; letter-spacing: .08em; }
+  .src { margin-left: auto; color: #64748b; font-size: 12px; text-align: right; }
+  #log {
+    margin-top: 24px; padding-top: 12px; border-top: 1px solid #232a36;
+    color: #64748b; font: 12px/1.7 ui-monospace, Menlo, Consolas, monospace;
+    white-space: pre-wrap;
+  }
+</style>
+
+<header>
+  <div id="dot"></div>
+  <h1>VMS screen smoke test</h1>
+  <span id="state">starting…</span>
+</header>
+
+<div id="banners"></div>
+<div id="feed"></div>
+<div id="log"></div>
+
+<script>
+  const HOST = "localhost:8000";
+  const API = `http://${HOST}`;
+  const WS = `ws://${HOST}`;
+  const RECONNECT_MS = 2000;
+  const PING_MS = 30000;
+
+  const token = decodeURIComponent(location.hash.slice(1));
+  const seen = new Set();
+  let lastId = 0;
+  let socket = null;
+  let pinger = null;
+
+  const el = (id) => document.getElementById(id);
+
+  function log(message) {
+    el("log").textContent += `${new Date().toLocaleTimeString()}  ${message}\n`;
+  }
+
+  function status(up, text) {
+    el("dot").className = up ? "up" : "down";
+    el("state").textContent = text;
+  }
+
+  function banner(html) {
+    const node = document.createElement("div");
+    node.className = "banner";
+    node.innerHTML = html;
+    el("banners").appendChild(node);
+  }
+
+  // Dedupe on `id`, so an event arriving on both paths renders once.
+  function add(event, source) {
+    if (!event || seen.has(event.id)) return;
+    seen.add(event.id);
+    if (event.id > lastId) lastId = event.id;
+
+    const row = document.createElement("div");
+    row.className = "arrival" + (event.category === "vip" ? " vip" : "");
+
+    const photo = document.createElement("img");
+    photo.src = event.photo_url || "";
+    photo.alt = "";
+    row.appendChild(photo);
+
+    const who = document.createElement("div");
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = event.full_name;
+    who.appendChild(name);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = event.country;
+    who.appendChild(meta);
+
+    if (event.category === "vip") {
+      const tag = document.createElement("div");
+      tag.className = "tag";
+      tag.textContent = "VIP";
+      who.appendChild(tag);
+    }
+    row.appendChild(who);
+
+    const src = document.createElement("div");
+    src.className = "src";
+    src.textContent = `#${event.id} via ${source}\n${event.scanned_at}`;
+    row.appendChild(src);
+
+    el("feed").prepend(row);
+    log(`arrival #${event.id} ${event.full_name} (${source})`);
+  }
+
+  async function backfill() {
+    const url = `${API}/api/v1/screen/feed?since=${lastId}`;
+    log(`backfill GET ${url}`);
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Device ${token}` } });
+      if (!res.ok) {
+        log(`backfill failed: HTTP ${res.status}`);
+        return;
+      }
+      const body = await res.json();
+      body.events.forEach((event) => add(event, "backfill"));
+      if (body.last_id > lastId) lastId = body.last_id;
+      log(`backfill ok: ${body.events.length} event(s), cursor now ${lastId}`);
+    } catch (err) {
+      log(`backfill blocked: ${err}`);
+      banner(
+        "<b>Backfill blocked by CORS.</b> Over <code>file://</code> the browser sends " +
+        "<code>Origin: null</code> and preflights the <code>Authorization</code> header, " +
+        "but the backend sends no CORS headers — <code>django-cors-headers</code> is not " +
+        "installed, so <code>CORS_ALLOW_ALL_ORIGINS</code> in <code>dev.py</code> does " +
+        "nothing. Live arrivals over the WebSocket still work; only recovery of missed " +
+        "events is affected."
+      );
+    }
+  }
+
+  function connect() {
+    log(`connecting to ${WS}/ws/screen/`);
+    socket = new WebSocket(`${WS}/ws/screen/?token=${encodeURIComponent(token)}`);
+
+    socket.onopen = () => {
+      status(true, "connected");
+      log("websocket open");
+      backfill();
+      clearInterval(pinger);
+      // Idle sockets get dropped, and mornings have quiet stretches between waves.
+      pinger = setInterval(() => {
+        if (socket && socket.readyState === WebSocket.OPEN) socket.send("ping");
+      }, PING_MS);
+    };
+
+    socket.onmessage = (message) => {
+      try {
+        add(JSON.parse(message.data), "websocket");
+      } catch (err) {
+        log(`unparseable frame: ${err}`);
+      }
+    };
+
+    socket.onclose = (event) => {
+      clearInterval(pinger);
+      status(false, `closed (${event.code}) — retrying`);
+      if (event.code === 4401) {
+        log("closed 4401: that token is not an active screen device");
+        banner(
+          "<b>Rejected with close code 4401.</b> The token in the URL hash must belong " +
+          "to an <i>active</i> device of kind <code>screen</code>. A scanner token is " +
+          "refused on this socket."
+        );
+      } else {
+        log(`websocket closed (${event.code}), retrying in ${RECONNECT_MS}ms`);
+      }
+      setTimeout(connect, RECONNECT_MS);
+    };
+
+    socket.onerror = () => log("websocket error");
+  }
+
+  if (!token) {
+    status(false, "no token");
+    banner(
+      "<b>No device token.</b> Put a screen token in the URL hash: " +
+      "<code>smoke_screen.html#&lt;token&gt;</code>. " +
+      "<code>python manage.py seed_demo</code> prints one."
+    );
+  } else {
+    log(`token …${token.slice(-8)}`);
+    connect();
+  }
+</script>
