@@ -89,6 +89,11 @@ class DeviceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             # is a mistake to correct, not a business outcome to record.
             raise ValidationError({"code": [str(exc)]}) from exc
 
+        # A successful pair is proof this IP is not guessing, so its failed-attempt
+        # history goes. Setting up ten doors in a row must never lock out the
+        # eleventh.
+        PairingRateThrottle.forget(request)
+
         # Read by DevicePairedSerializer.token, then gone. Never stored.
         device.token = raw_token
         return Response(
