@@ -39,7 +39,7 @@ Frontends consume contracts by relative path:
 | Dashboard | TypeScript, Next.js (App Router), TailwindCSS, TanStack Query |
 | Scanner | TypeScript, React Native, Expo, expo-router, expo-camera, expo-sqlite |
 | Screen | TypeScript, Next.js, TailwindCSS |
-| Badge PDF | WeasyPrint + qrcode |
+| Badge PDF | **ReportLab** + qrcode — pure Python, no native libraries |
 | Schema | drf-spectacular → openapi.yaml → openapi-typescript |
 
 ---
@@ -398,8 +398,7 @@ vms-backend/
     ├── common/     BaseModel, permissions, throttling, hash_token(), storage
     ├── accounts/   User + simplejwt views. Admins only.
     ├── visitors/   Visitor CRUD, issue_badge_token(), revoke_badge()
-    ├── badges/     WeasyPrint PDF. NO MODELS.
-    │   └── templates/badges/{card_normal,card_vip,sheet_a4}.html + card.css
+    ├── badges/     ReportLab PDF. NO MODELS, no templates — it draws.
     ├── devices/    Device, PairingCode, authentication.py (HTTP), middleware.py (WS)
     ├── scans/      ScanEvent, consumers.py, routing.py, services.py, views.py
     └── reports/    Aggregation + CSV export. NO MODELS.
@@ -410,8 +409,25 @@ vms-backend/
 
 Business logic lives in `services.py`. Views stay thin.
 
-Card CSS uses real dimensions: `@page { size: 85.6mm 54mm; margin: 0; }` (CR80).
-Bulk print lays out 10 cards per A4 sheet with cut marks.
+**Badges are drawn with ReportLab, not rendered from HTML.**
+
+WeasyPrint was the original choice and could not run: it reaches Pango and Cairo
+through GTK, native libraries that are not installable with pip and are absent on
+the Windows server this event runs on. The result was a badge feature that
+returned 503 on the only machine that mattered. ReportLab is pure Python and
+renders identically everywhere, so `apps/badges/services.py` holds explicit
+millimetre geometry instead of CSS. Do not reintroduce an HTML renderer without
+first checking it runs on the server, not just on a developer's machine.
+
+Fonts are ReportLab's built-in Helvetica and Courier — vector, always present, no
+font file to ship. The dashboard's on-screen badge uses Archivo and IBM Plex Mono,
+so the printed card is close but not identical. That is the price of never
+depending on a font being installed.
+
+Card geometry is CR80, 85.6 × 54 mm: 3 mm edge band (amber for VIP), 24 × 32 mm
+portrait photo, name / country / organisation, serial in mono, QR 20 mm
+bottom-right. Bulk print lays 10 cards on an A4 sheet with cut marks in the
+margins at every grid line.
 
 ---
 
@@ -562,6 +578,28 @@ stage them and commit.
 
 CI should run the same script. It replaces the narrower
 `git diff --exit-code openapi.yaml`, which only ever caught half the problem.
+
+### `.env` is per machine, `.env.example` is committed
+
+The current dev machine is **192.168.0.63**. Every device on the LAN points at
+the server by IP, so each machine sets its own `.env` and `.env` is gitignored —
+a committed IP is wrong for everyone except the person who committed it, and it
+fails as "the network is down" rather than as a bad address. `.env.example`
+carries a neutral placeholder and is tracked.
+
+### `vms-scanner` imports `@vms/contracts` type-only
+
+The scanner uses `import type` and plain `fetch`. **Do not add `openapi-fetch`
+there.** It resolves only from `vms-contracts/node_modules`, so using it at
+runtime makes the app depend on Metro following the workspace symlink, which it
+does not do reliably. A type-only import is erased at build time, so Metro never
+resolves the package at all — and hand-rolled `fetch` is what the offline queue
+needs anyway, for its own timeout and retry control.
+
+### `src/app/` is the expo-router root in `vms-scanner`
+
+**Do not create a root-level `app/`.** Two candidate route roots is ambiguous,
+and `tsconfig` maps `@/*` to `./src/*`, so the whole app is under `src/`.
 
 ---
 
