@@ -78,7 +78,9 @@ class VisitorViewSet(viewsets.ModelViewSet):
         queryset = Visitor.objects.filter(deleted_at__isnull=True)
 
         if self.action == "retrieve":
-            queryset = queryset.prefetch_related("scan_events")
+            # ...__device because ScanEventSerializer renders the device name;
+            # without it the detail page costs one query per scan.
+            queryset = queryset.prefetch_related("scan_events__device")
 
         params = self.request.query_params
 
