@@ -24,6 +24,12 @@ class ScanEvent(TimeStampedModel):
     """
 
     id = models.BigAutoField(primary_key=True)
+    # Generated on the device before the scan is sent, so a replay after a lost
+    # response is recognised instead of recorded twice. Nullable because scans
+    # predating the offline queue have none, and because a client may omit it —
+    # Postgres allows many NULLs in a unique column. `unique=True` already builds
+    # the index; a separate db_index would be a second, redundant one.
+    client_uuid = models.UUIDField(null=True, blank=True, unique=True)
     visitor = models.ForeignKey(
         "visitors.Visitor",
         null=True,
