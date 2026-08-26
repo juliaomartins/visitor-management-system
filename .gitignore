@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Django — .env holds real credentials; .env.example is the tracked template
+.env
+media/
+staticfiles/
+*.sqlite3
+*.log
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
