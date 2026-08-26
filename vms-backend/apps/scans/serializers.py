@@ -1,8 +1,8 @@
-from django.conf import settings
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.common.media import absolute_media_url
 from apps.visitors.models import Visitor
 
 from .models import ScanEvent
@@ -40,27 +40,26 @@ class ScreenEventSerializer(serializers.ModelSerializer):
 
     full_name = serializers.CharField(source="visitor.full_name", read_only=True)
     country = serializers.CharField(source="visitor.country", read_only=True)
+    organization = serializers.CharField(source="visitor.organization", read_only=True)
     category = serializers.CharField(source="visitor.category", read_only=True)
     photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ScanEvent
-        fields = ["id", "full_name", "country", "photo_url", "category", "scanned_at"]
+        fields = [
+            "id",
+            "full_name",
+            "country",
+            "organization",
+            "photo_url",
+            "category",
+            "scanned_at",
+        ]
 
     @extend_schema_field(OpenApiTypes.URI)
     def get_photo_url(self, obj: ScanEvent) -> str | None:
-        """Always absolute, always built from MEDIA_BASE_URL.
-
-        Never from `self.context["request"]`: `services.py` serializes this for the
-        WebSocket push with no request in scope, so a request-derived URL would
-        make the two delivery paths disagree for the same event.
-        """
-        photo = getattr(obj.visitor, "photo", None)
-        if not photo:
-            return None
-        base = settings.MEDIA_BASE_URL.rstrip("/")
-        path = photo.url if photo.url.startswith("/") else f"/{photo.url}"
-        return f"{base}{path}"
+        """Absolute, and never derived from the request — see apps/common/media.py."""
+        return absolute_media_url(getattr(obj.visitor, "photo", None))
 
 
 class ScanRequestSerializer(serializers.Serializer):
@@ -78,14 +77,42 @@ class ScanRequestSerializer(serializers.Serializer):
             "offline queue may sync minutes later. Defaults to now."
         ),
     )
+    client_uuid = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text=(
+            "Identifier the device generated for this scan. Posting it twice "
+            "returns the scan already recorded rather than creating a second "
+            "one — the offline queue retries, and a lost response must not "
+            "become a second arrival."
+        ),
+    )
 
 
 class ScanVisitorSerializer(serializers.ModelSerializer):
-    """The little the guard's phone needs: enough to match a face to a name."""
+    """What the guard's phone shows: enough to match the face to the card.
+
+    The photo is the point. A name tells a guard who the badge claims to be; only
+    the photo tells them whether the person holding it is that person.
+    """
+
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Visitor
-        fields = ["id", "full_name", "country", "organization", "category", "badge_serial"]
+        fields = [
+            "id",
+            "full_name",
+            "country",
+            "organization",
+            "category",
+            "badge_serial",
+            "photo_url",
+        ]
+
+    @extend_schema_field(OpenApiTypes.URI)
+    def get_photo_url(self, obj: Visitor) -> str | None:
+        return absolute_media_url(obj.photo)
 
 
 class ScanResponseSerializer(serializers.ModelSerializer):
@@ -95,7 +122,9 @@ class ScanResponseSerializer(serializers.ModelSerializer):
     """
 
     event_id = serializers.IntegerField(source="id", read_only=True)
-    visitor = ScanVisitorSerializer(read_only=True)
+    # allow_null so the generated clients type it as nullable — a forged badge
+    # resolves to nobody, and the scanner has to handle that case explicitly.
+    visitor = ScanVisitorSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = ScanEvent
