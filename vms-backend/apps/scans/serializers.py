@@ -1,3 +1,4 @@
+from django.conf import settings
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -10,18 +11,24 @@ from .models import ScanEvent
 class ScanEventSerializer(serializers.ModelSerializer):
     """The audit view of a scan — every row, including the failures."""
 
+    # The dashboard shows scan history to a person, and "Front door" tells them
+    # which entrance this was; a UUID does not. The id stays for anything that
+    # needs to key on the device itself.
+    device_name = serializers.CharField(source="device.name", read_only=True)
+
     class Meta:
         model = ScanEvent
         fields = [
             "id",
             "visitor",
             "device",
+            "device_name",
             "scanned_at",
             "result",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "device_name", "created_at", "updated_at"]
 
 
 class ScreenEventSerializer(serializers.ModelSerializer):
@@ -42,11 +49,18 @@ class ScreenEventSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.URI)
     def get_photo_url(self, obj: ScanEvent) -> str | None:
+        """Always absolute, always built from MEDIA_BASE_URL.
+
+        Never from `self.context["request"]`: `services.py` serializes this for the
+        WebSocket push with no request in scope, so a request-derived URL would
+        make the two delivery paths disagree for the same event.
+        """
         photo = getattr(obj.visitor, "photo", None)
         if not photo:
             return None
-        request = self.context.get("request")
-        return request.build_absolute_uri(photo.url) if request else photo.url
+        base = settings.MEDIA_BASE_URL.rstrip("/")
+        path = photo.url if photo.url.startswith("/") else f"/{photo.url}"
+        return f"{base}{path}"
 
 
 class ScanRequestSerializer(serializers.Serializer):
