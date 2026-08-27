@@ -1,36 +1,58 @@
 @import "tailwindcss";
 
 /*
- * Visual language: an event credential desk, not a SaaS dashboard.
+ * MONOCHROME, BECAUSE COLOUR IS A VERDICT.
  *
- * Ink-navy chrome frames a warm paper workspace, the way a badge sheet sits on a
- * registration table. Amber belongs to VIP and nothing else; rose belongs to a
- * revoked badge and nothing else. Both are meanings the operator must read across
- * a room, so neither is spent on decoration.
+ * This app exists to answer one question about a rectangle of plastic: is this
+ * badge good or not. Green, amber and rose are that answer. So they are the only
+ * chroma on the screen — buttons are black, links are black, focus is a black
+ * ring, and every saturated pixel means something.
+ *
+ * Spending an accent hue on a "Save" button would be spending the one signal the
+ * interface has. A registrar scanning a list of 250 names should be able to trust
+ * that anything coloured is telling them something.
+ *
+ * The three verdicts are separated by LIGHTNESS as well as hue, and none of them
+ * ever appears without its word — VALID, VIP, REVOKED — so the meaning survives
+ * colour blindness, a bad projector and a monochrome print.
  */
 @theme {
-  --color-ink-950: #0f1720;
-  --color-ink-900: #17212b;
-  --color-ink-800: #202d3a;
-  --color-ink-700: #33465a;
-  --color-ink-500: #6b8299;
-  --color-ink-300: #a9bccd;
+  /* Chrome: near-black, so the white workspace reads as card stock on a desk. */
+  --color-graphite-950: #0a0a0b;
+  --color-graphite-900: #131315;
+  --color-graphite-800: #1d1d21;
+  --color-graphite-700: #2c2c32;
+  --color-graphite-500: #6a6a74;
+  --color-graphite-300: #a8a8b2;
 
-  --color-paper: #f7f6f3;
+  /* Workspace */
+  --color-paper: #faf9f7;
   --color-card: #ffffff;
-  --color-rule: #e2dfd8;
-  --color-rule-strong: #cbc7bd;
+  --color-line: #e7e4e0;
+  --color-line-strong: #d3cfca;
 
-  --color-accent: #1d5c8f;
-  --color-accent-pressed: #164a73;
+  /* Text */
+  --color-ink: #111113;
+  --color-ink-2: #55555e;
+  --color-ink-3: #8b8b94;
 
-  --color-vip: #a16207;
-  --color-vip-soft: #fdf6e6;
-  --color-revoked: #9f1239;
-  --color-revoked-soft: #fdf2f5;
+  /* The three verdicts. The only chroma in the system. */
+  --color-valid: #0f8a55;
+  --color-valid-soft: #e8f6ef;
+  --color-vip: #a5680f;
+  --color-vip-soft: #fbf2e2;
+  --color-revoked: #9e1f42;
+  --color-revoked-soft: #fbebf0;
 
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  /*
+   * Bricolage Grotesque earns its keep on names and page titles — it has the
+   * squared, slightly institutional cut of signage on an accreditation desk.
+   * Used ONLY there. Inter does the reading work; nobody should notice it.
+   * JetBrains Mono is for machine-issued strings: serials, codes, tokens, times.
+   */
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 html,
@@ -40,46 +62,76 @@ body {
 
 body {
   background: var(--color-paper);
-  color: var(--color-ink-900);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Serials, tokens and counts are machine-issued strings. Set them as such. */
-.serial {
+/* Machine-issued strings. Set them as such, and never let them wrap mid-serial. */
+.mono {
   font-family: var(--font-mono);
   font-variant-ligatures: none;
-  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* A single focus treatment everywhere, and it is black — see the note above. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /*
- * The signature: cut marks.
+ * THE SIGNATURE: the CR80 card.
  *
- * The bulk badge print lays 10 cards on an A4 sheet with cut marks at the corners.
- * The same four ticks frame every photo chip here, so a row in the table reads as a
- * card still attached to the sheet — and the login card as the first one off it.
+ * Everything this system does produces or checks a rectangle 85.6 × 54 mm, so
+ * that rectangle is the primary object in the interface rather than a motif
+ * sprinkled on top. A visitor row carries a miniature of the real badge; the
+ * detail page shows it at reading size; the print queue is a sheet of them.
+ *
+ * True aspect, always. A card drawn at the wrong proportion is a card that lies
+ * about what will come out of the printer.
  */
-.cutmarks {
-  position: relative;
+.cr80 {
+  aspect-ratio: 85.6 / 54;
+  container-type: inline-size;
 }
 
-.cutmarks::before {
-  content: "";
-  position: absolute;
-  inset: -5px;
-  pointer-events: none;
-  --tick: var(--cutmark-color, var(--color-rule-strong));
-  background-image:
-    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0),
-    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0),
-    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0),
-    linear-gradient(var(--tick) 0 0), linear-gradient(var(--tick) 0 0);
-  background-size:
-    1px 9px, 9px 1px, 1px 9px, 9px 1px,
-    1px 9px, 9px 1px, 1px 9px, 9px 1px;
-  background-position:
-    left top, left top, right top, right top,
-    left bottom, left bottom, right bottom, right bottom;
-  background-repeat: no-repeat;
+/*
+ * Card internals scale with the card, not with the page, so one component serves
+ * a 96px row thumbnail and a 420px detail hero without a second set of rules.
+ */
+.cr80-band {
+  width: 3.5cqw;
+}
+
+.cr80-photo {
+  width: 28cqw;
+}
+
+.cr80-name {
+  font-size: 8.2cqw;
+  line-height: 1.05;
+}
+
+.cr80-meta {
+  font-size: 5.4cqw;
+  line-height: 1.15;
+}
+
+.cr80-serial {
+  font-size: 4.6cqw;
+}
+
+.cr80-qr {
+  width: 23cqw;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -91,15 +143,26 @@ body {
   }
 }
 
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
 /*
- * The interim badge, until phase 5 renders a real PDF.
+ * The interim badge, printed from the browser until the PDF is fetched.
  *
  * `#badge-print` is parked off-screen rather than `display: none`, so the browser
  * actually loads the visitor's photo — a hidden image is often never fetched, and
  * a badge that prints with a blank photo is worse than no badge.
- *
- * The page is CR80: 85.6 x 54 mm, zero margin, the same geometry the phase 5
- * templates will lay out against.
  */
 #badge-print {
   position: absolute;
