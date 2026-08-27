@@ -83,7 +83,7 @@ export default function ReportsPage() {
             value={filters.from}
             max={filters.to}
             onChange={(event) => update({ from: event.target.value })}
-            className="rounded-md border border-rule-strong bg-card px-3 py-2 text-sm text-ink-900 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none"
+            className="rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink focus:border-ink"
           />
         </Field>
 
@@ -93,7 +93,7 @@ export default function ReportsPage() {
             value={filters.to}
             min={filters.from}
             onChange={(event) => update({ to: event.target.value })}
-            className="rounded-md border border-rule-strong bg-card px-3 py-2 text-sm text-ink-900 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none"
+            className="rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink focus:border-ink"
           />
         </Field>
 
@@ -119,7 +119,7 @@ export default function ReportsPage() {
             value={filters.country ?? ""}
             onChange={(event) => update({ country: event.target.value || undefined })}
             placeholder="Any"
-            className="w-36 rounded-md border border-rule-strong bg-card px-3 py-2 text-sm text-ink-900 placeholder:text-ink-500 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none"
+            className="w-36 rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-ink"
           />
         </Field>
 
@@ -127,7 +127,7 @@ export default function ReportsPage() {
           type="button"
           onClick={exportCsv}
           disabled={exporting || !data}
-          className="ml-auto rounded-md border border-rule px-3.5 py-2 text-sm text-ink-700 transition-colors hover:border-rule-strong hover:text-ink-900 disabled:opacity-60"
+          className="ml-auto rounded-md border border-line px-3.5 py-2 text-sm text-ink-2 transition-colors hover:border-line-strong hover:text-ink disabled:opacity-60"
         >
           {exporting ? "Exporting…" : "Export CSV"}
         </button>
@@ -153,13 +153,13 @@ export default function ReportsPage() {
         </div>
       ) : null}
 
-      <section className="rounded-lg border border-rule bg-card">
+      <section className="rounded-lg border border-line bg-card">
         {isPending ? (
-          <p className="serial px-6 py-12 text-center text-xs text-ink-500">Loading…</p>
+          <p className="mono px-6 py-12 text-center text-xs text-ink-3">Loading…</p>
         ) : isError ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-medium text-revoked">Could not load the log</p>
-            <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-500">
+            <p className="display text-lg font-semibold text-revoked">Could not load the log</p>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
               {error instanceof ApiError
                 ? error.message
                 : "The request failed before it reached the server."}
@@ -168,10 +168,10 @@ export default function ReportsPage() {
         ) : (
           <>
             <EntryChart buckets={data.summary.by_hour} />
-            <div className="border-t border-rule">
+            <div className="border-t border-line">
               <EntryTable entries={data.entries} />
             </div>
-            <p className="border-t border-rule px-6 py-3 text-xs text-ink-500">
+            <p className="border-t border-line px-6 py-3 text-xs text-ink-3">
               Times shown in {data.timezone}.
             </p>
           </>
@@ -184,7 +184,7 @@ export default function ReportsPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-ink-700">{label}</span>
+      <span className="text-xs font-medium text-ink-2">{label}</span>
       {children}
     </label>
   );
@@ -203,7 +203,7 @@ function Select({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="rounded-md border border-rule-strong bg-card px-3 py-2 text-sm text-ink-900 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none"
+      className="rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink focus:border-ink"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -226,13 +226,13 @@ function Stat({
   return (
     <div
       className={`rounded-lg border px-4 py-3 ${
-        tone === "alert" ? "border-revoked/40 bg-revoked-soft" : "border-rule bg-card"
+        tone === "alert" ? "border-revoked/40 bg-revoked-soft" : "border-line bg-card"
       }`}
     >
-      <p className="text-xs text-ink-500">{label}</p>
+      <p className="text-xs text-ink-3">{label}</p>
       <p
-        className={`serial mt-1 text-2xl font-semibold tabular-nums ${
-          tone === "alert" ? "text-revoked" : "text-ink-900"
+        className={`mono mt-1 text-2xl font-semibold tabular-nums ${
+          tone === "alert" ? "text-revoked" : "text-ink"
         }`}
       >
         {value}
