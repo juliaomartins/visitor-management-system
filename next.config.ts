@@ -17,8 +17,25 @@ import type { NextConfig } from "next";
 const BACKEND_ORIGIN = process.env.VMS_BACKEND_ORIGIN ?? "http://localhost:8000";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['10.101.196.41', '192.168.0.63'],
-  
+  /*
+    Dev-only cross-origin asset allowance. Literal IPs here are the same trap as
+    a hardcoded backend address: wrong the next time the network changes. Match
+    the private ranges instead - that covers any LAN this runs on, and nothing
+    beyond it.
+  */
+  allowedDevOrigins: [
+    "192.168.*.*",
+    "10.*.*.*",
+    "172.16.*.*",
+    "172.17.*.*",
+    "172.18.*.*",
+    "172.19.*.*",
+    "172.2*.*.*",
+    "172.30.*.*",
+    "172.31.*.*",
+    "*.local",
+  ],
+
   // @vms/contracts ships TypeScript source, not a build.
   transpilePackages: ["@vms/contracts"],
 
