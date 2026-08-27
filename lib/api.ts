@@ -2,25 +2,22 @@
  * Two transports, on purpose.
  *
  * WEBSOCKET goes DIRECT to the backend. Next.js does not proxy `ws://` upgrade
- * requests through `rewrites()` — the upgrade is dropped and the socket never
- * opens — so the browser must dial the backend itself. WebSockets are not subject
- * to CORS, so nothing blocks this.
+ * requests — the upgrade is dropped and the socket never opens — so the browser
+ * must dial the backend itself. WebSockets are not subject to CORS, so nothing
+ * blocks this.
  *
- * HTTP goes through the Next rewrite, same-origin, whenever the resolved server
- * is the host that served this page. A cross-origin fetch carrying an
- * `Authorization` header triggers a CORS preflight, and the backend answers with
- * no CORS headers at all — `django-cors-headers` is deliberately not installed
- * (CLAUDE.md, Dashboard). Through the rewrite it is first-party and there is no
- * preflight.
+ * HTTP goes through this app's own `/api` route handler, ALWAYS. Same-origin
+ * means no CORS preflight, which matters because `POST /devices/pair` sends a
+ * JSON content type and the feed sends `Authorization` — both preflight when
+ * cross-origin, and the backend answers preflights with nothing at all
+ * (`django-cors-headers` is deliberately not installed; CLAUDE.md).
  *
- * In the deployment this system is built for, those are the same machine: the
- * server runs Postgres, uvicorn AND the screen's Next process, and the kiosk
- * browser loads the page from it. So the page's own hostname IS the backend's,
- * and the screen reconfigures itself when that address changes.
- *
- * A manual override pointing at a DIFFERENT machine is honoured for the socket —
- * live arrivals keep working — but the backfill would then need CORS on the
- * backend. `usingProxy()` reports which case we are in so the UI can say so.
+ * The request carries the origin the page PROBED AND VERIFIED in a header, and
+ * the route handler forwards there. That is what makes the two transports agree:
+ * previously HTTP went through a `rewrites()` destination frozen at boot, so
+ * when the server's IP moved the socket followed and HTTP did not — and the
+ * error message named the address the page had resolved rather than the one the
+ * request was actually sent to.
  *
  * Visitor photos are the exception to both: `photo_url` arrives absolute, built
  * from the backend's MEDIA_BASE_URL, and an `<img>` is not CORS-restricted.
@@ -47,20 +44,12 @@ export class ApiError extends Error {
   }
 }
 
-/** True when HTTP can go same-origin through the rewrite rather than direct. */
-export function usingProxy(origin: string): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    return new URL(normaliseOrigin(origin)).hostname === window.location.hostname;
-  } catch {
-    return true;
-  }
-}
-
-/** Same-origin path when the rewrite can carry it, absolute URL when it cannot. */
-function httpBase(origin: string): string {
-  return usingProxy(origin) ? "" : normaliseOrigin(origin);
-}
+/**
+ * The header that tells the proxy which backend this page verified.
+ *
+ * Must match TARGET_HEADER in lib/backend-target.ts.
+ */
+const TARGET_HEADER = "x-vms-backend";
 
 /** `ws://` for `http://`, `wss://` for `https://` — the LAN runs the former. */
 export function feedSocketUrl(origin: string, deviceToken: string): string {
@@ -74,9 +63,10 @@ export function feedSocketUrl(origin: string, deviceToken: string): string {
 
 async function request<T>(
   url: string,
-  init: RequestInit & { deviceToken?: string } = {},
+  init: RequestInit & { deviceToken?: string; backendOrigin?: string } = {},
 ): Promise<T> {
-  const { deviceToken, headers, ...rest } = init;
+  const { deviceToken, backendOrigin, headers, ...rest } = init;
+  const target = backendOrigin ? normaliseOrigin(backendOrigin) : "";
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -88,6 +78,7 @@ async function request<T>(
       headers: {
         Accept: "application/json",
         ...(deviceToken ? { Authorization: `Device ${deviceToken}` } : {}),
+        ...(target ? { [TARGET_HEADER]: target } : {}),
         ...headers,
       },
     });
@@ -124,10 +115,10 @@ export async function fetchFeed(
   since: number,
   deviceToken: string,
 ): Promise<ScreenFeed> {
-  return request<ScreenFeed>(
-    `${httpBase(origin)}/api/v1/screen/feed?since=${since}`,
-    { deviceToken },
-  );
+  return request<ScreenFeed>(`/api/v1/screen/feed?since=${since}`, {
+    deviceToken,
+    backendOrigin: origin,
+  });
 }
 
 export async function pairScreen(
@@ -135,10 +126,11 @@ export async function pairScreen(
   code: string,
   name: string,
 ): Promise<DevicePaired> {
-  return request<DevicePaired>(`${httpBase(origin)}/api/v1/devices/pair`, {
+  return request<DevicePaired>("/api/v1/devices/pair", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, name }),
+    backendOrigin: origin,
   });
 }
 
