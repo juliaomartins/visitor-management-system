@@ -210,13 +210,13 @@ export function PhotoUpload({
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="block text-xs font-medium text-ink-700">Photo</span>
-        <span className="serial text-[11px] text-ink-500">
+        <span className="block text-xs font-medium text-ink-2">Photo</span>
+        <span className="mono text-[11px] text-ink-3">
           3:4 portrait · {OUTPUT_WIDTH} × {OUTPUT_HEIGHT}
         </span>
       </div>
 
-      <div className="mt-1.5 rounded-md border border-rule-strong bg-card p-4">
+      <div className="mt-1.5 rounded-md border border-line-strong bg-card p-4">
         {loaded ? (
           <>
             <canvas
@@ -227,7 +227,7 @@ export function PhotoUpload({
               role="img"
               aria-label="Badge photo crop. Drag to reposition, or use the arrow keys."
               style={{ width: STAGE_WIDTH, height: STAGE_HEIGHT }}
-              className="max-w-full cursor-grab touch-none rounded bg-ink-950 active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+              className="max-w-full cursor-grab touch-none rounded bg-graphite-950 active:cursor-grabbing"
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId);
                 dragRef.current = {
@@ -273,7 +273,7 @@ export function PhotoUpload({
             />
 
             <div className="mt-3 flex items-center gap-3">
-              <label htmlFor="photo-zoom" className="text-xs text-ink-700">
+              <label htmlFor="photo-zoom" className="text-xs text-ink-2">
                 Zoom
               </label>
               <input
@@ -284,9 +284,9 @@ export function PhotoUpload({
                 step={minScale / 100}
                 value={frame.scale}
                 onChange={(event) => zoomTo(Number(event.target.value))}
-                className="h-1 flex-1 accent-accent"
+                className="h-1 flex-1 accent-ink"
               />
-              <label className="cursor-pointer rounded-md border border-rule px-3 py-1.5 text-xs text-ink-700 hover:border-rule-strong hover:text-ink-900">
+              <label className="cursor-pointer rounded-md border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-line-strong hover:text-ink">
                 Replace
                 <input
                   type="file"
@@ -299,7 +299,7 @@ export function PhotoUpload({
           </>
         ) : (
           <label
-            className="flex cursor-pointer flex-col items-center justify-center rounded border border-dashed border-rule-strong px-6 py-10 text-center hover:border-accent"
+            className="flex cursor-pointer flex-col items-center justify-center rounded border border-dashed border-line-strong px-6 py-10 text-center hover:border-ink"
             style={{ minHeight: STAGE_HEIGHT }}
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
@@ -316,10 +316,10 @@ export function PhotoUpload({
                 style={{ aspectRatio: PHOTO_ASPECT }}
               />
             ) : null}
-            <span className="text-sm font-medium text-ink-900">
+            <span className="text-sm font-medium text-ink">
               {existingUrl ? "Replace the photo" : "Add a photo"}
             </span>
-            <span className="mt-1 text-xs text-ink-500">
+            <span className="mt-1 text-xs text-ink-3">
               Drop an image here, or click to choose one. You will crop it to the card
               next.
             </span>
@@ -334,7 +334,7 @@ export function PhotoUpload({
       </div>
 
       {loaded ? (
-        <p className="mt-1.5 text-xs text-ink-500">
+        <p className="mt-1.5 text-xs text-ink-3">
           Drag to reposition. Exported at {OUTPUT_WIDTH} × {OUTPUT_HEIGHT} px — a
           portrait photo, not the shape of the card it prints on.
         </p>
