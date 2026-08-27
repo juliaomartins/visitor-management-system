@@ -37,7 +37,7 @@ export default function NewVisitorPage() {
     <div>
       <Link
         href="/visitors"
-        className="text-sm text-ink-500 hover:text-ink-900"
+        className="text-sm text-ink-3 transition-colors hover:text-ink"
       >
         ← All visitors
       </Link>
