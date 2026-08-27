@@ -37,8 +37,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   if (state === "checking") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="serial text-xs text-ink-500" role="status">
-          Restoring session…
+        <p className="mono text-xs tracking-[0.14em] text-ink-3 uppercase" role="status">
+          Restoring session
         </p>
       </div>
     );
