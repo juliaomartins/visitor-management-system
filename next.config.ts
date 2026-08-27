@@ -1,23 +1,36 @@
 import type { NextConfig } from "next";
 
 /**
- * One environment variable, two consumers.
+ * No `/api` rewrite here on purpose.
  *
- * The browser needs the backend origin at runtime to open the WebSocket, so it
- * has to be NEXT_PUBLIC_. Reusing that same value for the rewrite keeps a single
- * source of truth for "where is the server" — two variables that must agree is
- * two variables that will one day disagree, at an event, at 8am.
+ * A rewrite destination is fixed when this process boots, so it could not follow
+ * the backend when DHCP moved it — the socket reconnected to the new address
+ * while every HTTP call kept going to the old one. `/api/*` is served by the
+ * route handler in app/api/[...path]/route.ts, which resolves the backend per
+ * request. See lib/backend-target.ts.
+ *
+ * NEXT_PUBLIC_VMS_BACKEND_ORIGIN survives as the last-resort default for both
+ * the client probe and that handler.
  */
-const BACKEND_ORIGIN =
-  process.env.NEXT_PUBLIC_VMS_BACKEND_ORIGIN ?? "http://localhost:8000";
-
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['10.101.196.41', '192.168.0.63'],
-  async rewrites() {
-    // HTTP only. Next does not proxy WebSocket upgrades, so `ws://` goes direct
-    // to the backend — see lib/api.ts.
-    return [{ source: "/api/:path*", destination: `${BACKEND_ORIGIN}/api/:path*` }];
-  },
+  /*
+    Dev-only cross-origin asset allowance. Listing literal IPs here is the same
+    trap as hardcoding the backend: it is wrong the next time the network
+    changes. Private ranges are matched instead, which covers any LAN this is
+    ever run on and nothing beyond it.
+  */
+  allowedDevOrigins: [
+    "192.168.*.*",
+    "10.*.*.*",
+    "172.16.*.*",
+    "172.17.*.*",
+    "172.18.*.*",
+    "172.19.*.*",
+    "172.2*.*.*",
+    "172.30.*.*",
+    "172.31.*.*",
+    "*.local",
+  ],
 };
 
 export default nextConfig;
