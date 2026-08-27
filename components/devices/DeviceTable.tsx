@@ -44,8 +44,8 @@ export function DeviceTable({
   if (devices.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="font-medium text-ink-900">No devices paired yet</p>
-        <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-500">
+        <p className="display text-lg font-semibold text-ink">No devices paired yet</p>
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
           Generate a code above, then enter it on the guard&rsquo;s phone or the
           lobby screen.
         </p>
@@ -57,7 +57,7 @@ export function DeviceTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-rule text-left">
+          <tr className="border-b border-line text-left">
             <Th>Device</Th>
             <Th>Kind</Th>
             <Th>Last seen</Th>
@@ -94,25 +94,25 @@ function DeviceRow({
   const stale = isSilent(device, now);
 
   return (
-    <tr className="border-b border-rule last:border-0">
+    <tr className="border-b border-line last:border-0">
       <td className="px-4 py-3">
-        <p className={`font-medium ${revoked ? "text-ink-500" : "text-ink-900"}`}>
+        <p className={`font-medium ${revoked ? "text-ink-3" : "text-ink"}`}>
           {device.name}
         </p>
       </td>
 
-      <td className="px-4 py-3 text-ink-700">{kindLabel(device.kind)}</td>
+      <td className="px-4 py-3 text-ink-2">{kindLabel(device.kind)}</td>
 
       <td className="px-4 py-3 whitespace-nowrap">
         {lastSeen ? (
           <span
             title={new Date(lastSeen).toLocaleString()}
-            className={stale ? "font-medium text-vip" : "text-ink-900"}
+            className={stale ? "font-medium text-vip" : "text-ink"}
           >
             {relativeTime(lastSeen, now)}
           </span>
         ) : (
-          <span className={revoked ? "text-ink-500" : "font-medium text-vip"}>
+          <span className={revoked ? "text-ink-3" : "font-medium text-vip"}>
             Never checked in
           </span>
         )}
@@ -125,11 +125,11 @@ function DeviceRow({
 
       <td className="px-4 py-3">
         {revoked ? (
-          <span className="serial rounded bg-revoked-soft px-2 py-1 text-[11px] font-medium text-revoked">
+          <span className="mono rounded bg-revoked-soft px-2 py-1 text-[11px] font-bold tracking-wide text-revoked">
             REVOKED
           </span>
         ) : (
-          <span className="serial rounded bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent">
+          <span className="mono rounded bg-valid-soft px-2 py-1 text-[11px] font-bold tracking-wide text-valid">
             ACTIVE
           </span>
         )}
@@ -140,7 +140,7 @@ function DeviceRow({
           <button
             type="button"
             onClick={onRevoke}
-            className="rounded-md border border-revoked/40 px-3 py-1.5 text-sm text-revoked transition-colors hover:bg-revoked-soft focus-visible:ring-2 focus-visible:ring-revoked focus-visible:outline-none"
+            className="rounded-md border border-revoked/40 px-3 py-1.5 text-sm text-revoked transition-colors hover:bg-revoked-soft"
           >
             Revoke
           </button>
@@ -151,5 +151,5 @@ function DeviceRow({
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-2.5 text-xs font-medium text-ink-500">{children}</th>;
+  return <th className="px-4 py-2.5 text-xs font-medium text-ink-3">{children}</th>;
 }
