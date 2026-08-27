@@ -19,16 +19,18 @@ export default function EditVisitorPage() {
   });
 
   if (isPending) {
-    return <p className="serial text-xs text-ink-500">Loading…</p>;
+    return <p className="mono text-xs text-ink-3">Loading…</p>;
   }
 
   if (isError || !visitor) {
     return (
-      <div className="rounded-lg border border-rule bg-card px-6 py-16 text-center">
-        <p className="font-medium text-revoked">Could not load this visitor</p>
+      <div className="rounded-lg border border-line bg-card px-6 py-16 text-center">
+        <p className="display text-lg font-semibold text-revoked">
+          Could not load this visitor
+        </p>
         <Link
           href="/visitors"
-          className="mt-4 inline-block text-sm text-accent hover:underline"
+          className="mt-4 inline-block text-sm text-ink underline underline-offset-4"
         >
           Back to all visitors
         </Link>
@@ -42,7 +44,7 @@ export default function EditVisitorPage() {
     <div>
       <Link
         href={`/visitors/${id}`}
-        className="text-sm text-ink-500 hover:text-ink-900"
+        className="text-sm text-ink-3 transition-colors hover:text-ink"
       >
         ← {visitor.full_name}
       </Link>
@@ -57,6 +59,7 @@ export default function EditVisitorPage() {
             category: visitor.category ?? "normal",
           }}
           existingPhotoUrl={visitor.photo}
+          badgeSerial={visitor.badge_serial}
           submitting={update.isPending}
           formError={
             error && Object.keys(error.fields).length === 0 ? error.message : undefined
