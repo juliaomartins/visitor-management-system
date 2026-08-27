@@ -48,7 +48,7 @@ export function RevokeDeviceDialog({
       }}
       onClose={onCancel}
       aria-labelledby="revoke-device-title"
-      className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-lg border border-rule bg-card p-0 text-ink-900 backdrop:bg-ink-950/60"
+      className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-lg border border-line bg-card p-0 text-ink backdrop:bg-graphite-950/60"
     >
       {device ? (
         <div className="px-6 py-6">
@@ -59,14 +59,14 @@ export function RevokeDeviceDialog({
             Revoke {device.name}?
           </h2>
 
-          <p className="mt-2 text-sm text-ink-700">
+          <p className="mt-2 text-sm text-ink-2">
             This {kindLabel(device.kind).toLowerCase()} stops working{" "}
-            <span className="font-medium text-ink-900">immediately</span>. If it is
+            <span className="font-medium text-ink">immediately</span>. If it is
             a door phone, that door cannot record arrivals until someone re-pairs
             it.
           </p>
 
-          <ul className="mt-4 space-y-1.5 text-sm text-ink-500">
+          <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
             <li>
               Its token is dead. There is no un-revoke — getting it back means a new
               pairing code.
@@ -92,7 +92,7 @@ export function RevokeDeviceDialog({
               type="button"
               onClick={onCancel}
               disabled={pending}
-              className="rounded-md px-3.5 py-2.5 text-sm text-ink-700 hover:text-ink-900 disabled:opacity-60"
+              className="rounded-md px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink disabled:opacity-60"
             >
               Keep it active
             </button>
@@ -100,7 +100,7 @@ export function RevokeDeviceDialog({
               type="button"
               onClick={onConfirm}
               disabled={pending}
-              className="rounded-md bg-revoked px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-revoked focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
+              className="rounded-md bg-revoked px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-70"
             >
               {pending ? "Revoking…" : "Revoke device"}
             </button>
