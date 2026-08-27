@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { BadgeCard } from "@/components/badge-card";
 import { PhotoUpload } from "@/components/visitors/PhotoUpload";
 import type {
   FieldErrors,
@@ -15,10 +16,14 @@ const CATEGORIES: { value: VisitorCategory; label: string; note: string }[] = [
   { value: "vip", label: "VIP", note: "Distinct card and lobby welcome" },
 ];
 
+/** Shown on the preview until the server assigns a real one. */
+const PENDING_SERIAL = "— — — —";
+
 export function VisitorForm({
   mode,
   initial,
   existingPhotoUrl,
+  badgeSerial,
   submitting,
   formError,
   fieldErrors,
@@ -28,6 +33,8 @@ export function VisitorForm({
   mode: "create" | "edit";
   initial?: Partial<VisitorFormValues>;
   existingPhotoUrl?: string;
+  /** Known when editing; on registration the server assigns it. */
+  badgeSerial?: string;
   submitting: boolean;
   formError?: string;
   fieldErrors?: FieldErrors;
@@ -41,7 +48,28 @@ export function VisitorForm({
     initial?.category ?? "normal",
   );
   const [photo, setPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [missingPhoto, setMissingPhoto] = useState(false);
+
+  // The object URL is minted where the file arrives — in an event — and the old
+  // one is released in the same breath. Without the revoke, registering fifty
+  // visitors in a morning leaks fifty full-size bitmaps into the tab, on the
+  // same laptop that is driving the print queue.
+  const previewRef = useRef<string | null>(null);
+
+  function handlePhoto(file: File | null) {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = file ? URL.createObjectURL(file) : null;
+    setPhoto(file);
+    setPreviewUrl(previewRef.current);
+  }
+
+  useEffect(
+    () => () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    },
+    [],
+  );
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -65,7 +93,7 @@ export function VisitorForm({
   const fieldError = (name: string) => fieldErrors?.[name]?.[0];
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1fr_auto]">
+    <form onSubmit={handleSubmit} className="grid gap-10 lg:grid-cols-[1fr_auto]">
       <div className="max-w-md space-y-5">
         <Field
           id="full_name"
@@ -97,15 +125,15 @@ export function VisitorForm({
         />
 
         <fieldset>
-          <legend className="text-xs font-medium text-ink-700">Category</legend>
+          <legend className="text-xs font-medium text-ink-2">Category</legend>
           <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
             {CATEGORIES.map((option) => (
               <label
                 key={option.value}
                 className={`cursor-pointer rounded-md border px-3.5 py-3 transition-colors ${
                   category === option.value
-                    ? "border-accent bg-accent/5"
-                    : "border-rule-strong hover:border-rule-strong"
+                    ? "border-ink bg-ink/5"
+                    : "border-line-strong hover:border-ink/40"
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -115,13 +143,13 @@ export function VisitorForm({
                     value={option.value}
                     checked={category === option.value}
                     onChange={() => setCategory(option.value)}
-                    className="accent-accent"
+                    className="accent-ink"
                   />
-                  <span className="text-sm font-medium text-ink-900">
+                  <span className="text-sm font-medium text-ink">
                     {option.label}
                   </span>
                 </span>
-                <span className="mt-0.5 block pl-6 text-xs text-ink-500">
+                <span className="mt-0.5 block pl-6 text-xs text-ink-3">
                   {option.note}
                 </span>
               </label>
@@ -147,7 +175,7 @@ export function VisitorForm({
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-pressed focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
+            className="rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-graphite-800 disabled:opacity-70"
           >
             {submitting
               ? mode === "create"
@@ -160,30 +188,54 @@ export function VisitorForm({
 
           <Link
             href={cancelHref}
-            className="rounded-md px-3 py-2.5 text-sm text-ink-700 hover:text-ink-900"
+            className="rounded-md px-3 py-2.5 text-sm text-ink-2 transition-colors hover:text-ink"
           >
             Cancel
           </Link>
         </div>
       </div>
 
-      <div className="w-full lg:w-auto">
-        <PhotoUpload
-          onChange={setPhoto}
-          existingUrl={existingPhotoUrl}
-          error={
-            missingPhoto
-              ? "A badge needs a photo. Add one before registering."
-              : fieldError("photo")
-          }
-        />
+      <div className="w-full lg:w-80">
+        {/*
+          The card, updating as the form is filled in. A name too long for the
+          plate, a photo cropped through someone's chin, a VIP band that was
+          meant to be there — all of it is visible here, before the card is
+          printed and handed over.
+        */}
+        <p className="mono text-[10px] tracking-[0.22em] text-ink-3 uppercase">
+          Card preview
+        </p>
+        <div className="mt-2">
+          <BadgeCard
+            visitor={{
+              full_name: fullName || "Full name",
+              country: country || "Country",
+              organization,
+              badge_serial: badgeSerial ?? PENDING_SERIAL,
+              photo: previewUrl ?? existingPhotoUrl ?? "",
+              category,
+            }}
+            width="100%"
+            detail
+          />
+        </div>
+        <p className="mt-2 text-xs text-ink-3">
+          {mode === "create"
+            ? "The serial and QR are assigned when you register."
+            : "Editing details does not reissue the badge. The serial and the QR code stay exactly as printed."}
+        </p>
 
-        {mode === "edit" ? (
-          <p className="mt-2 max-w-md text-xs text-ink-500">
-            Editing details does not reissue the badge. The serial and the QR code
-            stay exactly as printed.
-          </p>
-        ) : null}
+        <div className="mt-6">
+          <PhotoUpload
+            onChange={handlePhoto}
+            existingUrl={existingPhotoUrl}
+            error={
+              missingPhoto
+                ? "A badge needs a photo. Add one before registering."
+                : fieldError("photo")
+            }
+          />
+        </div>
       </div>
     </form>
   );
@@ -210,9 +262,9 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-xs font-medium text-ink-700">
+      <label htmlFor={id} className="block text-xs font-medium text-ink-2">
         {label}
-        {required ? null : <span className="ml-1 text-ink-500">(optional)</span>}
+        {required ? null : <span className="ml-1 text-ink-3">(optional)</span>}
       </label>
       <input
         id={id}
@@ -223,8 +275,10 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-        className={`mt-1.5 w-full rounded-md border bg-card px-3 py-2.5 text-sm text-ink-900 focus:ring-2 focus:ring-accent/25 focus:outline-none ${
-          error ? "border-revoked focus:border-revoked" : "border-rule-strong focus:border-accent"
+        className={`mt-1.5 w-full rounded-md border bg-card px-3 py-2.5 text-sm text-ink transition-colors ${
+          error
+            ? "border-revoked focus:border-revoked"
+            : "border-line-strong focus:border-ink"
         }`}
       />
       {error ? (
@@ -232,7 +286,7 @@ function Field({
           {error}
         </p>
       ) : hint ? (
-        <p id={`${id}-hint`} className="mt-1.5 text-xs text-ink-500">
+        <p id={`${id}-hint`} className="mt-1.5 text-xs text-ink-3">
           {hint}
         </p>
       ) : null}
