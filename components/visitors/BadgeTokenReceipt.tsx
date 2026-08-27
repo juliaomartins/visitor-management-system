@@ -105,11 +105,11 @@ export function BadgeTokenReceipt({
   return (
     <div className="max-w-2xl">
       <div className="rounded-lg border border-vip bg-vip-soft px-6 py-6">
-        <p className="serial text-[11px] uppercase text-vip">Print this now</p>
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink-900">
+        <p className="mono text-[11px] uppercase text-vip">Print this now</p>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink">
           {visitor.full_name} is registered
         </h2>
-        <p className="mt-2 text-sm text-ink-700">
+        <p className="mt-2 text-sm text-ink-2">
           The badge below is the only copy. The token behind the QR is stored as a
           hash, so once you leave this page it cannot be recovered — you would have
           to register {visitor.full_name} again.
@@ -127,8 +127,8 @@ export function BadgeTokenReceipt({
 
           <div className="min-w-56 flex-1 space-y-3">
             <div>
-              <p className="text-xs text-ink-500">Badge token</p>
-              <code className="serial mt-1 block overflow-x-auto rounded border border-vip/40 bg-card px-3 py-2 text-xs text-ink-900">
+              <p className="text-xs text-ink-3">Badge token</p>
+              <code className="mono mt-1 block overflow-x-auto rounded border border-vip/40 bg-card px-3 py-2 text-xs text-ink">
                 {visitor.badge_token}
               </code>
             </div>
@@ -138,7 +138,7 @@ export function BadgeTokenReceipt({
                 type="button"
                 onClick={savePdf}
                 disabled={saving}
-                className="rounded-md bg-ink-900 px-3.5 py-2.5 text-sm font-medium text-white hover:bg-ink-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
+                className="rounded-md bg-ink px-3.5 py-2.5 text-sm font-medium text-white hover:bg-graphite-800 disabled:opacity-70"
               >
                 {saving ? "Rendering…" : "Download badge PDF"}
               </button>
@@ -147,14 +147,14 @@ export function BadgeTokenReceipt({
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-700 hover:text-ink-900"
+                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink"
               >
                 Print from browser
               </button>
               <button
                 type="button"
                 onClick={copy}
-                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-700 hover:text-ink-900"
+                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink"
               >
                 {copied ? "Copied" : "Copy token"}
               </button>
@@ -181,7 +181,7 @@ export function BadgeTokenReceipt({
       </div>
 
       <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
-        <Row label="Badge serial" value={visitor.badge_serial} mono />
+        <Row label="Badge mono" value={visitor.badge_serial} mono />
         <Row label="Country" value={visitor.country} />
         <Row label="Category" value={vip ? "VIP" : "Normal"} />
       </dl>
@@ -190,19 +190,19 @@ export function BadgeTokenReceipt({
         <button
           type="button"
           onClick={onRegisterAnother}
-          className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-pressed focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white hover:bg-graphite-800"
         >
           Register another visitor
         </button>
         <Link
           href={`/visitors/${visitor.id}`}
-          className="rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-700 hover:border-rule-strong hover:text-ink-900"
+          className="rounded-md border border-line px-3.5 py-2.5 text-sm text-ink-2 hover:border-line-strong hover:text-ink"
         >
           Open {visitor.full_name}
         </Link>
         <Link
           href="/visitors"
-          className="px-2 py-2.5 text-sm text-ink-500 hover:text-ink-900"
+          className="px-2 py-2.5 text-sm text-ink-3 hover:text-ink"
         >
           Back to all visitors
         </Link>
@@ -225,7 +225,7 @@ export function BadgeTokenReceipt({
             alignItems: "stretch",
             background: "#ffffff",
             color: "#000000",
-            fontFamily: "var(--font-archivo), sans-serif",
+            fontFamily: "var(--font-bricolage), sans-serif",
             borderLeft: vip ? "3mm solid #a16207" : "3mm solid #17212b",
           }}
         >
@@ -283,7 +283,7 @@ export function BadgeTokenReceipt({
                 fontSize: "3mm",
                 fontWeight: 600,
                 letterSpacing: "0.3mm",
-                fontFamily: "var(--font-plex-mono), monospace",
+                fontFamily: "var(--font-jetbrains), monospace",
               }}
             >
               {visitor.badge_serial}
@@ -311,8 +311,8 @@ function Row({
 }) {
   return (
     <div>
-      <dt className="text-xs text-ink-500">{label}</dt>
-      <dd className={`mt-0.5 text-ink-900 ${mono ? "serial" : ""}`}>{value}</dd>
+      <dt className="text-xs text-ink-3">{label}</dt>
+      <dd className={`mt-0.5 text-ink ${mono ? "mono" : ""}`}>{value}</dd>
     </div>
   );
 }
