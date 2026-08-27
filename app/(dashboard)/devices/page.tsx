@@ -32,27 +32,51 @@ export default function DevicesPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
+      {/*
+        During the event this is the first thing worth knowing, so it is stated
+        at the top rather than left to be spotted as an amber cell four rows
+        down. It only appears when something is actually wrong.
+      */}
+      {silent > 0 ? (
+        <p
+          role="status"
+          className="flex items-center gap-3 rounded-lg border border-vip/40 bg-vip-soft px-5 py-3.5 text-sm text-ink"
+        >
+          <span
+            aria-hidden
+            className="animate-pulse-dot h-2.5 w-2.5 shrink-0 rounded-full bg-vip"
+          />
+          <span>
+            <span className="font-semibold">
+              {silent} {silent === 1 ? "device is" : "devices are"} silent.
+            </span>{" "}
+            A door with no scans in ten minutes is either quiet or offline — walk
+            over and check.
+          </span>
+        </p>
+      ) : null}
+
       <PairingCodeCard />
 
-      <section className="rounded-lg border border-rule bg-card">
-        <div className="border-b border-rule px-6 py-5">
-          <h2 className="text-sm font-semibold tracking-tight text-ink-900">
+      <section className="rounded-lg border border-line bg-card">
+        <div className="border-b border-line px-6 py-5">
+          <h2 className="display text-base font-semibold text-ink">
             Paired devices
           </h2>
-          <p className="mt-1 text-sm text-ink-500">
+          <p className="mt-1 text-sm text-ink-3">
             Refreshes on its own. &ldquo;Last seen&rdquo; is the last request a
             device made, so it is how you tell a quiet door from a dead phone.
           </p>
         </div>
 
         {isPending ? (
-          <p className="serial px-6 py-12 text-center text-xs text-ink-500">
+          <p className="mono px-6 py-12 text-center text-xs text-ink-3">
             Loading…
           </p>
         ) : isError ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-medium text-revoked">Could not load devices</p>
-            <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-500">
+            <p className="display text-lg font-semibold text-revoked">Could not load devices</p>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
               {error instanceof ApiError
                 ? error.message
                 : "The request failed before it reached the server."}
