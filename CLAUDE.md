@@ -499,6 +499,16 @@ Deliberately the smallest app. Two pages: the display, and one-time pairing. No 
 beyond that, no state library, no auth UI.
 
 - WebSocket + backfill as described above.
+- **`/api/*` is a route handler, not a `rewrites()` entry.** A rewrite destination
+  is fixed when the Next process boots, so it could not follow the backend when
+  DHCP moved it: the socket reconnected to the new address while every HTTP call
+  kept going to the old one, and the error named the address the page had
+  resolved rather than the one actually contacted. `app/api/[...path]/route.ts`
+  resolves the target per request — the origin the page probed and verified
+  (sent in `x-vms-backend`), else the host that served the page, else the env
+  default — and only ever forwards to a private/LAN address. Same-origin, so
+  the `Authorization` header and the JSON pairing POST never trigger a preflight
+  the backend cannot answer. Do not put the `/api` rewrite back.
 - Design for 3–5 metre viewing distance: name 72px minimum, photo 400px tall.
 - VIP category gets a distinct visual treatment.
 - `ConnectionDot` in a corner so staff can see the feed is alive.
@@ -531,20 +541,97 @@ CI should fail if `openapi.yaml` is stale (`git diff --exit-code openapi.yaml`).
 
 ## Commands
 
+**Windows is the daily driver, and Windows is what the event server runs.** Commands are
+given Windows-first; the macOS/Linux form follows where it differs.
+
+### Activating the venv — or not bothering
+
+| Shell | Command |
+|---|---|
+| Windows PowerShell | `..\.venv\Scripts\Activate.ps1` |
+| Windows cmd | `..\.venv\Scripts\activate.bat` |
+| Git Bash on Windows | `source ../.venv/Scripts/activate` |
+| macOS / Linux | `source ../.venv/bin/activate` |
+
+If PowerShell answers *"running scripts is disabled on this system"*, do not go changing
+the execution policy — just call the interpreter by path. It needs no activation and it
+cannot pick up the wrong Python:
+
+```powershell
+..\.venv\Scripts\python.exe manage.py migrate
+```
+
+That form works from any shell on any OS and is the safest thing to paste into a
+half-remembered terminal at an event.
+
+### Backend — from `vms-backend/`
+
+```powershell
+# Windows
+..\.venv\Scripts\python.exe manage.py migrate          # postgres is a native service, already up
+..\.venv\Scripts\python.exe manage.py seed_demo        # admin, two devices, five visitors
+..\.venv\Scripts\python.exe -m uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 1
+..\.venv\Scripts\python.exe manage.py spectacular --file openapi.yaml
+```
+
 ```bash
-# backend — from vms-backend, with ../.venv active
-source ../.venv/bin/activate               # .venv/Scripts/activate on Windows
-python manage.py migrate                   # postgres is a native service, already running
+# macOS / Linux, with the venv active
+python manage.py migrate
+python manage.py seed_demo
 uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 1
 python manage.py spectacular --file openapi.yaml
-pytest
-
-# contracts
-cd vms-contracts && ./scripts/generate.sh
-
-# frontends
-npm run dev
 ```
+
+`--host 0.0.0.0` is not optional. Bound to `127.0.0.1` the server is invisible to every
+phone and screen on the LAN, and the failure reads as "the network is down".
+
+**uvicorn needs a WebSocket implementation installed, or it silently refuses every
+upgrade.**
+
+```bash
+pip install websockets       # or wsproto
+```
+
+Without one, `--ws auto` resolves to `none` and uvicorn answers `/ws/screen/` with a
+**404 before the request ever reaches Django**. The lobby screen then reconnects forever,
+`ScreenConsumer.connect()` never runs, and the device's `last_seen_at` stays null. Nothing
+in the Channels code is involved, so nothing logs an error — and `WebsocketCommunicator`
+tests pass, because they call the ASGI app directly and never touch uvicorn's protocol
+layer. This cost an afternoon once; do not let it cost another.
+
+On Windows, `pip install "uvicorn[standard]"` is fine too — `uvloop` is skipped there and
+you get `websockets` and `httptools` without it.
+
+### Tests
+
+There is no pytest suite yet, and `pytest` is not installed. Do not paste `pytest` into a
+terminal expecting it to prove anything. Verification today is `manage.py check`,
+`makemigrations --check --dry-run`, and exercising the API against a throwaway SQLite
+database. If a suite is added, it belongs behind `settings/test.py`.
+
+### Contracts
+
+`scripts/generate.sh` and `scripts/check_contracts.sh` are bash. On Windows run them from
+**Git Bash**, not PowerShell:
+
+```bash
+cd vms-contracts && ./scripts/generate.sh
+./scripts/check_contracts.sh                 # from the repo root, before every commit
+```
+
+`check_contracts.sh` finds the venv on either layout — `Scripts/python.exe` or
+`bin/python` — so it needs no activation.
+
+### Frontends
+
+```bash
+cd vms-dashboard && npm run dev     # http://<lan-ip>:3000
+cd vms-screen    && npm run dev -- --port 3001
+cd vms-scanner   && npx expo start -c
+```
+
+The `-c` on Expo matters after any `.env` change: `EXPO_PUBLIC_*` is inlined at bundle
+time, so without clearing the cache the phone keeps using the previous server address.
 
 Formatting: `black` + `ruff` on the backend, strict TypeScript on the frontends.
 
@@ -581,11 +668,27 @@ CI should run the same script. It replaces the narrower
 
 ### `.env` is per machine, `.env.example` is committed
 
-The current dev machine is **192.168.0.63**. Every device on the LAN points at
-the server by IP, so each machine sets its own `.env` and `.env` is gitignored —
-a committed IP is wrong for everyone except the person who committed it, and it
-fails as "the network is down" rather than as a bad address. `.env.example`
-carries a neutral placeholder and is tracked.
+Every device on the LAN points at the server by IP, so each machine sets its own
+`.env` and `.env` is gitignored — a committed IP is wrong for everyone except the
+person who committed it, and it fails as "the network is down" rather than as a
+bad address. `.env.example` carries a neutral placeholder and is tracked.
+
+**Do not write the current IP into this file.** It has already moved once
+(192.168.0.63 → 10.101.196.41) and a documented address is a documented lie the
+moment DHCP hands out a new one. Ask the machine instead: `ipconfig` on Windows,
+`ipconfig getifaddr en0` on macOS, or `GET /api/v1/health`, which reports the LAN
+address the server believes it has.
+
+Three files carry it, and only these three:
+
+| File | Setting |
+|---|---|
+| `vms-backend/.env` | `VMS_MEDIA_BASE_URL` — leave UNSET; auto-detected at startup |
+| `vms-scanner/.env` | `EXPO_PUBLIC_API_URL` — a default only; the app probes and can be told a new one |
+| `vms-screen/.env` | `NEXT_PUBLIC_VMS_BACKEND_ORIGIN` — last resort only; the screen probes at runtime |
+
+`vms-dashboard` needs no `.env` at all: it defaults to `localhost:8000` and proxies
+server-side, so it follows the server for free as long as both run on one machine.
 
 ### `vms-scanner` imports `@vms/contracts` type-only
 
