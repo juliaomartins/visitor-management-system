@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { BadgeCard } from "@/components/badge-card";
 import { useSetPageMeta } from "@/components/page-meta";
-import { PHOTO_ASPECT } from "@/components/visitors/PhotoUpload";
 import { ReissueDialog } from "@/components/badges/ReissueDialog";
 import { RevokeDialog } from "@/components/visitors/RevokeDialog";
 import { downloadReissuedSheet } from "@/lib/badges";
@@ -18,9 +18,9 @@ import {
 } from "@/lib/visitors";
 
 const RESULT_STYLES: Record<ScanResult, { label: string; className: string }> = {
-  valid: { label: "Valid", className: "bg-accent/10 text-accent" },
-  duplicate: { label: "Duplicate", className: "bg-rule text-ink-700" },
-  revoked: { label: "Revoked", className: "bg-revoked-soft text-revoked" },
+  valid: { label: "Valid", className: "bg-valid-soft text-valid" },
+  duplicate: { label: "Duplicate", className: "bg-line text-ink-2" },
+  revoked: { label: "Revoked", className: "bg-vip-soft text-vip" },
   invalid: { label: "Invalid", className: "bg-revoked-soft text-revoked" },
 };
 
@@ -39,21 +39,23 @@ export default function VisitorDetailPage() {
   });
 
   if (isPending) {
-    return <p className="serial text-xs text-ink-500">Loading…</p>;
+    return <p className="mono text-xs text-ink-3">Loading…</p>;
   }
 
   if (isError || !visitor) {
     return (
-      <div className="rounded-lg border border-rule bg-card px-6 py-16 text-center">
-        <p className="font-medium text-revoked">Could not load this visitor</p>
-        <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-500">
+      <div className="rounded-lg border border-line bg-card px-6 py-16 text-center">
+        <p className="display text-lg font-semibold text-revoked">
+          Could not load this visitor
+        </p>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-ink-3">
           {error instanceof ApiError
             ? error.message
             : "They may have been deleted. Check the visitor list."}
         </p>
         <Link
           href="/visitors"
-          className="mt-5 inline-block text-sm text-accent hover:underline"
+          className="mt-5 inline-block text-sm text-ink underline underline-offset-4"
         >
           Back to all visitors
         </Link>
@@ -69,65 +71,68 @@ export default function VisitorDetailPage() {
   // exactly what used to happen after saving an edit.
   const scans = visitor.scan_events ?? [];
   const arrivals = scans.filter((scan) => scan.result === "valid");
+  const lastArrival = arrivals.reduce<string | null>(
+    (latest, scan) =>
+      latest === null || scan.scanned_at > latest ? scan.scanned_at : latest,
+    null,
+  );
 
   return (
     <div className="max-w-4xl">
-      <Link href="/visitors" className="text-sm text-ink-500 hover:text-ink-900">
+      <Link
+        href="/visitors"
+        className="text-sm text-ink-3 transition-colors hover:text-ink"
+      >
         ← All visitors
       </Link>
 
-      <div className="mt-5 grid gap-8 sm:grid-cols-[auto_1fr]">
-        <div
-          className="cutmarks h-fit shrink-0"
-          style={
-            visitor.category === "vip"
-              ? ({ "--cutmark-color": "var(--color-vip)" } as React.CSSProperties)
-              : undefined
-          }
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={visitor.photo}
-            alt={`Badge photo of ${visitor.full_name}`}
-            className={`w-48 max-w-full object-cover ${revoked ? "opacity-40 grayscale" : ""}`}
-            style={{ aspectRatio: PHOTO_ASPECT }}
-          />
+      <div className="mt-5 grid gap-10 lg:grid-cols-[minmax(0,26rem)_1fr]">
+        {/*
+          The badge itself, at reading size and true proportion. Everything on it
+          — name, country, organisation, serial, the VIP band — is shown here as
+          it will print, so a name that overflows or a photo cropped badly is
+          caught before fifty cards come off the printer.
+        */}
+        <div>
+          <BadgeCard visitor={visitor} width="100%" detail />
+          <p className="mono mt-3 text-[11px] text-ink-3">
+            CR80 · 85.6 × 54 mm · as it prints
+          </p>
         </div>
 
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-ink-900">
-              {visitor.full_name}
-            </h2>
-            {visitor.category === "vip" ? (
-              <span className="serial rounded bg-vip-soft px-2 py-1 text-[11px] font-medium text-vip">
-                VIP
-              </span>
-            ) : null}
-            {revoked ? (
-              <span className="serial rounded bg-revoked-soft px-2 py-1 text-[11px] font-medium text-revoked">
-                REVOKED
-              </span>
-            ) : null}
-          </div>
+          <p
+            className={`mono text-[11px] font-bold tracking-[0.22em] uppercase ${
+              revoked ? "text-revoked" : "text-valid"
+            }`}
+          >
+            {revoked ? "Revoked" : "Active"}
+          </p>
+          <h2 className="display mt-1 text-2xl font-bold text-ink">
+            {revoked ? "This badge is dead" : "This badge opens the door"}
+          </h2>
+          <p className="mt-2 text-sm text-ink-3">
+            {revoked
+              ? "The next scan of it shows red. Reissue to print a working replacement."
+              : "Any paired scanner will accept it and the lobby screen will welcome them."}
+          </p>
 
-          <dl className="mt-5 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-            <Detail label="Badge serial" value={visitor.badge_serial} mono />
-            <Detail
-              label="Badge state"
-              value={revoked ? "Revoked" : "Active"}
-              tone={revoked ? "revoked" : undefined}
-            />
-            <Detail label="Country" value={visitor.country} />
-            <Detail label="Organisation" value={visitor.organization || "—"} />
+          {/* Only what the card does not already say. Name, country, organisation
+              and serial are printed on it, an arm's length to the left. */}
+          <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <Detail label="Registered" value={formatDateTime(visitor.created_at)} />
             <Detail label="Arrivals" value={String(arrivals.length)} mono />
+            <Detail
+              label="Last arrival"
+              value={lastArrival ? formatDateTime(lastArrival) : "Not yet"}
+            />
+            <Detail label="Scans logged" value={String(scans.length)} mono />
           </dl>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               href={`/visitors/${visitor.id}/edit`}
-              className="rounded-md border border-rule px-3.5 py-2.5 text-sm text-ink-700 hover:border-rule-strong hover:text-ink-900"
+              className="rounded-md border border-line px-3.5 py-2.5 text-sm text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
             >
               Edit details
             </Link>
@@ -141,7 +146,7 @@ export default function VisitorDetailPage() {
             <button
               type="button"
               onClick={() => setReissuing(true)}
-              className="rounded-md border border-vip/50 px-3.5 py-2.5 text-sm text-vip transition-colors hover:bg-vip-soft focus-visible:ring-2 focus-visible:ring-vip focus-visible:outline-none"
+              className="rounded-md border border-vip/50 px-3.5 py-2.5 text-sm text-vip transition-colors hover:bg-vip-soft"
             >
               Reissue &amp; print badge
             </button>
@@ -150,39 +155,37 @@ export default function VisitorDetailPage() {
               <button
                 type="button"
                 onClick={() => setConfirming(true)}
-                className="ml-auto rounded-md border border-revoked/40 px-3.5 py-2.5 text-sm text-revoked hover:bg-revoked-soft focus-visible:ring-2 focus-visible:ring-revoked focus-visible:outline-none"
+                className="rounded-md border border-revoked/40 px-3.5 py-2.5 text-sm text-revoked transition-colors hover:bg-revoked-soft"
               >
                 Revoke badge
               </button>
             )}
           </div>
 
-          <p className="mt-2 max-w-lg text-xs text-ink-500">
+          <p className="mt-3 max-w-lg text-xs leading-relaxed text-ink-3">
             Reissuing prints a new card and kills the old one — badge tokens are
-            stored only as a hash, so an issued card can never be reprinted. Collect
-            the old card when you hand over the new one.
+            stored only as a hash, so an issued card can never be reprinted.
+            Collect the old card when you hand over the new one.
           </p>
         </div>
       </div>
 
-      <section className="mt-10">
-        <h3 className="text-sm font-semibold tracking-tight text-ink-900">
-          Scan history
-        </h3>
-        <p className="mt-1 text-sm text-ink-500">
+      <section className="mt-12">
+        <h3 className="display text-lg font-semibold text-ink">Scan history</h3>
+        <p className="mt-1 text-sm text-ink-3">
           Every time this badge was presented, including the times it was refused.
         </p>
 
-        <div className="mt-3 overflow-hidden rounded-lg border border-rule bg-card">
+        <div className="mt-4 overflow-hidden rounded-lg border border-line bg-card">
           {scans.length === 0 ? (
-            <p className="px-6 py-12 text-center text-sm text-ink-500">
+            <p className="px-6 py-16 text-center text-sm text-ink-3">
               This badge has not been scanned yet.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-rule text-left">
+                  <tr className="border-b border-line text-left">
                     <Th>Event</Th>
                     <Th>Scanned at</Th>
                     <Th>Result</Th>
@@ -254,26 +257,26 @@ function ScanRow({ scan }: { scan: ScanEvent }) {
   const style = RESULT_STYLES[scan.result];
 
   return (
-    <tr className="border-b border-rule last:border-0">
-      <td className="serial px-4 py-3 text-xs text-ink-500">#{scan.id}</td>
-      <td className="px-4 py-3 whitespace-nowrap text-ink-900">
+    <tr className="border-b border-line last:border-0">
+      <td className="mono px-4 py-3 text-xs text-ink-3">#{scan.id}</td>
+      <td className="px-4 py-3 whitespace-nowrap text-ink">
         {formatDateTime(scan.scanned_at)}
       </td>
       <td className="px-4 py-3">
         <span
-          className={`serial rounded px-2 py-1 text-[11px] font-medium ${style.className}`}
+          className={`mono rounded px-2 py-1 text-[11px] font-bold tracking-wide uppercase ${style.className}`}
         >
           {style.label}
         </span>
       </td>
-      <td className="px-4 py-3 text-ink-700">{scan.device_name}</td>
+      <td className="px-4 py-3 text-ink-2">{scan.device_name}</td>
     </tr>
   );
 }
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-4 py-2.5 text-xs font-medium text-ink-500">{children}</th>
+    <th className="px-4 py-2.5 text-xs font-medium text-ink-3">{children}</th>
   );
 }
 
@@ -281,23 +284,15 @@ function Detail({
   label,
   value,
   mono,
-  tone,
 }: {
   label: string;
   value: string;
   mono?: boolean;
-  tone?: "revoked";
 }) {
   return (
     <div>
-      <dt className="text-xs text-ink-500">{label}</dt>
-      <dd
-        className={`mt-0.5 ${mono ? "serial" : ""} ${
-          tone === "revoked" ? "text-revoked" : "text-ink-900"
-        }`}
-      >
-        {value}
-      </dd>
+      <dt className="text-xs text-ink-3">{label}</dt>
+      <dd className={`mt-1 text-ink ${mono ? "mono" : ""}`}>{value}</dd>
     </div>
   );
 }
