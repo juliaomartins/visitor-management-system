@@ -1,25 +1,36 @@
 import type { Metadata } from "next";
-import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
 
 import { Providers } from "./providers";
 import "./globals.css";
 
 /**
- * Archivo for everything a person reads, IBM Plex Mono for everything a machine
- * issued — badge serials, device tokens, counts. next/font self-hosts both at
- * build time, which matters: the event runs on a closed LAN with no route to
- * Google's CDN.
+ * Three faces, three jobs, and no overlap.
+ *
+ * Bricolage Grotesque appears on page titles and visitor names only — it has the
+ * squared, institutional cut of accreditation signage, and it would be exhausting
+ * anywhere else. Inter does all the reading. JetBrains Mono is reserved for
+ * machine-issued strings: serials, pairing codes, tokens, timestamps.
+ *
+ * next/font self-hosts all three at build time, which matters: the event runs on a
+ * closed LAN with no route to Google's CDN.
  */
-const archivo = Archivo({
-  variable: "--font-archivo",
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
   display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
   display: "swap",
 });
 
@@ -32,9 +43,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${inter.variable} ${jetbrains.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-sans">
+      <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>
     </html>
