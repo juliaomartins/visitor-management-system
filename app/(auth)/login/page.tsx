@@ -1,9 +1,43 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, type CSSProperties } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 
 import { LoginError, login } from "@/lib/auth";
+
+/**
+ * An unprinted badge blank, at true CR80 proportion.
+ *
+ * The hero of this page is the thing the system makes, before it has made it: the
+ * edge band, the empty photo well, ruled lines where a name will go, a dark QR
+ * square. It says what the app is for without inventing a person to demonstrate
+ * on — and there is no session here, so there is no real visitor to show.
+ */
+function BadgeBlank() {
+  return (
+    <div
+      aria-hidden
+      className="cr80 relative flex w-full overflow-hidden rounded-[4px] bg-card shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]"
+    >
+      <div className="cr80-band h-full shrink-0 bg-graphite-900" />
+
+      <div className="flex flex-1 items-stretch gap-[3cqw] p-[4cqw]">
+        <div className="cr80-photo aspect-3/4 self-start rounded-[2px] bg-line" />
+
+        <div className="flex flex-1 flex-col justify-start pt-[1cqw]">
+          <div className="h-[7cqw] w-[70%] rounded-[1px] bg-line-strong" />
+          <div className="mt-[3.5cqw] h-[4cqw] w-[45%] rounded-[1px] bg-line" />
+          <div className="mt-[2cqw] h-[4cqw] w-[55%] rounded-[1px] bg-line" />
+          <div className="mt-auto h-[4cqw] w-[38%] rounded-[1px] bg-line" />
+        </div>
+
+        <div className="cr80-qr aspect-square self-end rounded-[2px] bg-[repeating-conic-gradient(var(--color-graphite-900)_0%_25%,#fff_0%_50%)] bg-[length:14%_14%] opacity-30" />
+      </div>
+    </div>
+  );
+}
+
+const subscribeNever = () => () => {};
 
 function SignInCard() {
   const router = useRouter();
@@ -12,6 +46,14 @@ function SignInCard() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The host, read from the browser with an empty server snapshot. Reading
+  // `window` during render would make the server and client markup disagree;
+  // this is the sanctioned way to say "this value only exists on the client".
+  const host = useSyncExternalStore(
+    subscribeNever,
+    () => window.location.host,
+    () => "",
+  );
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -33,94 +75,108 @@ function SignInCard() {
 
   return (
     <div className="w-full max-w-sm">
-      {/* The first card off the sheet — same cut marks that frame every row. */}
-      <div
-        className="cutmarks bg-card px-8 py-9"
-        style={{ "--cutmark-color": "var(--color-ink-700)" } as CSSProperties}
-      >
-        <p className="serial text-[11px] uppercase text-ink-500">
+      <BadgeBlank />
+
+      <div className="mt-8">
+        <p className="mono text-[10px] tracking-[0.28em] text-graphite-500 uppercase">
           Visitor management
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-900">
-          Sign in
-        </h1>
-        <p className="mt-2 text-sm text-ink-500">
-          Administrator accounts only. Guards use a paired phone; the lobby screen
-          pairs itself.
-        </p>
-
-        <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-          <div>
-            <label
-              htmlFor="username"
-              className="block text-xs font-medium text-ink-700"
-            >
-              Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              autoComplete="username"
-              autoFocus
-              required
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              className="mt-1.5 w-full rounded-md border border-rule-strong bg-white px-3 py-2.5 text-sm text-ink-900 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-xs font-medium text-ink-700"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1.5 w-full rounded-md border border-rule-strong bg-white px-3 py-2.5 text-sm text-ink-900 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none"
-            />
-          </div>
-
-          {error ? (
-            <p
-              role="alert"
-              className="rounded-md bg-revoked-soft px-3 py-2.5 text-sm text-revoked"
-            >
-              {error}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-pressed focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 focus-visible:outline-none disabled:opacity-70"
-          >
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+        <h1 className="display mt-2 text-3xl font-bold text-white">Sign in</h1>
       </div>
 
-      {/* Genuinely useful at an event: confirms the laptop is on the right box. */}
-      <p className="serial mt-6 text-center text-[11px] text-ink-500">
-        Serving from{" "}
-        <span className="text-ink-300">
-          {typeof window === "undefined" ? "…" : window.location.host}
-        </span>
+      <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+        <DarkField
+          id="username"
+          label="Username"
+          autoComplete="username"
+          autoFocus
+          value={username}
+          onChange={setUsername}
+        />
+
+        <DarkField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+        />
+
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-md border border-revoked/50 bg-revoked/15 px-3 py-2.5 text-sm text-white"
+          >
+            {error}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full rounded-md bg-white px-4 py-3 text-sm font-semibold text-graphite-950 transition-colors hover:bg-graphite-300 focus-visible:outline-white disabled:opacity-60"
+        >
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+
+      <p className="mt-6 text-xs leading-relaxed text-graphite-500">
+        Administrator accounts only. Guards use a paired phone, and the lobby
+        screen pairs itself.
       </p>
+
+      {/* Genuinely useful at an event: confirms the laptop is on the right box. */}
+      <p className="mono mt-1.5 text-xs text-graphite-500">
+        Serving from <span className="text-graphite-300">{host || "…"}</span>
+      </p>
+    </div>
+  );
+}
+
+function DarkField({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  autoComplete,
+  autoFocus,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  autoComplete?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="block text-xs font-medium text-graphite-300"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        autoComplete={autoComplete}
+        autoFocus={autoFocus}
+        required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1.5 w-full rounded-md border border-graphite-700 bg-graphite-900 px-3 py-2.5 text-sm text-white transition-colors focus:border-graphite-300 focus-visible:outline-white"
+      />
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-950 px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-graphite-950 px-6 py-12">
       <Suspense fallback={null}>
         <SignInCard />
       </Suspense>
