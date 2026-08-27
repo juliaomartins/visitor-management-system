@@ -51,21 +51,21 @@ export function ReissueDialog({
       }}
       onClose={onCancel}
       aria-labelledby="reissue-title"
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-rule bg-card p-0 text-ink-900 backdrop:bg-ink-950/60"
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-line bg-card p-0 text-ink backdrop:bg-graphite-950/60"
     >
       <div className="px-6 py-6">
         <h2 id="reissue-title" className="text-lg font-semibold tracking-tight">
           Print a new badge for {subject}?
         </h2>
 
-        <p className="mt-2 text-sm text-ink-700">
+        <p className="mt-2 text-sm text-ink-2">
           This issues a{" "}
-          <span className="font-medium text-ink-900">brand new badge token</span>.
+          <span className="font-medium text-ink">brand new badge token</span>.
           Any card already printed — including one they are wearing right now —
           stops working the moment you confirm.
         </p>
 
-        <ul className="mt-4 space-y-1.5 text-sm text-ink-500">
+        <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
           <li>
             The old QR is dead immediately. Collect and destroy the old card, or it
             will show red at the door.
@@ -91,7 +91,7 @@ export function ReissueDialog({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-md px-3.5 py-2.5 text-sm text-ink-700 hover:text-ink-900 disabled:opacity-60"
+            className="rounded-md px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink disabled:opacity-60"
           >
             Cancel
           </button>
@@ -99,7 +99,7 @@ export function ReissueDialog({
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className="rounded-md bg-vip px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-vip focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-70"
+            className="rounded-md bg-vip px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-70"
           >
             {pending ? "Rendering…" : "Reissue and download"}
           </button>
