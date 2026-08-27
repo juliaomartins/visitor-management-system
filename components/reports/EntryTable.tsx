@@ -20,16 +20,16 @@ const RESULTS: Record<
 > = {
   valid: {
     label: "Valid",
-    chip: "bg-accent/10 text-accent",
+    chip: "bg-ink/5 text-ink",
     row: "",
     marker: "bg-transparent",
     refused: false,
   },
   duplicate: {
     label: "Duplicate",
-    chip: "bg-rule text-ink-700",
+    chip: "bg-line text-ink-2",
     row: "",
-    marker: "bg-rule-strong",
+    marker: "bg-line-strong",
     refused: false,
   },
   revoked: {
@@ -52,8 +52,8 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
   if (entries.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="font-medium text-ink-900">Nothing scanned in this range</p>
-        <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-500">
+        <p className="display text-lg font-semibold text-ink">Nothing scanned in this range</p>
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
           Widen the dates, or clear the filters.
         </p>
       </div>
@@ -64,7 +64,7 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-rule text-left">
+          <tr className="border-b border-line text-left">
             <th className="w-1.5 px-0 py-2.5" />
             <Th>Time</Th>
             <Th>Result</Th>
@@ -81,19 +81,19 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
             return (
               <tr
                 key={entry.id}
-                className={`border-b border-rule last:border-0 ${result.row}`}
+                className={`border-b border-line last:border-0 ${result.row}`}
               >
                 {/* Edge marker: readable down the page at a glance, and it
                     survives a monochrome print where the tint would not. */}
                 <td className={`w-1.5 p-0 ${result.marker}`} />
 
-                <td className="px-4 py-3 whitespace-nowrap text-ink-900 tabular-nums">
+                <td className="px-4 py-3 whitespace-nowrap text-ink tabular-nums">
                   {formatTime(entry.scanned_at)}
                 </td>
 
                 <td className="px-4 py-3">
                   <span
-                    className={`serial inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-bold tracking-wide ${result.chip}`}
+                    className={`mono inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-bold tracking-wide ${result.chip}`}
                   >
                     {result.refused ? <span aria-hidden>&#9888;</span> : null}
                     {result.label.toUpperCase()}
@@ -103,11 +103,11 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
                 <td className="px-4 py-3">
                   {entry.full_name ? (
                     <>
-                      <span className="font-medium text-ink-900">
+                      <span className="font-medium text-ink">
                         {entry.full_name}
                       </span>
                       {entry.badge_serial ? (
-                        <span className="serial mt-0.5 block text-[11px] text-ink-500">
+                        <span className="mono mt-0.5 block text-[11px] text-ink-3">
                           {entry.badge_serial}
                         </span>
                       ) : null}
@@ -115,23 +115,23 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
                   ) : (
                     /* An invalid scan matched no badge. Saying so beats an empty
                        cell that reads as missing data. */
-                    <span className="text-ink-500 italic">Unrecognised badge</span>
+                    <span className="text-ink-3 italic">Unrecognised badge</span>
                   )}
                 </td>
 
-                <td className="px-4 py-3 text-ink-700">{entry.country ?? "—"}</td>
+                <td className="px-4 py-3 text-ink-2">{entry.country ?? "—"}</td>
 
                 <td className="px-4 py-3">
                   {entry.category === "vip" ? (
-                    <span className="serial rounded bg-vip-soft px-2 py-1 text-[11px] font-medium text-vip">
+                    <span className="mono rounded bg-vip-soft px-2 py-1 text-[11px] font-medium text-vip">
                       VIP
                     </span>
                   ) : (
-                    <span className="text-ink-700">{entry.category ?? "—"}</span>
+                    <span className="text-ink-2">{entry.category ?? "—"}</span>
                   )}
                 </td>
 
-                <td className="px-4 py-3 text-ink-700">{entry.device_name}</td>
+                <td className="px-4 py-3 text-ink-2">{entry.device_name}</td>
               </tr>
             );
           })}
@@ -142,7 +142,7 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-2.5 text-xs font-medium text-ink-500">{children}</th>;
+  return <th className="px-4 py-2.5 text-xs font-medium text-ink-3">{children}</th>;
 }
 
 /**
