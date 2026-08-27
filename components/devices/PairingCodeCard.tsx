@@ -59,12 +59,10 @@ export function PairingCodeCard() {
   const error = create.error instanceof ApiError ? create.error.message : null;
 
   return (
-    <section className="rounded-lg border border-rule bg-card">
-      <div className="border-b border-rule px-6 py-5">
-        <h2 className="text-sm font-semibold tracking-tight text-ink-900">
-          Pair a device
-        </h2>
-        <p className="mt-1 text-sm text-ink-500">
+    <section className="rounded-lg border border-line bg-card">
+      <div className="border-b border-line px-6 py-5">
+        <h2 className="display text-base font-semibold text-ink">Pair a device</h2>
+        <p className="mt-1 text-sm text-ink-3">
           Open the app on the phone or screen, then read it the code below. Each
           code works once.
         </p>
@@ -80,12 +78,12 @@ export function PairingCodeCard() {
               onClick={() =>
                 create.mutate(kind.value, { onSuccess: (code) => setIssued(code) })
               }
-              className="flex-1 rounded-md border border-rule-strong px-4 py-3 text-left transition-colors hover:border-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:opacity-60"
+              className="flex-1 rounded-md border border-line-strong px-4 py-3 text-left transition-colors hover:border-ink disabled:opacity-60"
             >
-              <span className="block text-sm font-medium text-ink-900">
+              <span className="block text-sm font-medium text-ink">
                 {kindLabel(kind.value)} code
               </span>
-              <span className="mt-0.5 block text-xs text-ink-500">{kind.blurb}</span>
+              <span className="mt-0.5 block text-xs text-ink-3">{kind.blurb}</span>
             </button>
           ))}
         </div>
@@ -102,10 +100,10 @@ export function PairingCodeCard() {
         {issued ? (
           <div
             className={`mt-6 rounded-lg border px-6 py-7 text-center ${
-              expired ? "border-rule bg-paper" : "border-accent bg-accent/5"
+              expired ? "border-line bg-paper" : "border-ink bg-ink/5"
             }`}
           >
-            <p className="serial text-[11px] uppercase tracking-widest text-ink-500">
+            <p className="mono text-[11px] uppercase tracking-widest text-ink-3">
               {kindLabel(issued.kind)} pairing code
             </p>
 
@@ -113,31 +111,31 @@ export function PairingCodeCard() {
               aria-live="polite"
               // Tracking is on the element and a trailing space is added by the
               // browser; the negative right margin pulls the block back to centre.
-              className={`serial mt-3 -mr-[0.22em] text-[clamp(2.75rem,11vw,4.5rem)] leading-none font-medium tracking-[0.22em] tabular-nums ${
-                expired ? "text-ink-500 line-through" : "text-ink-900"
+              className={`mono mt-3 -mr-[0.22em] text-[clamp(2.75rem,11vw,4.5rem)] leading-none font-medium tracking-[0.22em] tabular-nums ${
+                expired ? "text-ink-3 line-through" : "text-ink"
               }`}
             >
               {issued.code}
             </p>
 
             {expired ? (
-              <p className="mt-4 text-sm text-ink-500">
+              <p className="mt-4 text-sm text-ink-3">
                 This code has expired. Generate another — nothing was paired with
                 it.
               </p>
             ) : (
               <>
-                <p className="mt-4 text-sm text-ink-700">
+                <p className="mt-4 text-sm text-ink-2">
                   Expires in{" "}
                   <span
-                    className={`serial font-medium ${
-                      remaining < 60_000 ? "text-revoked" : "text-ink-900"
+                    className={`mono font-medium ${
+                      remaining < 60_000 ? "text-revoked" : "text-ink"
                     }`}
                   >
                     {formatRemaining(remaining)}
                   </span>
                 </p>
-                <p className="mx-auto mt-2 max-w-sm text-xs text-ink-500">
+                <p className="mx-auto mt-2 max-w-sm text-xs text-ink-3">
                   Codes never contain 0, O, 1 or I — those four are left out
                   because they are the ones people mishear and mistype. The device
                   appears in the list below the moment it pairs.
