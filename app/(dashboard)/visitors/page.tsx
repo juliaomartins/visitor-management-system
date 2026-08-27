@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useSetPageMeta } from "@/components/page-meta";
 import { api, type Visitor, type VisitorCategory } from "@/lib/api";
@@ -34,6 +34,29 @@ export default function VisitorsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const debouncedSearch = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+
+  // At a registration desk this list is searched far more than it is read, and
+  // the hand is on the keyboard between guests. "/" puts the cursor in the box
+  // from anywhere on the page.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey) return;
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+      event.preventDefault();
+      searchRef.current?.focus();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const query = useMemo(
     () => ({
@@ -56,6 +79,7 @@ export default function VisitorsPage() {
   });
 
   const visitors = data ?? [];
+  const filtered = Boolean(debouncedSearch) || category !== "all";
 
   useSetPageMeta({
     title: "Visitors",
@@ -65,61 +89,75 @@ export default function VisitorsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-56 flex-1">
-          <label htmlFor="visitor-search" className="sr-only">
-            Search visitors
-          </label>
-          <input
-            id="visitor-search"
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Name, organisation, country or badge serial"
-            className="w-full rounded-md border border-rule-strong bg-card px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-500 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:outline-none"
-          />
-        </div>
-
-        <div
-          role="group"
-          aria-label="Filter by category"
-          className="flex rounded-md border border-rule-strong bg-card p-0.5"
-        >
-          {CATEGORY_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              aria-pressed={category === tab.value}
-              onClick={() => setCategory(tab.value)}
-              className={`rounded px-3.5 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
-                category === tab.value
-                  ? "bg-ink-900 font-medium text-white"
-                  : "text-ink-700 hover:text-ink-900"
-              }`}
+      {/* The controls stay put while the sheet scrolls under them — this list
+          runs to 250 rows and the search box should never be scrolled away. */}
+      <div className="sticky top-0 z-10 -mx-8 bg-paper/90 px-8 pt-1 pb-4 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-56 flex-1">
+            <label htmlFor="visitor-search" className="sr-only">
+              Search visitors
+            </label>
+            <input
+              id="visitor-search"
+              ref={searchRef}
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setSearch("");
+              }}
+              placeholder="Name, organisation, country or badge serial"
+              className="w-full rounded-md border border-line-strong bg-card py-2.5 pr-10 pl-3.5 text-sm text-ink transition-colors placeholder:text-ink-3 focus:border-ink"
+            />
+            <kbd
+              aria-hidden
+              className="mono pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-3"
             >
-              {tab.label}
-            </button>
-          ))}
+              /
+            </kbd>
+          </div>
+
+          <div
+            role="group"
+            aria-label="Filter by category"
+            className="flex rounded-md border border-line-strong bg-card p-0.5"
+          >
+            {CATEGORY_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                aria-pressed={category === tab.value}
+                onClick={() => setCategory(tab.value)}
+                className={`rounded px-3.5 py-2 text-sm transition-colors ${
+                  category === tab.value
+                    ? "bg-ink font-medium text-white"
+                    : "text-ink-2 hover:text-ink"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <Link
+            href="/visitors/new"
+            className="rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-graphite-800"
+          >
+            Register visitor
+          </Link>
         </div>
 
-        <Link
-          href="/visitors/new"
-          className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-pressed focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none"
+        <p
+          aria-live="polite"
+          className={`mono mt-2 h-3 text-[11px] text-ink-3 transition-opacity ${
+            isFetching && !isPending ? "opacity-100" : "opacity-0"
+          }`}
         >
-          Register visitor
-        </Link>
+          Refreshing…
+        </p>
       </div>
 
-      <div
-        aria-live="polite"
-        className={`serial mt-3 text-[11px] text-ink-500 transition-opacity ${
-          isFetching && !isPending ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        Refreshing…
-      </div>
-
-      <div className="mt-1 overflow-hidden rounded-lg border border-rule bg-card">
+      <div className="overflow-hidden rounded-lg border border-line bg-card">
         {isPending ? (
           <SkeletonRows />
         ) : isError ? (
@@ -135,14 +173,22 @@ export default function VisitorsPage() {
         ) : visitors.length === 0 ? (
           <Notice
             heading={
-              debouncedSearch || category !== "all"
-                ? "No one matches those filters"
-                : "No visitors registered yet"
+              filtered ? "No one matches those filters" : "No visitors yet"
             }
             body={
-              debouncedSearch || category !== "all"
+              filtered
                 ? "Try a shorter search, or widen the category."
                 : "Register the first visitor to issue a badge."
+            }
+            action={
+              filtered ? undefined : (
+                <Link
+                  href="/visitors/new"
+                  className="mt-5 inline-block rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-graphite-800"
+                >
+                  Register visitor
+                </Link>
+              )
             }
           />
         ) : (
@@ -166,46 +212,48 @@ function VisitorRow({ visitor, first }: { visitor: Visitor; first: boolean }) {
   const revoked = !visitor.is_active;
 
   return (
-    <li className={first ? "" : "border-t border-rule"}>
+    <li className={first ? "" : "border-t border-line"}>
       <Link
         href={`/visitors/${visitor.id}`}
-        className="flex items-center gap-5 px-5 py-4 transition-colors hover:bg-paper focus-visible:bg-paper focus-visible:outline-none"
+        className="group flex items-center gap-5 px-5 py-3.5 transition-colors hover:bg-paper focus-visible:bg-paper"
       >
-        {/* Card aspect, cut marks and all — the badge this person will wear. */}
-        <div
-          className="cutmarks shrink-0"
-          style={
-            vip
-              ? ({ "--cutmark-color": "var(--color-vip)" } as CSSProperties)
-              : undefined
-          }
-        >
+        {/* A fragment of the card, not a generic avatar: the photo in its true
+            badge crop with the edge band still attached. Amber means VIP here
+            exactly as it does on the printed card. */}
+        <div className="flex shrink-0 overflow-hidden rounded-[2px] ring-1 ring-line-strong">
+          <div
+            className={`w-1.5 ${vip ? "bg-vip" : "bg-graphite-900"} ${
+              revoked ? "opacity-40" : ""
+            }`}
+          />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={visitor.photo}
             alt=""
             width={54}
             height={72}
-            className={`h-18 w-[54px] object-cover ${revoked ? "opacity-40 grayscale" : ""}`}
+            className={`h-18 w-[54px] bg-line object-cover ${
+              revoked ? "opacity-40 grayscale" : ""
+            }`}
           />
         </div>
 
         <div className="min-w-0 flex-1">
           <p
-            className={`truncate font-medium ${revoked ? "text-ink-500" : "text-ink-900"}`}
+            className={`display truncate text-[15px] font-semibold ${
+              revoked ? "text-ink-3" : "text-ink"
+            }`}
           >
             {visitor.full_name}
           </p>
-          <p className="mt-0.5 truncate text-sm text-ink-500">
-            {[visitor.organization, visitor.country]
-              .filter(Boolean)
-              .join(" · ")}
+          <p className="mt-1 truncate text-sm text-ink-3">
+            {[visitor.organization, visitor.country].filter(Boolean).join(" · ")}
           </p>
         </div>
 
         <p
-          className={`serial hidden shrink-0 text-xs sm:block ${
-            revoked ? "text-ink-500 line-through" : "text-ink-700"
+          className={`mono hidden shrink-0 text-xs sm:block ${
+            revoked ? "text-ink-3 line-through" : "text-ink-2"
           }`}
         >
           {visitor.badge_serial}
@@ -213,16 +261,23 @@ function VisitorRow({ visitor, first }: { visitor: Visitor; first: boolean }) {
 
         <div className="flex w-28 shrink-0 justify-end gap-1.5">
           {vip ? (
-            <span className="serial rounded bg-vip-soft px-2 py-1 text-[11px] font-medium text-vip">
+            <span className="mono rounded bg-vip-soft px-2 py-1 text-[11px] font-medium text-vip">
               VIP
             </span>
           ) : null}
           {revoked ? (
-            <span className="serial rounded bg-revoked-soft px-2 py-1 text-[11px] font-medium text-revoked">
+            <span className="mono rounded bg-revoked-soft px-2 py-1 text-[11px] font-medium text-revoked">
               REVOKED
             </span>
           ) : null}
         </div>
+
+        <span
+          aria-hidden
+          className="hidden shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+        >
+          &rarr;
+        </span>
       </Link>
     </li>
   );
@@ -234,12 +289,14 @@ function SkeletonRows() {
       {[0, 1, 2, 3, 4].map((row) => (
         <li
           key={row}
-          className={`flex items-center gap-5 px-5 py-4 ${row === 0 ? "" : "border-t border-rule"}`}
+          className={`flex items-center gap-5 px-5 py-3.5 ${
+            row === 0 ? "" : "border-t border-line"
+          }`}
         >
-          <div className="h-18 w-[54px] shrink-0 animate-pulse bg-rule" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-44 animate-pulse rounded bg-rule" />
-            <div className="h-3 w-64 animate-pulse rounded bg-rule" />
+          <div className="h-18 w-[60px] shrink-0 animate-pulse rounded-[2px] bg-line" />
+          <div className="flex-1 space-y-2.5">
+            <div className="h-4 w-44 animate-pulse rounded bg-line" />
+            <div className="h-3 w-64 animate-pulse rounded bg-line" />
           </div>
         </li>
       ))}
@@ -251,19 +308,24 @@ function Notice({
   heading,
   body,
   tone = "neutral",
+  action,
 }: {
   heading: string;
   body: string;
   tone?: "neutral" | "error";
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="px-6 py-16 text-center">
+    <div className="px-6 py-20 text-center">
       <p
-        className={`font-medium ${tone === "error" ? "text-revoked" : "text-ink-900"}`}
+        className={`display text-lg font-semibold ${
+          tone === "error" ? "text-revoked" : "text-ink"
+        }`}
       >
         {heading}
       </p>
-      <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-500">{body}</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-ink-3">{body}</p>
+      {action}
     </div>
   );
 }
