@@ -76,14 +76,14 @@ export default function ReportsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Filters in one row above the data, as a group. */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="card flex flex-wrap items-end gap-3 p-4 sm:p-5">
         <Field label="From">
           <input
             type="date"
             value={filters.from}
             max={filters.to}
             onChange={(event) => update({ from: event.target.value })}
-            className="rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink focus:border-ink"
+            className="field"
           />
         </Field>
 
@@ -93,7 +93,7 @@ export default function ReportsPage() {
             value={filters.to}
             min={filters.from}
             onChange={(event) => update({ to: event.target.value })}
-            className="rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink focus:border-ink"
+            className="field"
           />
         </Field>
 
@@ -119,7 +119,7 @@ export default function ReportsPage() {
             value={filters.country ?? ""}
             onChange={(event) => update({ country: event.target.value || undefined })}
             placeholder="Any"
-            className="w-36 rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:border-ink"
+            className="field w-36"
           />
         </Field>
 
@@ -127,7 +127,7 @@ export default function ReportsPage() {
           type="button"
           onClick={exportCsv}
           disabled={exporting || !data}
-          className="ml-auto rounded-md border border-line px-3.5 py-2 text-sm text-ink-2 transition-colors hover:border-line-strong hover:text-ink disabled:opacity-60"
+          className="ml-auto btn btn-ghost disabled:opacity-60"
         >
           {exporting ? "Exporting…" : "Export CSV"}
         </button>
@@ -153,12 +153,12 @@ export default function ReportsPage() {
         </div>
       ) : null}
 
-      <section className="rounded-lg border border-line bg-card">
+      <section className="card">
         {isPending ? (
           <p className="mono px-6 py-12 text-center text-xs text-ink-3">Loading…</p>
         ) : isError ? (
           <div className="px-6 py-12 text-center">
-            <p className="display text-lg font-semibold text-revoked">Could not load the log</p>
+            <p className="display text-lg text-revoked">Could not load the log</p>
             <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
               {error instanceof ApiError
                 ? error.message
@@ -203,7 +203,7 @@ function Select({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink focus:border-ink"
+      className="field"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -225,7 +225,7 @@ function Stat({
 }) {
   return (
     <div
-      className={`rounded-lg border px-4 py-3 ${
+      className={`px-5 py-4 ${
         tone === "alert" ? "border-revoked/40 bg-revoked-soft" : "border-line bg-card"
       }`}
     >
