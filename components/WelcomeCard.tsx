@@ -1,8 +1,9 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useRef } from "react";
 
-import { SparkEmitter } from "@/components/SparkEmitter";
+import { ParticleBurst } from "@/components/ParticleBurst";
 import { gsap, prefersReducedMotion, SplitText, useGSAP } from "@/lib/gsap";
 import type { ScreenEvent } from "@/lib/api";
 
@@ -25,16 +26,25 @@ import type { ScreenEvent } from "@/lib/api";
  * photo ring, the status chip and the wave at once. Four cues rather than a badge
  * in a corner, because somebody walking past is not looking for it.
  */
-export function WelcomeCard({ event }: { event: ScreenEvent }) {
-  return <ArrivalStage event={event} vip={false} />;
+export function WelcomeCard({
+  event,
+  hasStrip = false,
+}: {
+  event: ScreenEvent;
+  hasStrip?: boolean;
+}) {
+  return <ArrivalStage event={event} vip={false} hasStrip={hasStrip} />;
 }
 
 export function ArrivalStage({
   event,
   vip,
+  hasStrip = false,
 }: {
   event: ScreenEvent;
   vip: boolean;
+  /** True when arrivals are queued behind this one, so the strip has its band. */
+  hasStrip?: boolean;
 }) {
   const root = useRef<HTMLDivElement | null>(null);
   useArrivalAnimation(root, vip);
@@ -63,17 +73,31 @@ export function ArrivalStage({
 
       <Header event={event} />
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-[5vw] pb-[clamp(0.75rem,4vh,4rem)]">
+      <div
+        className={`relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-[5vw] ${
+          hasStrip
+            ? "pb-[clamp(9rem,20vh,13rem)]"
+            : "pb-[clamp(0.75rem,4vh,4rem)]"
+        }`}
+      >
         <p
           data-greeting
-          className="font-serif text-[clamp(1.15rem,min(4.4vw,6vh),4rem)] leading-none text-ink italic"
+          className={`font-serif leading-none text-ink italic ${
+            hasStrip
+              ? "text-[clamp(1rem,min(3vw,4vh),2.5rem)]"
+              : "text-[clamp(1.15rem,min(4.4vw,6vh),4rem)]"
+          }`}
         >
           Welcome
         </p>
 
         <h1
           data-headline
-          className="mt-[0.12em] text-center text-[clamp(1.5rem,min(8.6vw,12vh),8.5rem)] leading-[0.92] font-bold tracking-[-0.02em] uppercase"
+          className={`mt-[0.12em] text-center leading-[0.92] font-bold tracking-[-0.02em] uppercase ${
+            hasStrip
+              ? "text-[clamp(1.25rem,min(5.5vw,8vh),5.5rem)]"
+              : "text-[clamp(1.5rem,min(8.6vw,12vh),8.5rem)]"
+          }`}
           style={{ color: "var(--accent)" }}
         >
           To the Expo
@@ -83,8 +107,21 @@ export function ArrivalStage({
           <Dots />
 
           <div data-photo className="relative shrink-0">
-            <div
-              className="aspect-square w-[clamp(84px,min(26vh,22vw),340px)] overflow-hidden rounded-full bg-stage-raised"
+            {/*
+              THE SHARED ELEMENT. `ArrivalStrip` renders a thumbnail carrying the
+              same layoutId, so a promotion animates that thumbnail into this
+              position and size as one continuous move — the face travels rather
+              than one card fading out while another fades in.
+
+              The `lg:` floor is the 3–5 metre constraint made literal: 400px on
+              the lobby panel. Below `lg` this is a phone held at arm's length —
+              somebody checking the screen is alive — where 400px would overflow
+              a 375px-tall viewport, so the min() clamp still governs there.
+            */}
+            <motion.div
+              layoutId={`arrival-photo-${event.id}`}
+              transition={{ type: "spring", stiffness: 240, damping: 30 }}
+              className="aspect-square w-[clamp(84px,min(26vh,22vw),340px)] overflow-hidden rounded-full bg-stage-raised lg:w-[clamp(400px,min(38vh,26vw),460px)]"
               style={{ boxShadow: "0 0 0 clamp(4px,0.6vh,9px) var(--accent)" }}
             >
               {event.photo_url ? (
@@ -96,11 +133,11 @@ export function ArrivalStage({
                   draggable={false}
                 />
               ) : null}
-            </div>
+            </motion.div>
 
             {/* Thrown from the centre of the face, so the burst reads as coming
                 off the person rather than off the layout. */}
-            <SparkEmitter originX={50} originY={50} vip={vip} delay={0.55} />
+            <ParticleBurst burstKey={event.id} vip={vip} />
           </div>
 
           <Dots />
@@ -114,7 +151,7 @@ export function ArrivalStage({
         >
           <p
             data-name
-            className="text-center text-[clamp(0.85rem,min(3.4vw,4.6vh),3rem)] leading-tight font-bold tracking-[-0.01em] text-stage uppercase"
+            className="text-center text-[clamp(0.85rem,min(3.4vw,4.6vh),3rem)] leading-tight font-bold tracking-[-0.01em] text-stage uppercase lg:text-[clamp(72px,min(4.4vw,7.4vh),92px)]"
           >
             {event.full_name}
           </p>
