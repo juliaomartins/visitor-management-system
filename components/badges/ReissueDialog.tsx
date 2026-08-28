@@ -17,6 +17,7 @@ export function ReissueDialog({
   open,
   count,
   name,
+  output = "sheet",
   pending,
   error,
   onConfirm,
@@ -26,6 +27,8 @@ export function ReissueDialog({
   count: number;
   /** Set when reissuing exactly one visitor, so the copy can name them. */
   name?: string;
+  /** What comes back. A spreadsheet leaves the building; a print sheet usually does not. */
+  output?: "sheet" | "spreadsheet";
   pending: boolean;
   error?: string;
   onConfirm: () => void;
@@ -41,6 +44,7 @@ export function ReissueDialog({
   }, [open]);
 
   const subject = name ?? `${count} ${count === 1 ? "visitor" : "visitors"}`;
+  const isFile = output === "spreadsheet";
 
   return (
     <dialog
@@ -51,11 +55,13 @@ export function ReissueDialog({
       }}
       onClose={onCancel}
       aria-labelledby="reissue-title"
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-line bg-card p-0 text-ink backdrop:bg-graphite-950/60"
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] card p-0 text-ink backdrop:bg-graphite-950/60"
     >
       <div className="px-6 py-6">
         <h2 id="reissue-title" className="text-lg font-semibold tracking-tight">
-          Print a new badge for {subject}?
+          {isFile
+            ? `Export new badges for ${subject}?`
+            : `Print a new badge for ${subject}?`}
         </h2>
 
         <p className="mt-2 text-sm text-ink-2">
@@ -67,20 +73,34 @@ export function ReissueDialog({
 
         <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
           <li>
-            The old QR is dead immediately. Collect and destroy the old card, or it
-            will show red at the door.
+            The old QR is dead immediately. Collect and destroy the old card, or
+            it will show red at the door.
           </li>
           <li>
-            This is not a choice the system makes. Only the digest of a badge token
-            is stored, so an existing card can never be reprinted — only replaced.
+            This is not a choice the system makes. Only the digest of a badge
+            token is stored, so an existing card can never be reprinted — only
+            replaced.
           </li>
-          <li>The visitor, their serial and their scan history are unchanged.</li>
+          <li>
+            The visitor, their serial and their scan history are unchanged.
+          </li>
+          {isFile ? (
+            <li className="text-ink-2">
+              <span className="font-medium text-ink">
+                The file will be the only copy of these tokens.
+              </span>{" "}
+              The server keeps a hash and cannot produce them again — lose the
+              file and every badge in it has to be reissued a second time.
+              Anyone holding it can make a working badge, so send it the way you
+              would send the printed cards.
+            </li>
+          ) : null}
         </ul>
 
         {error ? (
           <p
             role="alert"
-            className="mt-4 rounded-md bg-revoked-soft px-3 py-2.5 text-sm text-revoked"
+            className="mt-4 rounded-2xl bg-revoked-soft px-4 py-3 text-sm text-revoked"
           >
             {error}
           </p>
@@ -91,7 +111,7 @@ export function ReissueDialog({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-md px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink disabled:opacity-60"
+            className="btn btn-ghost disabled:opacity-60"
           >
             Cancel
           </button>
@@ -99,9 +119,13 @@ export function ReissueDialog({
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className="rounded-md bg-vip px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-70"
+            className="btn btn-primary disabled:opacity-70"
           >
-            {pending ? "Rendering…" : "Reissue and download"}
+            {pending
+              ? isFile
+                ? "Building…"
+                : "Rendering…"
+              : "Reissue and download"}
           </button>
         </div>
       </div>
