@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
 import { Providers } from "./providers";
 import "./globals.css";
@@ -7,22 +7,23 @@ import "./globals.css";
 /**
  * Three faces, three jobs, and no overlap.
  *
- * Bricolage Grotesque appears on page titles and visitor names only — it has the
- * squared, institutional cut of accreditation signage, and it would be exhausting
- * anywhere else. Inter does all the reading. JetBrains Mono is reserved for
- * machine-issued strings: serials, pairing codes, tokens, timestamps.
+ * Inter does all the reading — labels, table cells, body copy — and nobody should
+ * notice it. Plus Jakarta Sans is a touch warmer and carries the headings and the
+ * big figures, which is the whole reason it is here: a number should feel spoken,
+ * not typed. JetBrains Mono is reserved for machine-issued strings — serials,
+ * pairing codes, timestamps.
  *
  * next/font self-hosts all three at build time, which matters: the event runs on a
  * closed LAN with no route to Google's CDN.
  */
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
   display: "swap",
 });
@@ -43,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} ${inter.variable} ${jetbrains.variable} h-full antialiased`}
+      className={`${inter.variable} ${jakarta.variable} ${jetbrains.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <Providers>{children}</Providers>
