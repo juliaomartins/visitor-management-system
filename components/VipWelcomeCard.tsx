@@ -15,6 +15,12 @@ import type { ScreenEvent } from "@/lib/api";
  * from the normal one the first time either is touched, and the drift would show
  * up on the wall in front of a guest.
  */
-export function VipWelcomeCard({ event }: { event: ScreenEvent }) {
-  return <ArrivalStage event={event} vip />;
+export function VipWelcomeCard({
+  event,
+  hasStrip = false,
+}: {
+  event: ScreenEvent;
+  hasStrip?: boolean;
+}) {
+  return <ArrivalStage event={event} vip hasStrip={hasStrip} />;
 }
