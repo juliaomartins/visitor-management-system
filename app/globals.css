@@ -27,7 +27,22 @@
   --color-vip: #e0a92c;
   --color-vip-deep: #2a1f06;
 
+  /*
+   * Expo blue: the accent a NORMAL arrival wears — the headline, the photo ring,
+   * the wave. It is deliberately not gold, because gold is the VIP signal and a
+   * screen where both are blue tells nobody anything.
+   */
+  --color-expo: #4da6f0;
+  --color-expo-deep: #0b2740;
+
   --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * One italic serif, used on the single word "Welcome" and nowhere else. It is
+   * the greeting rather than the information, and setting it in the same
+   * grotesque as the name would flatten the two into one block of shouting.
+   */
+  --font-serif: var(--font-instrument), Georgia, "Times New Roman", serif;
 }
 
 html,
@@ -54,20 +69,12 @@ body {
   }
 }
 
-@keyframes arrive {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.animate-arrive {
-  animation: arrive 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+/*
+ * The CSS entry animation is gone: GSAP owns every entry now, so a keyframe here
+ * would fight it for the same transform. The reduced-motion block above still
+ * applies to what is left — and GSAP is told separately, since a tween is not a
+ * CSS animation and that media query cannot reach it.
+ */
 
 @keyframes breathe {
   0%,
