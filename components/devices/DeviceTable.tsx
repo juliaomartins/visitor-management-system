@@ -44,7 +44,7 @@ export function DeviceTable({
   if (devices.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="display text-lg font-semibold text-ink">No devices paired yet</p>
+        <p className="display text-lg text-ink">No devices paired yet</p>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
           Generate a code above, then enter it on the guard&rsquo;s phone or the
           lobby screen.
@@ -125,11 +125,11 @@ function DeviceRow({
 
       <td className="px-4 py-3">
         {revoked ? (
-          <span className="mono rounded bg-revoked-soft px-2 py-1 text-[11px] font-bold tracking-wide text-revoked">
+          <span className="pill-status bg-revoked-soft text-revoked">
             REVOKED
           </span>
         ) : (
-          <span className="mono rounded bg-valid-soft px-2 py-1 text-[11px] font-bold tracking-wide text-valid">
+          <span className="pill-status bg-valid-soft text-valid">
             ACTIVE
           </span>
         )}
@@ -140,7 +140,7 @@ function DeviceRow({
           <button
             type="button"
             onClick={onRevoke}
-            className="rounded-md border border-revoked/40 px-3 py-1.5 text-sm text-revoked transition-colors hover:bg-revoked-soft"
+            className="btn btn-ghost px-3 py-1.5 text-revoked hover:text-revoked"
           >
             Revoke
           </button>
