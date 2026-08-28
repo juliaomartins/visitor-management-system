@@ -6,49 +6,25 @@ import { Suspense, useState, useSyncExternalStore } from "react";
 import { LoginError, login } from "@/lib/auth";
 
 /**
- * An unprinted badge blank, at true CR80 proportion.
+ * The sign-in page, built from the dashboard's own parts.
  *
- * The hero of this page is the thing the system makes, before it has made it: the
- * edge band, the empty photo well, ruled lines where a name will go, a dark QR
- * square. It says what the app is for without inventing a person to demonstrate
- * on — and there is no session here, so there is no real visitor to show.
+ * Same rail mark, same card, same field, same blue — someone signing in should
+ * recognise the room they are about to enter. The right half is a flat drawing of
+ * the dashboard itself rather than a stock photograph: it says what this is for
+ * in the only vocabulary the product actually has.
  */
-function BadgeBlank() {
-  return (
-    <div
-      aria-hidden
-      className="cr80 relative flex w-full overflow-hidden rounded-[4px] bg-card shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]"
-    >
-      <div className="cr80-band h-full shrink-0 bg-graphite-900" />
-
-      <div className="flex flex-1 items-stretch gap-[3cqw] p-[4cqw]">
-        <div className="cr80-photo aspect-3/4 self-start rounded-[2px] bg-line" />
-
-        <div className="flex flex-1 flex-col justify-start pt-[1cqw]">
-          <div className="h-[7cqw] w-[70%] rounded-[1px] bg-line-strong" />
-          <div className="mt-[3.5cqw] h-[4cqw] w-[45%] rounded-[1px] bg-line" />
-          <div className="mt-[2cqw] h-[4cqw] w-[55%] rounded-[1px] bg-line" />
-          <div className="mt-auto h-[4cqw] w-[38%] rounded-[1px] bg-line" />
-        </div>
-
-        <div className="cr80-qr aspect-square self-end rounded-[2px] bg-[repeating-conic-gradient(var(--color-graphite-900)_0%_25%,#fff_0%_50%)] bg-[length:14%_14%] opacity-30" />
-      </div>
-    </div>
-  );
-}
-
 const subscribeNever = () => () => {};
 
-function SignInCard() {
+function SignInPanel() {
   const router = useRouter();
   const params = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
   // The host, read from the browser with an empty server snapshot. Reading
-  // `window` during render would make the server and client markup disagree;
-  // this is the sanctioned way to say "this value only exists on the client".
+  // `window` during render would make the server and client markup disagree.
   const host = useSyncExternalStore(
     subscribeNever,
     () => window.location.host,
@@ -62,7 +38,7 @@ function SignInCard() {
 
     try {
       await login(username, password);
-      router.replace(params.get("next") || "/visitors");
+      router.replace(params.get("next") || "/dashboard");
     } catch (cause) {
       setError(
         cause instanceof LoginError
@@ -75,17 +51,26 @@ function SignInCard() {
 
   return (
     <div className="w-full max-w-sm">
-      <BadgeBlank />
-
-      <div className="mt-8">
-        <p className="mono text-[10px] tracking-[0.28em] text-graphite-500 uppercase">
-          Visitor management
-        </p>
-        <h1 className="display mt-2 text-3xl font-bold text-white">Sign in</h1>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white">
+          V
+        </span>
+        <span>
+          <span className="display block text-[1rem] leading-tight text-ink">
+            VMS
+          </span>
+          <span className="block text-[11px] text-ink-3">Accreditation</span>
+        </span>
       </div>
 
+      <h1 className="display mt-8 text-2xl text-ink">Sign in</h1>
+      <p className="mt-1.5 text-sm text-ink-3">
+        Administrator accounts only. Guards use a paired phone, and the lobby
+        screen pairs itself.
+      </p>
+
       <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-        <DarkField
+        <Field
           id="username"
           label="Username"
           autoComplete="username"
@@ -94,7 +79,7 @@ function SignInCard() {
           onChange={setUsername}
         />
 
-        <DarkField
+        <Field
           id="password"
           label="Password"
           type="password"
@@ -106,7 +91,7 @@ function SignInCard() {
         {error ? (
           <p
             role="alert"
-            className="rounded-md border border-revoked/50 bg-revoked/15 px-3 py-2.5 text-sm text-white"
+            className="rounded-lg bg-revoked-soft px-3.5 py-2.5 text-sm text-revoked"
           >
             {error}
           </p>
@@ -115,26 +100,21 @@ function SignInCard() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-md bg-white px-4 py-3 text-sm font-semibold text-graphite-950 transition-colors hover:bg-graphite-300 focus-visible:outline-white disabled:opacity-60"
+          className="btn btn-primary w-full py-2.5 disabled:opacity-60"
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>
 
-      <p className="mt-6 text-xs leading-relaxed text-graphite-500">
-        Administrator accounts only. Guards use a paired phone, and the lobby
-        screen pairs itself.
-      </p>
-
       {/* Genuinely useful at an event: confirms the laptop is on the right box. */}
-      <p className="mono mt-1.5 text-xs text-graphite-500">
-        Serving from <span className="text-graphite-300">{host || "…"}</span>
+      <p className="mono mt-8 text-xs text-ink-3">
+        Serving from <span className="text-ink-2">{host || "…"}</span>
       </p>
     </div>
   );
 }
 
-function DarkField({
+function Field({
   id,
   label,
   value,
@@ -153,10 +133,7 @@ function DarkField({
 }) {
   return (
     <div>
-      <label
-        htmlFor={id}
-        className="block text-xs font-medium text-graphite-300"
-      >
+      <label htmlFor={id} className="block text-xs font-medium text-ink-2">
         {label}
       </label>
       <input
@@ -168,18 +145,109 @@ function DarkField({
         required
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1.5 w-full rounded-md border border-graphite-700 bg-graphite-900 px-3 py-2.5 text-sm text-white transition-colors focus:border-graphite-300 focus-visible:outline-white"
+        className="field mt-1.5"
       />
+    </div>
+  );
+}
+
+/**
+ * The dashboard, drawn flat.
+ *
+ * A rail, four stat tiles, the arrivals curve and a row of scans — the actual
+ * layout waiting on the other side of the button, reduced to blocks. No real data
+ * and no invented figures: it is a diagram of the product, not a screenshot of a
+ * fictional event.
+ */
+function ProductDiagram() {
+  return (
+    <div aria-hidden className="w-full max-w-lg">
+      <div className="card overflow-hidden shadow-sm">
+        <div className="flex">
+          <div className="w-14 shrink-0 space-y-2 border-r border-line bg-card p-2.5">
+            <div className="h-5 w-5 rounded-md bg-accent" />
+            <div className="h-2 w-full rounded-full bg-accent-soft" />
+            <div className="h-2 w-full rounded-full bg-line" />
+            <div className="h-2 w-full rounded-full bg-line" />
+            <div className="h-2 w-full rounded-full bg-line" />
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-3 bg-ground p-3">
+            <div className="grid grid-cols-4 gap-2">
+              {[0, 1, 2, 3].map((tile) => (
+                <div key={tile} className="card p-2">
+                  <div className="h-1.5 w-8 rounded-full bg-line" />
+                  <div className="mt-1.5 h-3 w-6 rounded bg-ink/80" />
+                </div>
+              ))}
+            </div>
+
+            <div className="card p-3">
+              <div className="h-1.5 w-16 rounded-full bg-line" />
+              <svg viewBox="0 0 200 56" className="mt-2 w-full">
+                <defs>
+                  <linearGradient id="login-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0%"
+                      stopColor="var(--color-accent)"
+                      stopOpacity="0.24"
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="var(--color-accent)"
+                      stopOpacity="0"
+                    />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0 44 L25 36 L50 40 L75 20 L100 28 L125 10 L150 24 L175 14 L200 22 L200 56 L0 56 Z"
+                  fill="url(#login-fill)"
+                />
+                <path
+                  d="M0 44 L25 36 L50 40 L75 20 L100 28 L125 10 L150 24 L175 14 L200 22"
+                  fill="none"
+                  stroke="var(--color-accent)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            </div>
+
+            <div className="card space-y-2 p-3">
+              {["bg-valid", "bg-valid", "bg-vip", "bg-valid"].map((tone, row) => (
+                <div key={row} className="flex items-center gap-2">
+                  <div className="h-4 w-4 shrink-0 rounded-full bg-accent-soft" />
+                  <div className="h-1.5 flex-1 rounded-full bg-line" />
+                  <div className={`h-1.5 w-6 shrink-0 rounded-full ${tone}`} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-6 max-w-md text-sm leading-relaxed text-ink-3">
+        Register a visitor, print their card, and watch every arrival land in one
+        place — on your own network, with nothing leaving the building.
+      </p>
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-graphite-950 px-6 py-12">
-      <Suspense fallback={null}>
-        <SignInCard />
-      </Suspense>
+    <div className="grid min-h-screen lg:grid-cols-2">
+      <div className="flex items-center justify-center px-6 py-14">
+        <Suspense fallback={null}>
+          <SignInPanel />
+        </Suspense>
+      </div>
+
+      <div className="hidden items-center justify-center border-l border-line bg-card px-10 lg:flex">
+        <ProductDiagram />
+      </div>
     </div>
   );
 }
