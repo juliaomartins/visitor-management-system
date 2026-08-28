@@ -40,6 +40,8 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas as pdf_canvas
 
+from django.utils import timezone
+
 from apps.visitors.models import Visitor, VisitorCategory
 from apps.visitors.services import issue_badge_token, log_visitor_action
 
@@ -56,45 +58,92 @@ class BadgeRenderingUnavailable(RuntimeError):
 
 
 # --------------------------------------------------------------------------
-# Card geometry. CR80, the size of a bank card. Millimetres throughout.
+# Card geometry. CR80 PORTRAIT — 54 x 85.6 mm, a bank card stood on its end.
+#
+# Portrait because that is how a badge hangs. A lanyard holds a card by a slot in
+# its short edge, so a landscape card either swings sideways all day or needs a
+# second punch; every conference badge in the world is portrait for this reason.
+# The size is unchanged — this is the same CR80 blank, rotated — so it still fits
+# a standard holder and a standard card printer.
+#
+# Millimetres throughout, with the origin at the card's bottom-left. ReportLab
+# counts upward from the bottom of the page, and every constant below is written
+# in that direction so the code reads the same way it draws.
 # --------------------------------------------------------------------------
 
-CARD_W, CARD_H = 85.6, 54.0
-PAD = 3.5
-BAND_W = 3.0
+CARD_W, CARD_H = 54.0, 85.6
 
-PHOTO_X, PHOTO_W, PHOTO_H = BAND_W + PAD, 24.0, 32.0
-QR_SIZE = 20.0
-BODY_X = PHOTO_X + PHOTO_W + 2.5
+# The lanyard slot. Drawn as a hairline outline: this is a punch guide, not ink,
+# and a printer or a hand punch needs to see where it goes.
+SLOT_W, SLOT_H = 12.0, 2.4
+SLOT_X = (CARD_W - SLOT_W) / 2
+SLOT_Y = 80.2
 
-# The name block sits in the UPPER half, where the QR is not, so it runs to the
-# card edge. Only the serial shares a line with the QR and has to stop short of it.
-# Constraining the whole block to the QR's column — as the first cut did — wrapped
-# short names like "Ada Lovelace" onto two lines beside a wide empty margin.
-BODY_RIGHT = CARD_W - PAD
-SERIAL_RIGHT = CARD_W - PAD - QR_SIZE - 2.5
+# Decoration bands, top and bottom, left and right of the middle.
+DECO_TOP_Y = 72.4
+DECO_BOTTOM_Y = 4.5
+DECO_LEFT_X = 3.0
+DECO_RIGHT_X = 40.0
 
-INK = HexColor("#000000")
-MUTED = HexColor("#4a5560")
-BAND_NORMAL = HexColor("#17212b")
-BAND_VIP = HexColor("#a16207")
-PHOTO_EMPTY = HexColor("#e2dfd8")
+# The portrait photo, cropped to a circle — the reference's strongest move, and
+# it survives a bad crop better than a rectangle does.
+PHOTO_CX, PHOTO_CY, PHOTO_R = CARD_W / 2, 60.6, 9.5
+PHOTO_RING = 1.1
 
-# 1 mm is ~2.835 pt; these are the CSS sizes converted.
-SIZE_VIP_TAG = 7.4
-SIZE_NAME = 13.0
-SIZE_COUNTRY = 9.6
-SIZE_ORG = 7.9
-SIZE_SERIAL = 8.5
+# Text block, bottom-anchored so a two-line name grows upward into the gap under
+# the photo instead of pushing the fields off the card.
+TEXT_LEFT, TEXT_RIGHT = 4.0, CARD_W - 4.0
+NAME_BASELINE = 42.0
+NAME_LEADING = 4.4
+ROLE_BASELINE = 37.2
+RULE_Y = 33.4
+FIELD_1_BASELINE = 29.6
+FIELD_2_BASELINE = 25.8
+SERIAL_BASELINE = 20.8
+
+# QR, centred at the foot between the two bottom motif clusters. 14 mm still
+# scans across a doorway at error-correction M.
+QR_SIZE = 14.0
+QR_X = (CARD_W - QR_SIZE) / 2
+QR_Y = 4.5
+
+# Label column for the two data rows, so the values line up in a column.
+LABEL_X = 7.0
+VALUE_X = 22.0
+
+INK = HexColor("#101828")
+MUTED = HexColor("#5a6472")
+RULE = HexColor("#d7dce3")
+NAVY = HexColor("#16276b")
+ROLE_PINK = HexColor("#ec1e79")
+BAND_VIP = HexColor("#b8860b")
+PHOTO_EMPTY = HexColor("#dfe3ea")
+
+# The motif palette, lifted from the reference: flat, saturated, no gradients.
+M_BLUE = HexColor("#2743c4")
+M_SKY = HexColor("#4d8ff5")
+M_YELLOW = HexColor("#ffc531")
+M_ORANGE = HexColor("#f5821f")
+M_MAGENTA = HexColor("#ec1e79")
+M_PURPLE = HexColor("#7b4dd8")
+M_RED = HexColor("#e8442c")
+
+SIZE_NAME = 11.0
+SIZE_ROLE = 7.6
+SIZE_LABEL = 6.4
+SIZE_VALUE = 6.8
+SIZE_SERIAL = 8.6
 
 FONT_BOLD = "Helvetica-Bold"
 FONT_BODY = "Helvetica"
+FONT_ITALIC = "Helvetica-Oblique"
 FONT_MONO = "Courier-Bold"
 
-CARDS_PER_SHEET = 10
-SHEET_COLS, SHEET_ROWS = 2, 5
+# 3 x 3 portrait cards to an A4 sheet: 3*54 = 162 wide, 3*85.6 = 256.8 tall, both
+# inside 210 x 297 with room for the cut marks in the margin.
+CARDS_PER_SHEET = 9
+SHEET_COLS, SHEET_ROWS = 3, 3
 
-# A4, with the grid centred: (210 - 2*85.6)/2 and (297 - 5*54)/2.
 A4_W, A4_H = 210.0, 297.0
 SHEET_MARGIN_X = (A4_W - SHEET_COLS * CARD_W) / 2
 SHEET_MARGIN_Y = (A4_H - SHEET_ROWS * CARD_H) / 2
@@ -104,7 +153,7 @@ CUT_MARK_GAP = 1.0
 CUT_MARK_WEIGHT = 0.2
 
 # M recovers about 15%. A badge picks up scuffs and lanyard creases, and this keeps
-# the modules large enough to read across a doorway at 20mm.
+# the modules large enough to read across a doorway at 14mm.
 QR_ERROR_CORRECTION = ERROR_CORRECT_M
 
 
@@ -173,89 +222,303 @@ def _fit_lines(text: str, font: str, size: float, max_width_mm: float, max_lines
     return [text], size
 
 
+# --------------------------------------------------------------------------
+# The geometric motifs.
+#
+# A fixed arrangement, not a random one. Every card in a run should look like it
+# came from the same press — a per-visitor shuffle would read as a printing fault
+# rather than as design, and it would make two prints of the same badge differ.
+# --------------------------------------------------------------------------
+
+
+def _square(canvas, x, y, w, h, color):
+    canvas.setFillColor(color)
+    canvas.rect(x * mm, y * mm, w * mm, h * mm, stroke=0, fill=1)
+
+
+def _checker(canvas, x, y, size, color, n=4):
+    """n x n alternating squares."""
+    step = size / n
+    canvas.setFillColor(color)
+    for row in range(n):
+        for col in range(n):
+            if (row + col) % 2 == 0:
+                canvas.rect(
+                    (x + col * step) * mm,
+                    (y + row * step) * mm,
+                    step * mm,
+                    step * mm,
+                    stroke=0,
+                    fill=1,
+                )
+
+
+def _dots(canvas, x, y, size, color, n=4):
+    """A grid of dots — the halftone block in the reference."""
+    step = size / n
+    radius = step * 0.3
+    canvas.setFillColor(color)
+    for row in range(n):
+        for col in range(n):
+            canvas.circle(
+                (x + col * step + step / 2) * mm,
+                (y + row * step + step / 2) * mm,
+                radius * mm,
+                stroke=0,
+                fill=1,
+            )
+
+
+def _quarters(canvas, x, y, size, color):
+    """Two opposing quarter discs — the pinwheel motif."""
+    canvas.setFillColor(color)
+    # wedge() takes the bounding box of the full circle, then an angle sweep.
+    canvas.wedge(
+        x * mm, y * mm, (x + 2 * size) * mm, (y + 2 * size) * mm, 90, 90, stroke=0, fill=1
+    )
+    canvas.wedge(
+        (x - size) * mm,
+        (y - size) * mm,
+        (x + size) * mm,
+        (y + size) * mm,
+        270,
+        90,
+        stroke=0,
+        fill=1,
+    )
+
+
+def _triangle(canvas, x, y, size, color):
+    canvas.setFillColor(color)
+    path = canvas.beginPath()
+    path.moveTo(x * mm, y * mm)
+    path.lineTo((x + size) * mm, y * mm)
+    path.lineTo(x * mm, (y + size) * mm)
+    path.close()
+    canvas.drawPath(path, stroke=0, fill=1)
+
+
+def _rings(canvas, x, y, size, color):
+    """Concentric circles — the target motif."""
+    canvas.setStrokeColor(color)
+    canvas.setLineWidth(0.45)
+    for step in (0.5, 0.32, 0.14):
+        canvas.circle(
+            (x + size / 2) * mm, (y + size / 2) * mm, size * step * mm, stroke=1, fill=0
+        )
+
+
+def _stripes(canvas, x, y, size, color):
+    canvas.setFillColor(color)
+    bar = size / 7
+    for index in range(4):
+        canvas.rect(
+            x * mm, (y + index * 2 * bar) * mm, size * mm, bar * mm, stroke=0, fill=1
+        )
+
+
+_MOTIF = {
+    "checker": _checker,
+    "dots": _dots,
+    "quarters": _quarters,
+    "triangle": _triangle,
+    "rings": _rings,
+    "stripes": _stripes,
+    "square": lambda c, x, y, size, color: _square(c, x, y, size, size, color),
+}
+
+# (column, row, motif, colour) inside each cluster, on a 3.5 mm cell.
+CELL = 3.5
+
+CLUSTER_TOP_LEFT = [
+    (0, 1, "quarters", M_PURPLE),
+    (1, 1, "triangle", M_ORANGE),
+    (2, 1, "rings", M_SKY),
+    (0, 0, "checker", M_MAGENTA),
+    (1, 0, "dots", M_ORANGE),
+    (2, 0, "square", M_YELLOW),
+]
+
+CLUSTER_TOP_RIGHT = [
+    (0, 1, "dots", M_SKY),
+    (1, 1, "checker", M_RED),
+    (2, 1, "quarters", M_YELLOW),
+    (1, 0, "triangle", M_BLUE),
+    (2, 0, "square", M_MAGENTA),
+]
+
+CLUSTER_BOTTOM_LEFT = [
+    (0, 2, "stripes", M_MAGENTA),
+    (1, 2, "square", M_BLUE),
+    (0, 1, "checker", M_YELLOW),
+    (1, 1, "triangle", M_SKY),
+    (0, 0, "quarters", M_ORANGE),
+    (1, 0, "dots", M_PURPLE),
+]
+
+CLUSTER_BOTTOM_RIGHT = [
+    (1, 2, "rings", M_RED),
+    (0, 1, "dots", M_BLUE),
+    (1, 1, "checker", M_YELLOW),
+    (0, 0, "triangle", M_PURPLE),
+    (1, 0, "quarters", M_MAGENTA),
+]
+
+
+def _draw_cluster(canvas, plan, origin_x, origin_y):
+    for column, row, kind, color in plan:
+        _MOTIF[kind](
+            canvas,
+            origin_x + column * CELL,
+            origin_y + row * CELL,
+            CELL * 0.82,
+            color,
+        )
+
+
 def draw_card(canvas, visitor: Visitor, raw_token: str, x: float, y: float) -> None:
-    """Draw one badge with its bottom-left corner at (x, y), in millimetres."""
+    """Draw one badge with its bottom-left corner at (x, y), in millimetres.
+
+    Every field on the card is real: the name, the organisation, the day they were
+    registered, the country, the printed serial, and a QR carrying the raw token.
+    Nothing here is a placeholder, because a badge with a placeholder on it is a
+    badge that gets handed to somebody.
+    """
     vip = visitor.category == VisitorCategory.VIP
 
-    # Edge band — the VIP signal, readable at arm's length across a desk.
-    canvas.setFillColor(BAND_VIP if vip else BAND_NORMAL)
-    canvas.rect((x) * mm, y * mm, BAND_W * mm, CARD_H * mm, stroke=0, fill=1)
+    # Card face. On a sheet the cards butt together, so each one paints its own
+    # white ground rather than relying on the paper.
+    canvas.setFillColor(HexColor("#ffffff"))
+    canvas.rect(x * mm, y * mm, CARD_W * mm, CARD_H * mm, stroke=0, fill=1)
 
-    # Photo, top-aligned, 3:4 portrait — the aspect the dashboard crops to.
-    photo_y = y + CARD_H - PAD - PHOTO_H
+    # Lanyard slot, as a punch guide.
+    canvas.setStrokeColor(RULE)
+    canvas.setLineWidth(0.4)
+    canvas.roundRect(
+        (x + SLOT_X) * mm,
+        (y + SLOT_Y) * mm,
+        SLOT_W * mm,
+        SLOT_H * mm,
+        SLOT_H / 2 * mm,
+        stroke=1,
+        fill=0,
+    )
+
+    _draw_cluster(canvas, CLUSTER_TOP_LEFT, x + DECO_LEFT_X, y + DECO_TOP_Y)
+    _draw_cluster(canvas, CLUSTER_TOP_RIGHT, x + DECO_RIGHT_X, y + DECO_TOP_Y)
+    _draw_cluster(canvas, CLUSTER_BOTTOM_LEFT, x + DECO_LEFT_X, y + DECO_BOTTOM_Y)
+    _draw_cluster(canvas, CLUSTER_BOTTOM_RIGHT, x + DECO_RIGHT_X + 3.0, y + DECO_BOTTOM_Y)
+
+    # The photo, clipped to a circle. Amber ring for a VIP: the one signal that has
+    # to survive being read across a lobby.
+    cx, cy = x + PHOTO_CX, y + PHOTO_CY
+    canvas.setFillColor(BAND_VIP if vip else NAVY)
+    canvas.circle(cx * mm, cy * mm, (PHOTO_R + PHOTO_RING) * mm, stroke=0, fill=1)
+
     reader = photo_reader(visitor)
     if reader is not None:
+        canvas.saveState()
+        clip = canvas.beginPath()
+        clip.circle(cx * mm, cy * mm, PHOTO_R * mm)
+        canvas.clipPath(clip, stroke=0, fill=0)
+        # The stored photo is 3:4, so covering a square means overflowing the
+        # height. The clip takes care of the overflow; scaling to fit instead
+        # would leave two bars of empty circle beside the face.
+        draw_w = PHOTO_R * 2
+        draw_h = draw_w * 4 / 3
         canvas.drawImage(
             reader,
-            (x + PHOTO_X) * mm,
-            photo_y * mm,
-            PHOTO_W * mm,
-            PHOTO_H * mm,
+            (cx - draw_w / 2) * mm,
+            (cy - draw_h / 2) * mm,
+            draw_w * mm,
+            draw_h * mm,
             preserveAspectRatio=False,
             mask="auto",
         )
+        canvas.restoreState()
     else:
         canvas.setFillColor(PHOTO_EMPTY)
-        canvas.rect(
-            (x + PHOTO_X) * mm, photo_y * mm, PHOTO_W * mm, PHOTO_H * mm, stroke=0, fill=1
-        )
+        canvas.circle(cx * mm, cy * mm, PHOTO_R * mm, stroke=0, fill=1)
 
-    body_width = BODY_RIGHT - BODY_X
-    cursor = y + CARD_H - PAD
+    text_width = TEXT_RIGHT - TEXT_LEFT
 
-    if vip:
-        canvas.setFillColor(BAND_VIP)
-        canvas.setFont(FONT_BOLD, SIZE_VIP_TAG)
-        cursor -= SIZE_VIP_TAG / mm
-        canvas.drawString((x + BODY_X) * mm, cursor * mm, "VIP")
-        cursor -= 1.0
-
+    # Name, centred, growing upward into the gap under the photo.
     name_lines, name_size = _fit_lines(
-        visitor.full_name, FONT_BOLD, SIZE_NAME, body_width, max_lines=2
+        visitor.full_name.upper(), FONT_BOLD, SIZE_NAME, text_width, max_lines=2
     )
     canvas.setFillColor(INK)
     canvas.setFont(FONT_BOLD, name_size)
-    for line in name_lines:
-        cursor -= name_size / mm
-        canvas.drawString((x + BODY_X) * mm, cursor * mm, line)
-        cursor -= 0.4
+    baseline = y + NAME_BASELINE
+    for line in reversed(name_lines):
+        canvas.drawCentredString((x + CARD_W / 2) * mm, baseline * mm, line)
+        baseline += NAME_LEADING
 
-    cursor -= 1.0
-    canvas.setFont(FONT_BODY, SIZE_COUNTRY)
-    cursor -= SIZE_COUNTRY / mm
-    canvas.drawString((x + BODY_X) * mm, cursor * mm, visitor.country)
+    # The role line. A VIP says so here in amber; everyone else gets their
+    # organisation, and a visitor with neither gets the word that is still true.
+    role = "VIP GUEST" if vip else (visitor.organization or "VISITOR")
+    role_lines, role_size = _fit_lines(role, FONT_ITALIC, SIZE_ROLE, text_width, max_lines=1)
+    canvas.setFillColor(BAND_VIP if vip else ROLE_PINK)
+    canvas.setFont(FONT_ITALIC, role_size)
+    canvas.drawCentredString(
+        (x + CARD_W / 2) * mm, (y + ROLE_BASELINE) * mm, role_lines[0]
+    )
 
-    if visitor.organization:
-        org_lines, org_size = _fit_lines(
-            visitor.organization, FONT_BODY, SIZE_ORG, body_width, max_lines=1
-        )
-        canvas.setFillColor(MUTED)
-        canvas.setFont(FONT_BODY, org_size)
-        cursor -= 0.8 + org_size / mm
-        canvas.drawString((x + BODY_X) * mm, cursor * mm, org_lines[0])
+    canvas.setStrokeColor(RULE)
+    canvas.setLineWidth(0.4)
+    canvas.line(
+        (x + TEXT_LEFT + 3) * mm,
+        (y + RULE_Y) * mm,
+        (x + TEXT_RIGHT - 3) * mm,
+        (y + RULE_Y) * mm,
+    )
 
-    # Serial, mono, on the baseline — the human-readable half of the badge. This is
-    # the one line level with the QR, so it is the one that must stop short of it.
+    _field(canvas, x, y + FIELD_1_BASELINE, "Registered", _joined(visitor))
+    _field(canvas, x, y + FIELD_2_BASELINE, "Country", visitor.country)
+
+    # Serial, mono, centred — the human-readable half of the badge, and the thing
+    # somebody reads out over a radio when the QR will not scan.
     serial_lines, serial_size = _fit_lines(
-        visitor.badge_serial, FONT_MONO, SIZE_SERIAL, SERIAL_RIGHT - BODY_X, max_lines=1
+        visitor.badge_serial, FONT_MONO, SIZE_SERIAL, text_width, max_lines=1
     )
     canvas.setFillColor(INK)
     canvas.setFont(FONT_MONO, serial_size)
-    canvas.drawString((x + BODY_X) * mm, (y + PAD) * mm, serial_lines[0])
+    canvas.drawCentredString(
+        (x + CARD_W / 2) * mm, (y + SERIAL_BASELINE) * mm, serial_lines[0]
+    )
 
-    # QR, bottom-right.
     canvas.drawImage(
         ImageReader(qr_image(raw_token)),
-        (x + CARD_W - PAD - QR_SIZE) * mm,
-        (y + PAD) * mm,
+        (x + QR_X) * mm,
+        (y + QR_Y) * mm,
         QR_SIZE * mm,
         QR_SIZE * mm,
         preserveAspectRatio=True,
     )
 
 
+def _joined(visitor: Visitor) -> str:
+    """The day this visitor was registered, in the event's own timezone."""
+    stamp = timezone.localtime(visitor.created_at)
+    return stamp.strftime("%d %b %Y")
+
+
+def _field(canvas, x: float, baseline: float, label: str, value: str) -> None:
+    """One `Label : value` row, with the values in a shared column."""
+    canvas.setFillColor(MUTED)
+    canvas.setFont(FONT_BODY, SIZE_LABEL)
+    canvas.drawString((x + LABEL_X) * mm, baseline * mm, label)
+    canvas.drawString((x + VALUE_X - 2.0) * mm, baseline * mm, ":")
+
+    lines, size = _fit_lines(
+        value or "-", FONT_BOLD, SIZE_VALUE, TEXT_RIGHT - VALUE_X, max_lines=1
+    )
+    canvas.setFillColor(INK)
+    canvas.setFont(FONT_BOLD, size)
+    canvas.drawString((x + VALUE_X) * mm, baseline * mm, lines[0])
+
+
 def render_card_pdf(visitor: Visitor, raw_token: str) -> bytes:
-    """One badge, one CR80 page."""
+    """One badge, one CR80 portrait page — 54 x 85.6 mm."""
     buffer = io.BytesIO()
     canvas = pdf_canvas.Canvas(buffer, pagesize=(CARD_W * mm, CARD_H * mm))
     canvas.setTitle(f"Badge {visitor.badge_serial}")
@@ -306,7 +569,18 @@ def _draw_cut_marks(canvas) -> None:
 
 
 def render_a4_sheet_pdf(issued: list[tuple[Visitor, str]]) -> bytes:
-    """Ten badges to a sheet, in the order given, paginating past ten."""
+    """Nine badges to an A4 sheet, in the order given, paginating past nine.
+
+    A run of exactly ONE is not a sheet. Printing a single visitor onto A4 puts
+    one card in the corner of a page and wastes the other eight slots, and a card
+    printer fed A4 cannot use it at all — so a run of one comes back as a single
+    54 x 85.6 mm page, the size of the card itself. The registration desk prints
+    one badge far more often than it prints nine.
+    """
+    if len(issued) == 1:
+        visitor, raw_token = issued[0]
+        return render_card_pdf(visitor, raw_token)
+
     buffer = io.BytesIO()
     canvas = pdf_canvas.Canvas(buffer, pagesize=(A4_W * mm, A4_H * mm))
     canvas.setTitle(f"Badge sheet ({len(issued)})")
