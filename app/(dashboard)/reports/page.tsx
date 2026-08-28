@@ -5,20 +5,32 @@ import { useState } from "react";
 import { useSetPageMeta } from "@/components/page-meta";
 import { EntryChart } from "@/components/reports/EntryChart";
 import { EntryTable } from "@/components/reports/EntryTable";
+import { Recap } from "@/components/reports/Recap";
 import {
-  downloadEntriesCsv,
+  downloadEntriesExport,
+  REPORT_FORMATS,
   todayISO,
   useEntryReport,
   type ReportFilters,
+  type ReportFormat,
 } from "@/lib/reports";
 import { ApiError } from "@/lib/visitors";
 
 /**
- * The entrance log: attendance record and security audit, one page.
+ * The entrance report: attendance record and security audit, one page.
+ *
+ * RECAP FIRST, LOG LAST. The findings, the load per door and the people who never
+ * arrived come before the table, because a table answers "what happened" and
+ * almost nobody opening this page wants to start there. The raw rows are still
+ * underneath for anyone checking the arithmetic.
  *
  * The result filter defaults to nothing, so refusals are in the first view rather
  * than behind a toggle. Someone opening this after an incident should not have to
  * know which control reveals the thing they came to find.
+ *
+ * Three exports, and they are genuinely different things rather than the same
+ * table in three wrappers: the PDF is the written report, the workbook is the
+ * figures to pivot, the CSV is the raw log.
  */
 const RESULTS = [
   { value: "", label: "All outcomes" },
@@ -39,7 +51,7 @@ export default function ReportsPage() {
     from: todayISO(),
     to: todayISO(),
   }));
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<ReportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
   const { data, isPending, isError, error } = useEntryReport(filters);
@@ -59,17 +71,17 @@ export default function ReportsPage() {
   const update = (patch: Partial<ReportFilters>) =>
     setFilters((current) => ({ ...current, ...patch }));
 
-  async function exportCsv() {
-    setExporting(true);
+  async function exportAs(format: ReportFormat) {
+    setExporting(format);
     setExportError(null);
     try {
-      await downloadEntriesCsv(filters);
+      await downloadEntriesExport(filters, format);
     } catch (cause) {
       setExportError(
         cause instanceof ApiError ? cause.message : "The export could not be saved.",
       );
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   }
 
@@ -123,35 +135,54 @@ export default function ReportsPage() {
           />
         </Field>
 
-        <button
-          type="button"
-          onClick={exportCsv}
-          disabled={exporting || !data}
-          className="ml-auto btn btn-ghost disabled:opacity-60"
-        >
-          {exporting ? "Exporting…" : "Export CSV"}
-        </button>
       </div>
 
-      {exportError ? (
-        <p role="alert" className="text-sm text-revoked">
-          {exportError}
-        </p>
-      ) : null}
-
-      {summary ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Scans" value={summary.total} />
-          <Stat label="People" value={summary.unique_visitors} />
-          <Stat label="Duplicates" value={summary.by_result.duplicate} />
-          <Stat
-            label="Refused"
-            value={refused}
-            // The one number on this page that should catch an eye passing over it.
-            tone={refused > 0 ? "alert" : undefined}
-          />
+      {/*
+        Three formats, each labelled with the job it does. A row of buttons
+        reading "PDF / Excel / CSV" makes somebody guess which one they want; the
+        hint under each says it, so nobody exports the wrong thing and opens it
+        to find out.
+      */}
+      <div className="card p-4 sm:p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="display text-[1.05rem] text-ink">Download this report</h2>
+          <p className="mono text-xs text-ink-3">
+            {filters.from === filters.to
+              ? filters.from
+              : `${filters.from} → ${filters.to}`}
+          </p>
         </div>
-      ) : null}
+        <p className="mt-0.5 text-xs text-ink-3">
+          Whatever the filters above are set to, exactly as shown.
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {REPORT_FORMATS.map((option) => (
+            <button
+              key={option.format}
+              type="button"
+              onClick={() => exportAs(option.format)}
+              disabled={exporting !== null || !data}
+              className="card cursor-pointer p-4 text-left transition-colors hover:border-accent disabled:cursor-default disabled:opacity-60"
+            >
+              <span className="block text-sm font-semibold text-ink">
+                {exporting === option.format ? "Preparing…" : option.label}
+              </span>
+              <span className="mt-1 block text-xs leading-relaxed text-ink-3">
+                {option.hint}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {exportError ? (
+          <p role="alert" className="mt-3 text-sm text-revoked">
+            {exportError}
+          </p>
+        ) : null}
+      </div>
+
+      {data ? <Recap report={data} /> : null}
 
       <section className="card">
         {isPending ? (
@@ -167,6 +198,15 @@ export default function ReportsPage() {
           </div>
         ) : (
           <>
+            <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
+              <h2 className="display text-[1.05rem] text-ink">
+                Every badge presented
+              </h2>
+              <p className="text-xs text-ink-3">
+                The rows behind the figures above, refusals included
+              </p>
+            </div>
+
             <EntryChart buckets={data.summary.by_hour} />
             <div className="border-t border-line">
               <EntryTable entries={data.entries} />
@@ -211,32 +251,5 @@ function Select({
         </option>
       ))}
     </select>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "alert";
-}) {
-  return (
-    <div
-      className={`px-5 py-4 ${
-        tone === "alert" ? "border-revoked/40 bg-revoked-soft" : "border-line bg-card"
-      }`}
-    >
-      <p className="text-xs text-ink-3">{label}</p>
-      <p
-        className={`mono mt-1 text-2xl font-semibold tabular-nums ${
-          tone === "alert" ? "text-revoked" : "text-ink"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
