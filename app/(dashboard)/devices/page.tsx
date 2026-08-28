@@ -40,7 +40,7 @@ export default function DevicesPage() {
       {silent > 0 ? (
         <p
           role="status"
-          className="flex items-center gap-3 rounded-lg border border-vip/40 bg-vip-soft px-5 py-3.5 text-sm text-ink"
+          className="flex items-center gap-3 rounded-xl bg-vip-soft px-6 py-4 text-sm text-ink"
         >
           <span
             aria-hidden
@@ -58,9 +58,9 @@ export default function DevicesPage() {
 
       <PairingCodeCard />
 
-      <section className="rounded-lg border border-line bg-card">
+      <section className="card">
         <div className="border-b border-line px-6 py-5">
-          <h2 className="display text-base font-semibold text-ink">
+          <h2 className="display text-base text-ink">
             Paired devices
           </h2>
           <p className="mt-1 text-sm text-ink-3">
@@ -75,7 +75,7 @@ export default function DevicesPage() {
           </p>
         ) : isError ? (
           <div className="px-6 py-12 text-center">
-            <p className="display text-lg font-semibold text-revoked">Could not load devices</p>
+            <p className="display text-lg text-revoked">Could not load devices</p>
             <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
               {error instanceof ApiError
                 ? error.message
