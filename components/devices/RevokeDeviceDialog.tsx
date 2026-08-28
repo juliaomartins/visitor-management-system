@@ -48,7 +48,7 @@ export function RevokeDeviceDialog({
       }}
       onClose={onCancel}
       aria-labelledby="revoke-device-title"
-      className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-lg border border-line bg-card p-0 text-ink backdrop:bg-graphite-950/60"
+      className="m-auto w-[min(30rem,calc(100vw-2rem))] card p-0 text-ink backdrop:bg-graphite-950/60"
     >
       {device ? (
         <div className="px-6 py-6">
@@ -68,6 +68,13 @@ export function RevokeDeviceDialog({
 
           <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
             <li>
+              <span className="font-medium text-ink-2">
+                It drops back to its pairing screen on its own
+              </span>{" "}
+              — within seconds, without anyone walking over to it. Have a new
+              pairing code ready if you mean to bring it straight back.
+            </li>
+            <li>
               Its token is dead. There is no un-revoke — getting it back means a new
               pairing code.
             </li>
@@ -81,7 +88,7 @@ export function RevokeDeviceDialog({
           {error ? (
             <p
               role="alert"
-              className="mt-4 rounded-md bg-revoked-soft px-3 py-2.5 text-sm text-revoked"
+              className="mt-4 rounded-2xl bg-revoked-soft px-4 py-3 text-sm text-revoked"
             >
               {error}
             </p>
@@ -92,7 +99,7 @@ export function RevokeDeviceDialog({
               type="button"
               onClick={onCancel}
               disabled={pending}
-              className="rounded-md px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink disabled:opacity-60"
+              className="btn btn-ghost disabled:opacity-60"
             >
               Keep it active
             </button>
@@ -100,7 +107,7 @@ export function RevokeDeviceDialog({
               type="button"
               onClick={onConfirm}
               disabled={pending}
-              className="rounded-md bg-revoked px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-70"
+              className="btn btn-danger disabled:opacity-70"
             >
               {pending ? "Revoking…" : "Revoke device"}
             </button>
