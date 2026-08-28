@@ -16,7 +16,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * `/api/v1/auth`, so the browser does not send it on a navigation to `/visitors`.
  */
 const SESSION_HINT = "vms_session";
-const HOME = "/visitors";
+const HOME = "/dashboard";
 const SIGN_IN = "/login";
 
 export default function proxy(request: NextRequest) {
