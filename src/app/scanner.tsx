@@ -47,6 +47,19 @@ export default function ScannerScreen() {
     initQueue().catch(() => {});
   }, []);
 
+  /*
+    The session ended under this screen — the phone was revoked from the
+    dashboard, so `request()` saw a 401 and the session provider dropped it.
+
+    Leave for the pairing form. Without this the camera would keep firing at
+    badges and every scan would fail the same way, which reads to a guard as a
+    broken app rather than as a phone that needs a new code. Anything already
+    queued stays on disk and syncs after the next pairing.
+  */
+  useEffect(() => {
+    if (!device) router.replace("/pair");
+  }, [device]);
+
   // Fire feedback once per verdict, keyed on the event id. Reacting to `state`
   // alone would replay the sound on every unrelated re-render.
   const announced = useRef<string | null>(null);
