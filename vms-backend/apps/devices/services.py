@@ -9,6 +9,8 @@ stored, exactly like a badge token.
 import logging
 import secrets
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -99,11 +101,31 @@ def redeem_pairing_code(code: str, *, name: str = "") -> tuple[Device, str]:
     return device, raw_token
 
 
+def device_group_name(device_id) -> str:
+    """The channel group a single device's own sockets join."""
+    return f"device.{device_id}"
+
+
 def revoke_device(device: Device, *, actor=None) -> Device:
     """Kill a lost phone. Its scan history stays — that is the point of revoking."""
     if device.is_active:
         device.is_active = False
         device.save(update_fields=["is_active", "updated_at"])
+
+        # Disconnect anything this device already has open.
+        #
+        # The socket's token is checked once, at connect. Without this push a
+        # revoked screen keeps showing arrivals on a connection it is no longer
+        # entitled to, and nobody is standing at the kiosk to notice.
+        #
+        # Inside on_commit, like every other group_send in this codebase: a
+        # rolled-back revoke must not kick a device that is still valid.
+        transaction.on_commit(
+            lambda: async_to_sync(get_channel_layer().group_send)(
+                device_group_name(device.pk),
+                {"type": "device.revoked"},
+            )
+        )
 
     audit.info(
         "device.revoke actor=%s id=%s name=%s",
