@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { downloadRoster } from "@/lib/badges";
+
 import { useSetPageMeta } from "@/components/page-meta";
 import { api, type Visitor, type VisitorCategory } from "@/lib/api";
 import { queryKeys } from "@/lib/query-client";
@@ -81,6 +83,21 @@ export default function VisitorsPage() {
   const visitors = data ?? [];
   const filtered = Boolean(debouncedSearch) || category !== "all";
 
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  async function exportRoster() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await downloadRoster();
+    } catch {
+      setExportError("The roster could not be exported.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   useSetPageMeta({
     title: "Visitors",
     subtitle: "Everyone registered for the event",
@@ -88,76 +105,88 @@ export default function VisitorsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl">
-      {/* The controls stay put while the sheet scrolls under them — this list
-          runs to 250 rows and the search box should never be scrolled away. */}
-      <div className="sticky top-0 z-10 -mx-8 bg-paper/90 px-8 pt-1 pb-4 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-56 flex-1">
-            <label htmlFor="visitor-search" className="sr-only">
-              Search visitors
-            </label>
-            <input
-              id="visitor-search"
-              ref={searchRef}
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") setSearch("");
-              }}
-              placeholder="Name, organisation, country or badge serial"
-              className="w-full rounded-md border border-line-strong bg-card py-2.5 pr-10 pl-3.5 text-sm text-ink transition-colors placeholder:text-ink-3 focus:border-ink"
-            />
-            <kbd
-              aria-hidden
-              className="mono pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-3"
-            >
-              /
-            </kbd>
-          </div>
-
-          <div
-            role="group"
-            aria-label="Filter by category"
-            className="flex rounded-md border border-line-strong bg-card p-0.5"
+    <div className="card">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line p-4">
+        <div className="relative min-w-56 flex-1">
+          <label htmlFor="visitor-search" className="sr-only">
+            Search visitors
+          </label>
+          <input
+            id="visitor-search"
+            ref={searchRef}
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setSearch("");
+            }}
+            placeholder="Name, organisation, country or badge serial"
+            className="field pr-10"
+          />
+          <kbd
+            aria-hidden
+            className="mono pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-3"
           >
-            {CATEGORY_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                aria-pressed={category === tab.value}
-                onClick={() => setCategory(tab.value)}
-                className={`rounded px-3.5 py-2 text-sm transition-colors ${
-                  category === tab.value
-                    ? "bg-ink font-medium text-white"
-                    : "text-ink-2 hover:text-ink"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <Link
-            href="/visitors/new"
-            className="rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-graphite-800"
-          >
-            Register visitor
-          </Link>
+            /
+          </kbd>
         </div>
 
-        <p
-          aria-live="polite"
-          className={`mono mt-2 h-3 text-[11px] text-ink-3 transition-opacity ${
-            isFetching && !isPending ? "opacity-100" : "opacity-0"
-          }`}
+        <div
+          role="group"
+          aria-label="Filter by category"
+          className="flex rounded-lg bg-card-2 p-1"
         >
-          Refreshing…
-        </p>
+          {CATEGORY_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              aria-pressed={category === tab.value}
+              onClick={() => setCategory(tab.value)}
+              className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                category === tab.value
+                  ? "bg-card font-medium text-ink shadow-sm"
+                  : "text-ink-2 hover:text-ink"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Reads only — no badge is reissued and no card stops working, so this
+            is safe to run mid-event. It carries no QR column; the server cannot
+            produce one for a card it has already printed. */}
+        <button
+          type="button"
+          onClick={exportRoster}
+          disabled={exporting || visitors.length === 0}
+          className="btn btn-ghost disabled:opacity-60"
+          title="Spreadsheet of everyone registered. Nothing is reissued."
+        >
+          {exporting ? "Exporting…" : "Export .xlsx"}
+        </button>
+
+        <Link href="/visitors/new" className="btn btn-primary">
+          Register visitor
+        </Link>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line bg-card">
+      {exportError ? (
+        <p role="alert" className="px-4 pt-3 text-sm text-revoked">
+          {exportError}
+        </p>
+      ) : null}
+
+      <p
+        aria-live="polite"
+        className={`mono px-4 pt-2 text-[11px] text-ink-3 transition-opacity ${
+          isFetching && !isPending ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        Refreshing…
+      </p>
+
+      <div className="p-2 pt-1 sm:p-3 sm:pt-1">
         {isPending ? (
           <SkeletonRows />
         ) : isError ? (
@@ -182,23 +211,16 @@ export default function VisitorsPage() {
             }
             action={
               filtered ? undefined : (
-                <Link
-                  href="/visitors/new"
-                  className="mt-5 inline-block rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-graphite-800"
-                >
+                <Link href="/visitors/new" className="btn btn-primary mt-6">
                   Register visitor
                 </Link>
               )
             }
           />
         ) : (
-          <ul>
-            {visitors.map((visitor, index) => (
-              <VisitorRow
-                key={visitor.id}
-                visitor={visitor}
-                first={index === 0}
-              />
+          <ul className="space-y-1">
+            {visitors.map((visitor) => (
+              <VisitorRow key={visitor.id} visitor={visitor} />
             ))}
           </ul>
         )}
@@ -207,22 +229,22 @@ export default function VisitorsPage() {
   );
 }
 
-function VisitorRow({ visitor, first }: { visitor: Visitor; first: boolean }) {
+function VisitorRow({ visitor }: { visitor: Visitor }) {
   const vip = visitor.category === "vip";
   const revoked = !visitor.is_active;
 
   return (
-    <li className={first ? "" : "border-t border-line"}>
+    <li>
       <Link
         href={`/visitors/${visitor.id}`}
-        className="group flex items-center gap-5 px-5 py-3.5 transition-colors hover:bg-paper focus-visible:bg-paper"
+        className="group flex items-center gap-4 rounded-lg p-2.5 transition-colors hover:bg-card-2"
       >
         {/* A fragment of the card, not a generic avatar: the photo in its true
             badge crop with the edge band still attached. Amber means VIP here
             exactly as it does on the printed card. */}
-        <div className="flex shrink-0 overflow-hidden rounded-[2px] ring-1 ring-line-strong">
+        <div className="flex shrink-0 overflow-hidden rounded-md">
           <div
-            className={`w-1.5 ${vip ? "bg-vip" : "bg-graphite-900"} ${
+            className={`w-1 ${vip ? "bg-vip" : "bg-graphite-950"} ${
               revoked ? "opacity-40" : ""
             }`}
           />
@@ -230,9 +252,9 @@ function VisitorRow({ visitor, first }: { visitor: Visitor; first: boolean }) {
           <img
             src={visitor.photo}
             alt=""
-            width={54}
-            height={72}
-            className={`h-18 w-[54px] bg-line object-cover ${
+            width={42}
+            height={56}
+            className={`h-14 w-[42px] bg-line object-cover ${
               revoked ? "opacity-40 grayscale" : ""
             }`}
           />
@@ -240,14 +262,14 @@ function VisitorRow({ visitor, first }: { visitor: Visitor; first: boolean }) {
 
         <div className="min-w-0 flex-1">
           <p
-            className={`display truncate text-[15px] font-semibold ${
-              revoked ? "text-ink-3" : "text-ink"
-            }`}
+            className={`truncate font-medium ${revoked ? "text-ink-3" : "text-ink"}`}
           >
             {visitor.full_name}
           </p>
-          <p className="mt-1 truncate text-sm text-ink-3">
-            {[visitor.organization, visitor.country].filter(Boolean).join(" · ")}
+          <p className="mt-0.5 truncate text-sm text-ink-3">
+            {[visitor.organization, visitor.country]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
 
@@ -259,15 +281,13 @@ function VisitorRow({ visitor, first }: { visitor: Visitor; first: boolean }) {
           {visitor.badge_serial}
         </p>
 
-        <div className="flex w-28 shrink-0 justify-end gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           {vip ? (
-            <span className="mono rounded bg-vip-soft px-2 py-1 text-[11px] font-medium text-vip">
-              VIP
-            </span>
+            <span className="pill-status bg-vip-soft text-vip">VIP</span>
           ) : null}
           {revoked ? (
-            <span className="mono rounded bg-revoked-soft px-2 py-1 text-[11px] font-medium text-revoked">
-              REVOKED
+            <span className="pill-status bg-revoked-soft text-revoked">
+              Revoked
             </span>
           ) : null}
         </div>
@@ -285,17 +305,12 @@ function VisitorRow({ visitor, first }: { visitor: Visitor; first: boolean }) {
 
 function SkeletonRows() {
   return (
-    <ul aria-hidden="true">
+    <ul aria-hidden="true" className="space-y-1">
       {[0, 1, 2, 3, 4].map((row) => (
-        <li
-          key={row}
-          className={`flex items-center gap-5 px-5 py-3.5 ${
-            row === 0 ? "" : "border-t border-line"
-          }`}
-        >
-          <div className="h-18 w-[60px] shrink-0 animate-pulse rounded-[2px] bg-line" />
+        <li key={row} className="flex items-center gap-4 p-2.5">
+          <div className="h-14 w-[46px] shrink-0 animate-pulse rounded-md bg-line" />
           <div className="flex-1 space-y-2.5">
-            <div className="h-4 w-44 animate-pulse rounded bg-line" />
+            <div className="h-3.5 w-44 animate-pulse rounded bg-line" />
             <div className="h-3 w-64 animate-pulse rounded bg-line" />
           </div>
         </li>
@@ -316,15 +331,15 @@ function Notice({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="px-6 py-20 text-center">
+    <div className="px-6 py-16 text-center">
       <p
-        className={`display text-lg font-semibold ${
+        className={`display text-lg ${
           tone === "error" ? "text-revoked" : "text-ink"
         }`}
       >
         {heading}
       </p>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-ink-3">{body}</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">{body}</p>
       {action}
     </div>
   );
