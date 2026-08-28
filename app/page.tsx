@@ -13,7 +13,6 @@ import { useRouter } from "next/navigation";
 import { ConnectionDot } from "@/components/ConnectionDot";
 import { ServerSetup } from "@/components/ServerSetup";
 import { IdleScreen } from "@/components/IdleScreen";
-import { ArrivalStrip } from "@/components/ArrivalStrip";
 import { VipWelcomeCard } from "@/components/VipWelcomeCard";
 import { WelcomeCard } from "@/components/WelcomeCard";
 import { useArrivalFeed } from "@/hooks/useArrivalFeed";
@@ -151,7 +150,10 @@ export default function ScreenPage() {
       const identity = event.photo_url || event.full_name;
       const previous = lastShownFor.current.get(identity);
       const scannedAt = new Date(event.scanned_at).getTime();
-      if (previous !== undefined && scannedAt - previous < REPEAT_SUPPRESSION_MS) {
+      if (
+        previous !== undefined &&
+        scannedAt - previous < REPEAT_SUPPRESSION_MS
+      ) {
         continue;
       }
       lastShownFor.current.set(identity, scannedAt);
@@ -169,7 +171,8 @@ export default function ScreenPage() {
   useEffect(() => {
     if (!showing) return;
 
-    const duration = queue.current.length >= BUSY_QUEUE ? BUSY_DISPLAY_MS : DISPLAY_MS;
+    const duration =
+      queue.current.length >= BUSY_QUEUE ? BUSY_DISPLAY_MS : DISPLAY_MS;
     timer.current = setTimeout(() => {
       setShowing(queue.current.shift() ?? null);
       syncPending();
@@ -210,25 +213,13 @@ export default function ScreenPage() {
         // Keyed on the event id so React remounts the card and the entry
         // animation replays for each arrival rather than only the first.
         showing.category === "vip" ? (
-          <VipWelcomeCard
-            key={showing.id}
-            event={showing}
-            hasStrip={pending.length > 0}
-          />
+          <VipWelcomeCard key={showing.id} event={showing} queued={pending} />
         ) : (
-          <WelcomeCard
-            key={showing.id}
-            event={showing}
-            hasStrip={pending.length > 0}
-          />
+          <WelcomeCard key={showing.id} event={showing} queued={pending} />
         )
       ) : (
         <IdleScreen waiting={connected} />
       )}
-
-      {/* Only when somebody is actually waiting. One arrival with nothing behind
-          it gets the whole wall, which is the common case all morning. */}
-      {showing && pending.length > 0 ? <ArrivalStrip queued={pending} /> : null}
 
       <ConnectionDot connected={connected} />
     </main>
