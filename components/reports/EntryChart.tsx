@@ -25,16 +25,16 @@ import type { HourBucket } from "@/lib/reports";
  * third identity, and the one segment nobody needs to tell apart at a glance.
  */
 const SERIES = [
-  { key: "valid", label: "Valid", fill: "var(--color-valid)" },
-  { key: "duplicate", label: "Duplicate", fill: "var(--color-line-strong)" },
-  { key: "refused", label: "Refused", fill: "var(--color-revoked)" },
+  { key: "valid", label: "Valid", fill: "var(--color-accent)" },
+  { key: "duplicate", label: "Duplicate", fill: "var(--color-sun)" },
+  { key: "refused", label: "Refused", fill: "var(--color-graphite-950)" },
 ] as const;
 
 const HEIGHT = 180;
-const BAR_GAP = 6;
+const BAR_GAP = 14;
 /** A 2px surface gap keeps stacked segments from reading as one block. */
-const SEGMENT_GAP = 2;
-const ROUND = 4;
+const SEGMENT_GAP = 3;
+const ROUND = 7;
 
 export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
@@ -73,7 +73,7 @@ export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
   return (
     <div className="px-6 py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h3 className="display text-base font-semibold text-ink">Scans by hour</h3>
+        <h3 className="display text-lg text-ink">Scans by hour</h3>
 
         {/* Two or more series always carry a legend, so identity is never colour
             alone — and the same words appear in the table's result column. */}
@@ -82,7 +82,7 @@ export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
             <li key={series.key} className="flex items-center gap-1.5">
               <span
                 aria-hidden
-                className="block h-2.5 w-2.5 rounded-[2px]"
+                className="block h-2.5 w-2.5 rounded-full"
                 style={{ background: series.fill }}
               />
               <span className="text-xs text-ink-2">{series.label}</span>
@@ -106,7 +106,7 @@ export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
             y1={HEIGHT - 0.5}
             x2="100"
             y2={HEIGHT - 0.5}
-            stroke="var(--color-line)"
+            stroke="var(--color-line-strong)"
             strokeWidth="1"
             vectorEffect="non-scaling-stroke"
           />
@@ -173,7 +173,7 @@ export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
           {columns.map((column, index) => (
             <span
               key={column.hour}
-              className="mono shrink-0 text-center text-[10px] text-ink-3 tabular-nums"
+              className="mono shrink-0 text-center text-[10px] text-ink-2 tabular-nums"
               style={{ width: `${barWidth}%` }}
             >
               {columns.length > 12 && index % 2 === 1
@@ -185,7 +185,7 @@ export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
 
         {hovered !== null ? (
           <div
-            className="pointer-events-none absolute -top-1 rounded-md border border-line bg-card px-3 py-2 shadow-sm"
+            className="pointer-events-none absolute -top-1 rounded-2xl bg-graphite-950 px-4 py-3"
             style={{
               left: `${Math.min(Math.max(hovered * barWidth, 0), 78)}%`,
             }}
@@ -197,11 +197,11 @@ export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
               <p key={series.key} className="mt-0.5 flex items-center gap-1.5 text-[11px]">
                 <span
                   aria-hidden
-                  className="block h-2 w-2 rounded-[2px]"
+                  className="block h-2 w-2 rounded-full"
                   style={{ background: series.fill }}
                 />
-                <span className="text-ink-3">{series.label}</span>
-                <span className="mono ml-auto pl-2 font-medium text-ink tabular-nums">
+                <span className="text-graphite-300">{series.label}</span>
+                <span className="mono ml-auto pl-2 font-medium text-white tabular-nums">
                   {columns[hovered][series.key]}
                 </span>
               </p>
