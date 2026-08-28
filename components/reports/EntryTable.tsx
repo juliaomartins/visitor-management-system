@@ -52,7 +52,7 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
   if (entries.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="display text-lg font-semibold text-ink">Nothing scanned in this range</p>
+        <p className="display text-lg text-ink">Nothing scanned in this range</p>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
           Widen the dates, or clear the filters.
         </p>
@@ -93,7 +93,7 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
 
                 <td className="px-4 py-3">
                   <span
-                    className={`mono inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-bold tracking-wide ${result.chip}`}
+                    className={`pill-status ${result.chip}`}
                   >
                     {result.refused ? <span aria-hidden>&#9888;</span> : null}
                     {result.label.toUpperCase()}
@@ -123,7 +123,7 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
 
                 <td className="px-4 py-3">
                   {entry.category === "vip" ? (
-                    <span className="mono rounded bg-vip-soft px-2 py-1 text-[11px] font-medium text-vip">
+                    <span className="pill-status bg-vip-soft text-vip">
                       VIP
                     </span>
                   ) : (
