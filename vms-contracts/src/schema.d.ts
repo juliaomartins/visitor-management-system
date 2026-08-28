@@ -329,6 +329,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/entries.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the entrance report as PDF
+         * @description The same filters as `/reports/entries`, as a designed document: the headline figures, the findings in sentences, the shape of the day, then the tables. Built with ReportLab, so it renders identically wherever the server runs.
+         */
+        get: operations["reports_entries_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/entries.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the entrance report as .xlsx
+         * @description The same filters as `/reports/entries`, as a workbook: a summary with the written findings, hourly flow with a chart, delegations, load by door, the registered visitors who never arrived, and the full log.
+         *
+         *     Figures are written as numbers, not text, so they can be pivoted without cleaning the file first.
+         */
+        get: operations["reports_entries_xlsx_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scans": {
         parameters: {
             query?: never;
@@ -433,6 +475,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Registered, with no valid scan in the period. */
+        AbsentVisitor: {
+            readonly badge_serial: string;
+            readonly full_name: string;
+            readonly country: string;
+            readonly organization: string;
+            readonly category: string;
+        };
         /**
          * @description The auth response body.
          *
@@ -543,6 +593,15 @@ export interface components {
             /** @description Permanent device token. Sent as `Authorization: Device <token>`. */
             readonly token: string;
         };
+        /** @description One door's share of the traffic. */
+        DoorLoad: {
+            readonly device: string;
+            readonly total: number;
+            readonly valid: number;
+            readonly refused: number;
+            /** Format: double */
+            readonly share: number;
+        };
         /** @description One badge presentation, valid or not. */
         Entry: {
             readonly id: number;
@@ -558,7 +617,13 @@ export interface components {
             readonly badge_serial: string | null;
             readonly device_name: string;
         };
-        /** @description `GET /reports/entries` — the log and its totals, from one filtered query. */
+        /**
+         * @description `GET /reports/entries` — the log, its totals, and what they mean.
+         *
+         *     `insights` carries the derived findings the PDF and the workbook print, so the
+         *     dashboard renders the same conclusions rather than re-deriving them in
+         *     TypeScript and quietly drifting from the exports.
+         */
         EntryReport: {
             readonly timezone: string;
             /** Format: date */
@@ -566,6 +631,7 @@ export interface components {
             /** Format: date */
             readonly date_to: string;
             readonly summary: components["schemas"]["EntrySummary"];
+            readonly insights: components["schemas"]["ReportInsights"];
             readonly entries: components["schemas"]["Entry"][];
         };
         EntrySummary: {
@@ -657,6 +723,46 @@ export interface components {
             readonly category: string;
             /** @description The raw badge token, exactly as the QR must encode it. Not stored; this response is the only copy. */
             readonly token: string;
+        };
+        /**
+         * @description The derived findings — what the counts mean.
+         *
+         *     Served alongside the raw summary so the dashboard shows the same conclusions
+         *     the PDF and the workbook print, rather than the page re-deriving them in
+         *     TypeScript and quietly drifting.
+         */
+        ReportInsights: {
+            readonly registered: number;
+            readonly arrived: number;
+            /** Format: double */
+            readonly attendance_rate: number;
+            readonly refused: number;
+            /** Format: double */
+            readonly refusal_rate: number;
+            readonly quiet_hours: number;
+            readonly not_arrived_count: number;
+            /** Format: date-time */
+            readonly first_arrival: string | null;
+            /** Format: date-time */
+            readonly last_arrival: string | null;
+            /** Format: date-time */
+            readonly median_arrival: string | null;
+            readonly span_minutes: number;
+            /** Format: date-time */
+            readonly peak_hour: string | null;
+            readonly peak_total: number;
+            /** Format: double */
+            readonly peak_share: number;
+            readonly vip_arrived: number;
+            /** Format: double */
+            readonly vip_share: number;
+            readonly repeat_people: number;
+            /** Format: double */
+            readonly repeat_share: number;
+            readonly doors: components["schemas"]["DoorLoad"][];
+            readonly not_arrived: components["schemas"]["AbsentVisitor"][];
+            /** @description The findings in sentences, in the order they should be read. */
+            readonly narrative: string[];
         };
         /** @description Always all four keys, zero-filled — see counts_by_result(). */
         ResultCounts: {
@@ -1245,6 +1351,68 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description text/csv */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    reports_entries_pdf_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Visitor category. Also excludes `invalid` scans. */
+                category?: "normal" | "vip";
+                /** @description Exact country, case-insensitive. Excludes `invalid` scans, which match no visitor and so have no country. */
+                country?: string;
+                /** @description First day to include, inclusive. Defaults to today. */
+                from?: string;
+                /** @description Scan outcome. Omit to see every badge presented. */
+                result?: "duplicate" | "invalid" | "revoked" | "valid";
+                /** @description Last day to include, inclusive. Defaults to today. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description application/pdf */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    reports_entries_xlsx_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Visitor category. Also excludes `invalid` scans. */
+                category?: "normal" | "vip";
+                /** @description Exact country, case-insensitive. Excludes `invalid` scans, which match no visitor and so have no country. */
+                country?: string;
+                /** @description First day to include, inclusive. Defaults to today. */
+                from?: string;
+                /** @description Scan outcome. Omit to see every badge presented. */
+                result?: "duplicate" | "invalid" | "revoked" | "valid";
+                /** @description Last day to include, inclusive. Defaults to today. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description xlsx */
             200: {
                 headers: {
                     [name: string]: unknown;
