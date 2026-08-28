@@ -37,7 +37,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   if (state === "checking") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="mono text-xs tracking-[0.14em] text-ink-3 uppercase" role="status">
+        <p
+          className="mono text-xs tracking-[0.14em] text-ink-3 uppercase"
+          role="status"
+        >
           Restoring session
         </p>
       </div>
@@ -50,7 +53,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar />
-          <main className="flex-1 px-8 py-7">{children}</main>
+          <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6">{children}</main>
         </div>
       </div>
     </PageMetaProvider>
