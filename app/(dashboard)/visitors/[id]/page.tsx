@@ -8,7 +8,7 @@ import { BadgeCard } from "@/components/badge-card";
 import { useSetPageMeta } from "@/components/page-meta";
 import { ReissueDialog } from "@/components/badges/ReissueDialog";
 import { RevokeDialog } from "@/components/visitors/RevokeDialog";
-import { downloadReissuedSheet } from "@/lib/badges";
+import { downloadReissuedSheet, reissueBadges } from "@/lib/badges";
 import {
   ApiError,
   useRevokeVisitor,
@@ -17,12 +17,13 @@ import {
   type ScanResult,
 } from "@/lib/visitors";
 
-const RESULT_STYLES: Record<ScanResult, { label: string; className: string }> = {
-  valid: { label: "Valid", className: "bg-valid-soft text-valid" },
-  duplicate: { label: "Duplicate", className: "bg-line text-ink-2" },
-  revoked: { label: "Revoked", className: "bg-vip-soft text-vip" },
-  invalid: { label: "Invalid", className: "bg-revoked-soft text-revoked" },
-};
+const RESULT_STYLES: Record<ScanResult, { label: string; className: string }> =
+  {
+    valid: { label: "Valid", className: "bg-valid-soft text-valid" },
+    duplicate: { label: "Duplicate", className: "bg-line text-ink-2" },
+    revoked: { label: "Revoked", className: "bg-graphite-950 text-white" },
+    invalid: { label: "Invalid", className: "bg-revoked-soft text-revoked" },
+  };
 
 export default function VisitorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,16 @@ export default function VisitorDetailPage() {
   const [reissuing, setReissuing] = useState(false);
   const [reissuePending, setReissuePending] = useState(false);
   const [reissueError, setReissueError] = useState<string | undefined>();
+
+  /*
+    The raw token, held only while this page is open.
+
+    It arrives from a reissue and is never stored — a refresh loses it and the
+    card reverts to showing an empty QR frame, which is the truth: the server
+    cannot hand it back a second time.
+  */
+  const [rawToken, setRawToken] = useState<string | undefined>();
+  const [showingQr, setShowingQr] = useState(false);
 
   useSetPageMeta({
     title: visitor?.full_name ?? "Visitor",
@@ -44,8 +55,8 @@ export default function VisitorDetailPage() {
 
   if (isError || !visitor) {
     return (
-      <div className="rounded-lg border border-line bg-card px-6 py-16 text-center">
-        <p className="display text-lg font-semibold text-revoked">
+      <div className="card px-6 py-16 text-center">
+        <p className="display text-lg text-revoked">
           Could not load this visitor
         </p>
         <p className="mx-auto mt-2 max-w-sm text-sm text-ink-3">
@@ -86,18 +97,34 @@ export default function VisitorDetailPage() {
         ← All visitors
       </Link>
 
-      <div className="mt-5 grid gap-10 lg:grid-cols-[minmax(0,26rem)_1fr]">
+      <div className="card mt-4 grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,17rem)_1fr] lg:gap-10">
         {/*
           The badge itself, at reading size and true proportion. Everything on it
           — name, country, organisation, serial, the VIP band — is shown here as
           it will print, so a name that overflows or a photo cropped badly is
           caught before fifty cards come off the printer.
         */}
-        <div>
-          <BadgeCard visitor={visitor} width="100%" detail />
+        <div className="card p-4 sm:p-5">
+          <BadgeCard visitor={visitor} width="100%" detail token={rawToken} />
           <p className="mono mt-3 text-[11px] text-ink-3">
-            CR80 · 85.6 × 54 mm · as it prints
+            CR80 · 54 × 85.6 mm · as it prints
           </p>
+
+          {rawToken ? (
+            <p className="mt-2 text-xs leading-relaxed text-valid">
+              This is the live QR for the badge just issued. It is on screen
+              only — leaving this page loses it, and the card must be reissued
+              again to see one.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowingQr(true)}
+              className="btn btn-ghost mt-3 w-full"
+            >
+              Reissue &amp; show QR
+            </button>
+          )}
         </div>
 
         <div className="min-w-0">
@@ -108,7 +135,7 @@ export default function VisitorDetailPage() {
           >
             {revoked ? "Revoked" : "Active"}
           </p>
-          <h2 className="display mt-1 text-2xl font-bold text-ink">
+          <h2 className="display mt-1.5 text-3xl text-ink">
             {revoked ? "This badge is dead" : "This badge opens the door"}
           </h2>
           <p className="mt-2 text-sm text-ink-3">
@@ -119,8 +146,11 @@ export default function VisitorDetailPage() {
 
           {/* Only what the card does not already say. Name, country, organisation
               and serial are printed on it, an arm's length to the left. */}
-          <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-            <Detail label="Registered" value={formatDateTime(visitor.created_at)} />
+          <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
+            <Detail
+              label="Registered"
+              value={formatDateTime(visitor.created_at)}
+            />
             <Detail label="Arrivals" value={String(arrivals.length)} mono />
             <Detail
               label="Last arrival"
@@ -132,7 +162,7 @@ export default function VisitorDetailPage() {
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               href={`/visitors/${visitor.id}/edit`}
-              className="rounded-md border border-line px-3.5 py-2.5 text-sm text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
+              className="btn btn-ghost"
             >
               Edit details
             </Link>
@@ -146,7 +176,7 @@ export default function VisitorDetailPage() {
             <button
               type="button"
               onClick={() => setReissuing(true)}
-              className="rounded-md border border-vip/50 px-3.5 py-2.5 text-sm text-vip transition-colors hover:bg-vip-soft"
+              className="btn btn-ghost text-vip hover:text-vip"
             >
               Reissue &amp; print badge
             </button>
@@ -155,7 +185,7 @@ export default function VisitorDetailPage() {
               <button
                 type="button"
                 onClick={() => setConfirming(true)}
-                className="rounded-md border border-revoked/40 px-3.5 py-2.5 text-sm text-revoked transition-colors hover:bg-revoked-soft"
+                className="btn btn-ghost text-revoked hover:text-revoked"
               >
                 Revoke badge
               </button>
@@ -170,13 +200,14 @@ export default function VisitorDetailPage() {
         </div>
       </div>
 
-      <section className="mt-12">
-        <h3 className="display text-lg font-semibold text-ink">Scan history</h3>
+      <section className="mt-6">
+        <h3 className="display text-lg text-ink">Scan history</h3>
         <p className="mt-1 text-sm text-ink-3">
-          Every time this badge was presented, including the times it was refused.
+          Every time this badge was presented, including the times it was
+          refused.
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-line bg-card">
+        <div className="card mt-4 overflow-hidden">
           {scans.length === 0 ? (
             <p className="px-6 py-16 text-center text-sm text-ink-3">
               This badge has not been scanned yet.
@@ -202,6 +233,39 @@ export default function VisitorDetailPage() {
           )}
         </div>
       </section>
+
+      {/* Showing a QR means minting one, so it goes through the same
+          confirmation as printing. */}
+      <ReissueDialog
+        open={showingQr}
+        count={1}
+        name={visitor.full_name}
+        pending={reissuePending}
+        error={reissueError}
+        onConfirm={async () => {
+          setReissuePending(true);
+          setReissueError(undefined);
+          try {
+            const [issued] = await reissueBadges([visitor.id]);
+            setRawToken(issued.token);
+            setShowingQr(false);
+          } catch (cause) {
+            setReissueError(
+              cause instanceof ApiError
+                ? cause.message
+                : "The badge could not be reissued.",
+            );
+          } finally {
+            setReissuePending(false);
+          }
+        }}
+        onCancel={() => {
+          if (!reissuePending) {
+            setShowingQr(false);
+            setReissueError(undefined);
+          }
+        }}
+      />
 
       <ReissueDialog
         open={reissuing}
@@ -238,7 +302,9 @@ export default function VisitorDetailPage() {
         visitorName={visitor.full_name}
         badgeSerial={visitor.badge_serial}
         pending={revoke.isPending}
-        error={revoke.error instanceof ApiError ? revoke.error.message : undefined}
+        error={
+          revoke.error instanceof ApiError ? revoke.error.message : undefined
+        }
         onConfirm={() =>
           revoke.mutate(undefined, { onSuccess: () => setConfirming(false) })
         }
@@ -263,11 +329,7 @@ function ScanRow({ scan }: { scan: ScanEvent }) {
         {formatDateTime(scan.scanned_at)}
       </td>
       <td className="px-4 py-3">
-        <span
-          className={`mono rounded px-2 py-1 text-[11px] font-bold tracking-wide uppercase ${style.className}`}
-        >
-          {style.label}
-        </span>
+        <span className={`pill-status ${style.className}`}>{style.label}</span>
       </td>
       <td className="px-4 py-3 text-ink-2">{scan.device_name}</td>
     </tr>
@@ -290,9 +352,11 @@ function Detail({
   mono?: boolean;
 }) {
   return (
-    <div>
+    <div className="card px-4 py-3.5">
       <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className={`mt-1 text-ink ${mono ? "mono" : ""}`}>{value}</dd>
+      <dd className={`mt-1 text-ink ${mono ? "mono" : "display text-lg"}`}>
+        {value}
+      </dd>
     </div>
   );
 }
