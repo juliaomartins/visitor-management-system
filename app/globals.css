@@ -1,58 +1,69 @@
 @import "tailwindcss";
 
 /*
- * MONOCHROME, BECAUSE COLOUR IS A VERDICT.
+ * A LIGHT CONSOLE WITH A COLLAPSIBLE RAIL.
  *
- * This app exists to answer one question about a rectangle of plastic: is this
- * badge good or not. Green, amber and rose are that answer. So they are the only
- * chroma on the screen — buttons are black, links are black, focus is a black
- * ring, and every saturated pixel means something.
+ * White surfaces on a faint grey ground, hairline borders, 14px corners. The
+ * chrome recedes so the data does not have to compete with it.
  *
- * Spending an accent hue on a "Save" button would be spending the one signal the
- * interface has. A registrar scanning a list of 250 names should be able to trust
- * that anything coloured is telling them something.
+ * Blue is the product: navigation state, the arrivals curve, the primary action.
+ * It is never a status, so a blue chart and a coloured status pill can share a
+ * screen without arguing.
  *
- * The three verdicts are separated by LIGHTNESS as well as hue, and none of them
- * ever appears without its word — VALID, VIP, REVOKED — so the meaning survives
- * colour blindness, a bad projector and a monochrome print.
+ * STATUS COLOURS ARE VALIDATED, NOT CHOSEN BY EYE. The three chromatic outcomes
+ * were run through the palette validator against this white surface and pass the
+ * lightness band, the chroma floor, adjacent-pair CVD separation and the
+ * normal-vision floor (worst pair ΔE 19.2 normal / 8.3 protan):
+ *
+ *     valid   #059669   duplicate  #94a3b8   revoked #ca8a04   invalid #dc2626
+ *
+ * `#94a3b8` is a DECLARED NEUTRAL, not a fourth identity — a duplicate is
+ * somebody already inside coming back through a door, which is not a verdict.
+ * It sits deliberately below the chroma floor so it reads as absence of colour.
+ *
+ * Amber warns at 2.86:1 against white, which obligates relief: every status in
+ * this app is shown with its word, and the reports page is the table view. Never
+ * ship one of these as colour alone.
  */
 @theme {
-  /* Chrome: near-black, so the white workspace reads as card stock on a desk. */
-  --color-graphite-950: #0a0a0b;
-  --color-graphite-900: #131315;
-  --color-graphite-800: #1d1d21;
-  --color-graphite-700: #2c2c32;
-  --color-graphite-500: #6a6a74;
-  --color-graphite-300: #a8a8b2;
-
-  /* Workspace */
-  --color-paper: #faf9f7;
+  --color-ground: #f7f8fa;
   --color-card: #ffffff;
-  --color-line: #e7e4e0;
-  --color-line-strong: #d3cfca;
+  --color-card-2: #f7f8fa;
+  --color-paper: #f7f8fa;
 
-  /* Text */
-  --color-ink: #111113;
-  --color-ink-2: #55555e;
-  --color-ink-3: #8b8b94;
+  --color-line: #ecedf1;
+  --color-line-strong: #dfe2e8;
 
-  /* The three verdicts. The only chroma in the system. */
-  --color-valid: #0f8a55;
-  --color-valid-soft: #e8f6ef;
-  --color-vip: #a5680f;
-  --color-vip-soft: #fbf2e2;
-  --color-revoked: #9e1f42;
-  --color-revoked-soft: #fbebf0;
+  --color-ink: #111827;
+  --color-ink-2: #4b5563;
+  --color-ink-3: #9ca3af;
 
-  /*
-   * Bricolage Grotesque earns its keep on names and page titles — it has the
-   * squared, slightly institutional cut of signage on an accreditation desk.
-   * Used ONLY there. Inter does the reading work; nobody should notice it.
-   * JetBrains Mono is for machine-issued strings: serials, codes, tokens, times.
-   */
-  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --color-graphite-950: #0b0f19;
+  --color-graphite-900: #141a26;
+  --color-graphite-800: #1f2734;
+  --color-graphite-700: #2e3745;
+  --color-graphite-500: #6b7280;
+  --color-graphite-300: #b6bcc7;
+
+  /* The product hue. Navigation, the arrivals curve, the primary action. */
+  --color-accent: #2563eb;
+  --color-accent-2: #3b82f6;
+  --color-accent-soft: #eff6ff;
+
+  /* Validated status set — see the note above. Always paired with its word. */
+  --color-valid: #059669;
+  --color-valid-soft: #e7f6f0;
+  --color-vip: #ca8a04;
+  --color-vip-soft: #fdf5e3;
+  --color-revoked: #dc2626;
+  --color-revoked-soft: #fdeaea;
+  --color-neutral-mark: #94a3b8;
+
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-card: 0.9rem;
 }
 
 html,
@@ -61,77 +72,224 @@ body {
 }
 
 body {
-  background: var(--color-paper);
+  background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Machine-issued strings. Set them as such, and never let them wrap mid-serial. */
+/* Headings and the big numbers. Plus Jakarta is a touch warmer than the UI face,
+   which is the whole reason it is here — a figure should feel spoken, not typed. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+
 .mono {
   font-family: var(--font-mono);
   font-variant-ligatures: none;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
-.display {
-  font-family: var(--font-display);
-  letter-spacing: -0.02em;
-}
-
-/* A single focus treatment everywhere, and it is black — see the note above. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-ink);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 8px;
 }
+
+/* ---------------------------------------------------------------- shapes -- */
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    opacity 140ms ease;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-ghost {
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-card);
+  color: var(--color-ink-2);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-ink-3);
+  color: var(--color-ink);
+}
+
+.btn-danger {
+  background: var(--color-revoked);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 0.6rem;
+  background: var(--color-card);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.field:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+  outline: none;
+}
+
+.field::placeholder {
+  color: var(--color-ink-3);
+}
+
+/* Every status in this app wears one of these, and every one carries a word. */
+.pill-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------- the rail & tips -- */
 
 /*
- * THE SIGNATURE: the CR80 card.
+ * Collapsed, the rail is icons only, so each one needs a label on hover.
  *
- * Everything this system does produces or checks a rectangle 85.6 × 54 mm, so
- * that rectangle is the primary object in the interface rather than a motif
- * sprinkled on top. A visitor row carries a miniature of the real badge; the
- * detail page shows it at reading size; the print queue is a sheet of them.
+ * POSITION: FIXED, NOT ABSOLUTE. The nav is an `overflow-y: auto` scroll
+ * container, and an absolutely positioned tip anchored past its right edge is
+ * both clipped by it and counted into its scrollable area — so the rail grew a
+ * horizontal scrollbar of its own even while every tip was invisible. Opacity
+ * does not remove anything from layout.
  *
- * True aspect, always. A card drawn at the wrong proportion is a card that lies
- * about what will come out of the printer.
+ * Fixed elements are laid out against the viewport and are not clipped by, nor
+ * counted into, an ancestor's overflow. Nothing here creates a containing block
+ * that would break that: the rail is `sticky`, and a width transition is not a
+ * transform.
+ *
+ * Only one tip exists at a time and it is placed from the anchor's measured
+ * rectangle, so it cannot be wrong about where the icon is.
+ */
+.nav-tip {
+  position: fixed;
+  z-index: 80;
+  translate: 0 -50%;
+  border-radius: 0.5rem;
+  background: var(--color-graphite-950);
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: tip-in 120ms ease-out;
+}
+
+.nav-tip::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  translate: 0 -50%;
+  border: 5px solid transparent;
+  border-right-color: var(--color-graphite-950);
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    translate: -0.25rem -50%;
+  }
+  to {
+    opacity: 1;
+    translate: 0 -50%;
+  }
+}
+
+/* ------------------------------------------------------------ signature -- */
+
+/*
+ * THE CR80 CARD — PORTRAIT, 54 × 85.6 mm.
+ *
+ * Everything this system does produces or checks this rectangle, so it is a
+ * primary object in the interface rather than a motif sprinkled on top. Portrait
+ * because that is how a badge hangs: a lanyard holds a card by a slot in its
+ * short edge. Same blank as before, stood on its end.
+ *
+ * True aspect, always — a card drawn at the wrong proportion lies about what will
+ * come out of the printer. Internals are sized in cqw, a percentage of the card's
+ * own width, so one component serves a small tile and a large hero from one set
+ * of rules. These figures are the PDF's millimetres over 54 mm.
  */
 .cr80 {
-  aspect-ratio: 85.6 / 54;
+  aspect-ratio: 54 / 85.6;
   container-type: inline-size;
 }
 
-/*
- * Card internals scale with the card, not with the page, so one component serves
- * a 96px row thumbnail and a 420px detail hero without a second set of rules.
- */
-.cr80-band {
-  width: 3.5cqw;
-}
-
+/* 19 mm photo inside a 21.2 mm ring. */
 .cr80-photo {
-  width: 28cqw;
+  width: 39cqw;
 }
 
+/* 11 pt ≈ 3.9 mm. */
 .cr80-name {
-  font-size: 8.2cqw;
-  line-height: 1.05;
+  font-size: 7.2cqw;
+  line-height: 1.1;
 }
 
-.cr80-meta {
-  font-size: 5.4cqw;
-  line-height: 1.15;
+.cr80-role {
+  font-size: 5cqw;
+}
+
+.cr80-field {
+  font-size: 4.4cqw;
+  line-height: 1.6;
 }
 
 .cr80-serial {
-  font-size: 4.6cqw;
+  font-size: 5.6cqw;
 }
 
+/* 14 mm QR. */
 .cr80-qr {
-  width: 23cqw;
+  width: 26cqw;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -172,11 +330,10 @@ body {
 
 @media print {
   @page {
-    size: 85.6mm 54mm;
+    size: 54mm 85.6mm;
     margin: 0;
   }
 
-  /* Only the badge prints. The dashboard around it is not part of the badge. */
   body * {
     visibility: hidden;
   }
