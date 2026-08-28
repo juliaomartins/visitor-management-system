@@ -468,6 +468,120 @@ paths:
                 type: string
                 format: binary
           description: text/csv
+  /api/v1/reports/entries.pdf:
+    get:
+      operationId: reports_entries_pdf_retrieve
+      description: 'The same filters as `/reports/entries`, as a designed document:
+        the headline figures, the findings in sentences, the shape of the day, then
+        the tables. Built with ReportLab, so it renders identically wherever the server
+        runs.'
+      summary: Export the entrance report as PDF
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - normal
+          - vip
+        description: Visitor category. Also excludes `invalid` scans.
+      - in: query
+        name: country
+        schema:
+          type: string
+        description: Exact country, case-insensitive. Excludes `invalid` scans, which
+          match no visitor and so have no country.
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: First day to include, inclusive. Defaults to today.
+      - in: query
+        name: result
+        schema:
+          type: string
+          enum:
+          - duplicate
+          - invalid
+          - revoked
+          - valid
+        description: Scan outcome. Omit to see every badge presented.
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: Last day to include, inclusive. Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: application/pdf
+  /api/v1/reports/entries.xlsx:
+    get:
+      operationId: reports_entries_xlsx_retrieve
+      description: |-
+        The same filters as `/reports/entries`, as a workbook: a summary with the written findings, hourly flow with a chart, delegations, load by door, the registered visitors who never arrived, and the full log.
+
+        Figures are written as numbers, not text, so they can be pivoted without cleaning the file first.
+      summary: Export the entrance report as .xlsx
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - normal
+          - vip
+        description: Visitor category. Also excludes `invalid` scans.
+      - in: query
+        name: country
+        schema:
+          type: string
+        description: Exact country, case-insensitive. Excludes `invalid` scans, which
+          match no visitor and so have no country.
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: First day to include, inclusive. Defaults to today.
+      - in: query
+        name: result
+        schema:
+          type: string
+          enum:
+          - duplicate
+          - invalid
+          - revoked
+          - valid
+        description: Scan outcome. Omit to see every badge presented.
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: Last day to include, inclusive. Defaults to today.
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: xlsx
   /api/v1/scans:
     post:
       operationId: scans_create
@@ -701,6 +815,31 @@ paths:
           description: ''
 components:
   schemas:
+    AbsentVisitor:
+      type: object
+      description: Registered, with no valid scan in the period.
+      properties:
+        badge_serial:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        organization:
+          type: string
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+      required:
+      - badge_serial
+      - category
+      - country
+      - full_name
+      - organization
     AccessToken:
       type: object
       description: |-
@@ -916,6 +1055,32 @@ components:
       - name
       - token
       - updated_at
+    DoorLoad:
+      type: object
+      description: One door's share of the traffic.
+      properties:
+        device:
+          type: string
+          readOnly: true
+        total:
+          type: integer
+          readOnly: true
+        valid:
+          type: integer
+          readOnly: true
+        refused:
+          type: integer
+          readOnly: true
+        share:
+          type: number
+          format: double
+          readOnly: true
+      required:
+      - device
+      - refused
+      - share
+      - total
+      - valid
     Entry:
       type: object
       description: One badge presentation, valid or not.
@@ -967,8 +1132,12 @@ components:
       - scanned_at
     EntryReport:
       type: object
-      description: '`GET /reports/entries` — the log and its totals, from one filtered
-        query.'
+      description: |-
+        `GET /reports/entries` — the log, its totals, and what they mean.
+
+        `insights` carries the derived findings the PDF and the workbook print, so the
+        dashboard renders the same conclusions rather than re-deriving them in
+        TypeScript and quietly drifting from the exports.
       properties:
         timezone:
           type: string
@@ -985,6 +1154,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/EntrySummary'
           readOnly: true
+        insights:
+          allOf:
+          - $ref: '#/components/schemas/ReportInsights'
+          readOnly: true
         entries:
           type: array
           items:
@@ -994,6 +1167,7 @@ components:
       - date_from
       - date_to
       - entries
+      - insights
       - summary
       - timezone
     EntrySummary:
@@ -1209,6 +1383,120 @@ components:
       - full_name
       - token
       - visitor_id
+    ReportInsights:
+      type: object
+      description: |-
+        The derived findings — what the counts mean.
+
+        Served alongside the raw summary so the dashboard shows the same conclusions
+        the PDF and the workbook print, rather than the page re-deriving them in
+        TypeScript and quietly drifting.
+      properties:
+        registered:
+          type: integer
+          readOnly: true
+        arrived:
+          type: integer
+          readOnly: true
+        attendance_rate:
+          type: number
+          format: double
+          readOnly: true
+        refused:
+          type: integer
+          readOnly: true
+        refusal_rate:
+          type: number
+          format: double
+          readOnly: true
+        quiet_hours:
+          type: integer
+          readOnly: true
+        not_arrived_count:
+          type: integer
+          readOnly: true
+        first_arrival:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_arrival:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        median_arrival:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        span_minutes:
+          type: integer
+          readOnly: true
+        peak_hour:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        peak_total:
+          type: integer
+          readOnly: true
+        peak_share:
+          type: number
+          format: double
+          readOnly: true
+        vip_arrived:
+          type: integer
+          readOnly: true
+        vip_share:
+          type: number
+          format: double
+          readOnly: true
+        repeat_people:
+          type: integer
+          readOnly: true
+        repeat_share:
+          type: number
+          format: double
+          readOnly: true
+        doors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoorLoad'
+          readOnly: true
+        not_arrived:
+          type: array
+          items:
+            $ref: '#/components/schemas/AbsentVisitor'
+          readOnly: true
+        narrative:
+          type: array
+          items:
+            type: string
+          readOnly: true
+          description: The findings in sentences, in the order they should be read.
+      required:
+      - arrived
+      - attendance_rate
+      - doors
+      - first_arrival
+      - last_arrival
+      - median_arrival
+      - narrative
+      - not_arrived
+      - not_arrived_count
+      - peak_hour
+      - peak_share
+      - peak_total
+      - quiet_hours
+      - refusal_rate
+      - refused
+      - registered
+      - repeat_people
+      - repeat_share
+      - span_minutes
+      - vip_arrived
+      - vip_share
     ResultCounts:
       type: object
       description: Always all four keys, zero-filled — see counts_by_result().
