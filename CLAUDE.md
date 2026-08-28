@@ -424,10 +424,21 @@ font file to ship. The dashboard's on-screen badge uses Archivo and IBM Plex Mon
 so the printed card is close but not identical. That is the price of never
 depending on a font being installed.
 
-Card geometry is CR80, 85.6 × 54 mm: 3 mm edge band (amber for VIP), 24 × 32 mm
-portrait photo, name / country / organisation, serial in mono, QR 20 mm
-bottom-right. Bulk print lays 10 cards on an A4 sheet with cut marks in the
-margins at every grid line.
+Card geometry is CR80 **portrait**, 54 × 85.6 mm — the same blank stood on its
+end, because a lanyard holds a card by a slot in its short edge. Top to bottom: a
+12 mm punch guide for the slot, geometric corner motifs, a 19 mm circular photo
+(amber ring for VIP), the name in caps, a role line, `Registered` and `Country`
+rows, the serial in mono, and a 14 mm QR at the foot.
+
+Bulk print lays **9 cards on an A4 sheet**, 3 across by 3 down, with cut marks in
+the margins at every grid line. **A run of exactly one comes back as a single
+54 × 85.6 mm page instead of a sheet** — one card in the corner of A4 wastes the
+other eight slots and is useless to a card printer, and the registration desk
+prints one badge far more often than nine.
+
+`apps/badges/services.py` holds the geometry as millimetre constants, and
+`components/badge-card.tsx` in the dashboard mirrors it in `cqw` so the on-screen
+preview and the PDF cannot drift apart.
 
 ---
 
