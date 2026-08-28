@@ -118,6 +118,74 @@ paths:
           description: A CR80 badge PDF.
         '404':
           description: No visitor holds that token.
+  /api/v1/badges/export:
+    post:
+      operationId: badges_export_create
+      description: |-
+        DESTRUCTIVE. Every visitor in the file is given a NEW badge token, which invalidates the QR on any card already printed for them.
+
+        This is not a choice the endpoint makes: the raw token is stored nowhere, so a scannable QR can be minted but never recovered.
+
+        The workbook carries the QR as an image and the exact payload as text, so a card producer can re-render it at their own size. A second sheet spells out what the file is, because a spreadsheet outlives the click that made it.
+
+        Omit `visitor_ids` to take every visitor who has not been deleted.
+      summary: Reissue badges and export them as .xlsx with QR codes
+      tags:
+      - badges
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BadgeExportRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BadgeExportRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BadgeExportRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: An .xlsx workbook with one QR per visitor.
+  /api/v1/badges/reissue:
+    post:
+      operationId: badges_reissue_create
+      description: |-
+        DESTRUCTIVE. Every listed visitor is given a NEW badge token, which invalidates the QR on any card already printed for them.
+
+        Returns the raw tokens so a client can render the QR itself — on screen, or into its own layout. The server cannot return the token of an existing card, only of one it has just minted.
+
+        This response is the ONLY copy. Nothing stores it.
+      summary: Reissue badges and return their raw tokens
+      tags:
+      - badges
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BadgeReissueSheetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BadgeReissueSheetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BadgeReissueSheetRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReissueResponse'
+          description: ''
   /api/v1/badges/reissue-sheet:
     post:
       operationId: badges_reissue_sheet_create
@@ -126,8 +194,8 @@ paths:
 
         This is not a choice the endpoint makes: the raw token exists only at the moment it is created, so reprinting is impossible and reissuing is the only thing the server can do.
 
-        Ten cards per A4 sheet with cut marks; more than ten paginates.
-      summary: Reissue badges and render an A4 sheet
+        Nine cards per A4 sheet with cut marks; more than nine paginates. A run of exactly one comes back as a single 54x85.6mm card page instead, since one card on A4 wastes the sheet.
+      summary: Reissue badges and render a printable PDF
       tags:
       - badges
       requestBody:
@@ -151,7 +219,30 @@ paths:
               schema:
                 type: string
                 format: binary
-          description: An A4 sheet of badges as a PDF.
+          description: An A4 sheet of badges as a PDF, or a single CR80 card page
+            when exactly one visitor was requested.
+  /api/v1/badges/roster.xlsx:
+    get:
+      operationId: badges_roster_export_retrieve
+      description: |-
+        Who is registered, as a spreadsheet: serial, name, country, organisation, category, badge state and registration time.
+
+        NON-DESTRUCTIVE. Nothing is reissued and no card stops working.
+
+        There is no QR column. The server stores only `sha256(token)`, so it cannot reproduce the code on a card it has already printed — see POST /badges/export for a file that has one.
+      summary: Export the visitor roster as .xlsx
+      tags:
+      - badges
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: An .xlsx workbook.
   /api/v1/devices:
     get:
       operationId: devices_list
@@ -661,6 +752,23 @@ components:
           maxLength: 128
       required:
       - token
+    BadgeExportRequestRequest:
+      type: object
+      description: |-
+        Which visitors go into the credential spreadsheet.
+
+        Every one of them gets a NEW token, for the same reason the sheet does: the
+        server keeps only a digest, so a scannable QR can be minted but never
+        recovered. Omit the list to take everyone who is still registered.
+      properties:
+        visitor_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Visitors to reissue and export, in row order. Omit to export
+            every visitor who has not been deleted.
+          maxItems: 250
     BadgeReissueSheetRequestRequest:
       type: object
       description: |-
@@ -1058,6 +1166,49 @@ components:
       properties:
         refresh:
           type: string
+    ReissueResponse:
+      type: object
+      properties:
+        issued:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReissuedBadge'
+          readOnly: true
+      required:
+      - issued
+    ReissuedBadge:
+      type: object
+      description: |-
+        One reissued badge, including the RAW token.
+
+        This is the same disclosure `POST /visitors` already makes, and for the same
+        reason: the raw value exists for one moment and the caller gets the only copy.
+        Admin-only, and the response is never cached.
+      properties:
+        visitor_id:
+          type: string
+          format: uuid
+          readOnly: true
+        badge_serial:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+        token:
+          type: string
+          readOnly: true
+          description: The raw badge token, exactly as the QR must encode it. Not
+            stored; this response is the only copy.
+      required:
+      - badge_serial
+      - category
+      - full_name
+      - token
+      - visitor_id
     ResultCounts:
       type: object
       description: Always all four keys, zero-filled — see counts_by_result().
