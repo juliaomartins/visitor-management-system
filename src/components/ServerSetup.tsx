@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: "700",
     marginTop: spacing.xs,
   },
