@@ -92,6 +92,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/badges/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reissue badges and export them as .xlsx with QR codes
+         * @description DESTRUCTIVE. Every visitor in the file is given a NEW badge token, which invalidates the QR on any card already printed for them.
+         *
+         *     This is not a choice the endpoint makes: the raw token is stored nowhere, so a scannable QR can be minted but never recovered.
+         *
+         *     The workbook carries the QR as an image and the exact payload as text, so a card producer can re-render it at their own size. A second sheet spells out what the file is, because a spreadsheet outlives the click that made it.
+         *
+         *     Omit `visitor_ids` to take every visitor who has not been deleted.
+         */
+        post: operations["badges_export_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/badges/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reissue badges and return their raw tokens
+         * @description DESTRUCTIVE. Every listed visitor is given a NEW badge token, which invalidates the QR on any card already printed for them.
+         *
+         *     Returns the raw tokens so a client can render the QR itself — on screen, or into its own layout. The server cannot return the token of an existing card, only of one it has just minted.
+         *
+         *     This response is the ONLY copy. Nothing stores it.
+         */
+        post: operations["badges_reissue_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/badges/reissue-sheet": {
         parameters: {
             query?: never;
@@ -102,14 +152,38 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reissue badges and render an A4 sheet
+         * Reissue badges and render a printable PDF
          * @description DESTRUCTIVE. Every listed visitor is given a NEW badge token, which invalidates the QR on any card already printed for them, including one they are currently wearing.
          *
          *     This is not a choice the endpoint makes: the raw token exists only at the moment it is created, so reprinting is impossible and reissuing is the only thing the server can do.
          *
-         *     Ten cards per A4 sheet with cut marks; more than ten paginates.
+         *     Nine cards per A4 sheet with cut marks; more than nine paginates. A run of exactly one comes back as a single 54x85.6mm card page instead, since one card on A4 wastes the sheet.
          */
         post: operations["badges_reissue_sheet_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/badges/roster.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the visitor roster as .xlsx
+         * @description Who is registered, as a spreadsheet: serial, name, country, organisation, category, badge state and registration time.
+         *
+         *     NON-DESTRUCTIVE. Nothing is reissued and no card stops working.
+         *
+         *     There is no QR column. The server stores only `sha256(token)`, so it cannot reproduce the code on a card it has already printed — see POST /badges/export for a file that has one.
+         */
+        get: operations["badges_roster_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -392,6 +466,17 @@ export interface components {
             token: string;
         };
         /**
+         * @description Which visitors go into the credential spreadsheet.
+         *
+         *     Every one of them gets a NEW token, for the same reason the sheet does: the
+         *     server keeps only a digest, so a scannable QR can be minted but never
+         *     recovered. Omit the list to take everyone who is still registered.
+         */
+        BadgeExportRequestRequest: {
+            /** @description Visitors to reissue and export, in row order. Omit to export every visitor who has not been deleted. */
+            visitor_ids?: string[];
+        };
+        /**
          * @description Which visitors to put on the sheet.
          *
          *     Every one of them gets a NEW token — see the endpoint description. There is no
@@ -553,6 +638,25 @@ export interface components {
          */
         RefreshTokenRequest: {
             refresh?: string;
+        };
+        ReissueResponse: {
+            readonly issued: components["schemas"]["ReissuedBadge"][];
+        };
+        /**
+         * @description One reissued badge, including the RAW token.
+         *
+         *     This is the same disclosure `POST /visitors` already makes, and for the same
+         *     reason: the raw value exists for one moment and the caller gets the only copy.
+         *     Admin-only, and the response is never cached.
+         */
+        ReissuedBadge: {
+            /** Format: uuid */
+            readonly visitor_id: string;
+            readonly badge_serial: string;
+            readonly full_name: string;
+            readonly category: string;
+            /** @description The raw badge token, exactly as the QR must encode it. Not stored; this response is the only copy. */
+            readonly token: string;
         };
         /** @description Always all four keys, zero-filled — see counts_by_result(). */
         ResultCounts: {
@@ -883,6 +987,57 @@ export interface operations {
             };
         };
     };
+    badges_export_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BadgeExportRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BadgeExportRequestRequest"];
+                "multipart/form-data": components["schemas"]["BadgeExportRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description An .xlsx workbook with one QR per visitor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    badges_reissue_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BadgeReissueSheetRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BadgeReissueSheetRequestRequest"];
+                "multipart/form-data": components["schemas"]["BadgeReissueSheetRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReissueResponse"];
+                };
+            };
+        };
+    };
     badges_reissue_sheet_create: {
         parameters: {
             query?: never;
@@ -898,7 +1053,27 @@ export interface operations {
             };
         };
         responses: {
-            /** @description An A4 sheet of badges as a PDF. */
+            /** @description An A4 sheet of badges as a PDF, or a single CR80 card page when exactly one visitor was requested. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    badges_roster_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An .xlsx workbook. */
             200: {
                 headers: {
                     [name: string]: unknown;
