@@ -3,8 +3,11 @@
 import { motion } from "framer-motion";
 import { useRef } from "react";
 
+import { ArrivalQueue } from "@/components/ArrivalQueue";
+import { FitText } from "@/components/FitText";
 import { ParticleBurst } from "@/components/ParticleBurst";
 import { gsap, prefersReducedMotion, SplitText, useGSAP } from "@/lib/gsap";
+import { clampPx, useViewport } from "@/hooks/useViewport";
 import type { ScreenEvent } from "@/lib/api";
 
 /**
@@ -28,24 +31,54 @@ import type { ScreenEvent } from "@/lib/api";
  */
 export function WelcomeCard({
   event,
-  hasStrip = false,
+  queued = [],
 }: {
   event: ScreenEvent;
-  hasStrip?: boolean;
+  queued?: ScreenEvent[];
 }) {
-  return <ArrivalStage event={event} vip={false} hasStrip={hasStrip} />;
+  return <ArrivalStage event={event} vip={false} queued={queued} />;
 }
 
 export function ArrivalStage({
   event,
   vip,
-  hasStrip = false,
+  queued = [],
 }: {
   event: ScreenEvent;
   vip: boolean;
-  /** True when arrivals are queued behind this one, so the strip has its band. */
-  hasStrip?: boolean;
+  /** Arrivals waiting behind this one. They get their own column, never an overlay. */
+  queued?: ScreenEvent[];
 }) {
+  const hasQueue = queued.length > 0;
+  const { width, height } = useViewport();
+
+  /*
+    Sizes in pixels, because FitText measures against pixels.
+
+    Derived from BOTH axes, never one. A width-only rule is enormous on a short
+    projector; a height-only rule is tiny on a wide panel. `min()` of the two is
+    correct on 1366x768, 1920x1080, 3840x2160 and a rotated panel alike, with no
+    breakpoint deciding which case we are in.
+  */
+  const headline = {
+    max: clampPx(28, Math.min(width * 0.075, height * 0.115), 168),
+    min: 28,
+  };
+
+  /*
+    THE LEGIBILITY FLOOR IS 44px, and it is a real limit, not a guess at a nice
+    number. A capital letter is about 0.7 of the font size, so 44px is roughly
+    8mm of cap height on a 96dpi panel — around the smallest that resolves at
+    five metres for someone who is not looking for it. Below that a name is not
+    "smaller", it is gone, and the screen has failed at its one job.
+
+    So the name stops there and the PHOTO gives up its height instead. Identity
+    beats decoration.
+  */
+  const name = {
+    max: clampPx(44, Math.min(width * 0.055, height * 0.085), 132),
+    min: 44,
+  };
   const root = useRef<HTMLDivElement | null>(null);
   useArrivalAnimation(root, vip);
 
@@ -54,9 +87,18 @@ export function ArrivalStage({
   const status = vip ? "VIP Visitor" : "Visitor";
 
   return (
+    /*
+      A GRID, NOT A STACK WITH OVERLAYS.
+
+      Three reserved regions: the header row, the content row, and the wave
+      behind both. The previous layout centred a content column that was taller
+      than its container, and centred overflow clips at BOTH ends — which is why
+      the headline lost its top edge. A row cannot clip its sibling, and a column
+      cannot cover one.
+    */
     <div
       ref={root}
-      className="relative flex h-full w-full flex-col overflow-hidden"
+      className="relative grid h-full w-full grid-rows-[auto_minmax(0,1fr)] overflow-hidden"
       style={{ ["--accent" as string]: accent, ["--deep" as string]: deep }}
     >
       {/* A wash behind the face, so the photo sits in light rather than on a
@@ -74,114 +116,166 @@ export function ArrivalStage({
       <Header event={event} />
 
       <div
-        className={`relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-[5vw] ${
-          hasStrip
-            ? "pb-[clamp(9rem,20vh,13rem)]"
-            : "pb-[clamp(0.75rem,4vh,4rem)]"
+        /*
+          ORIENTATION, NOT A WIDTH BREAKPOINT.
+
+          `lg:` asks how wide the window is, which gets a rotated 1080x1920 panel
+          wrong in the worst way: 1080px clears the `lg` threshold, so a portrait
+          wall would put the queue in a column beside a hero that has no width to
+          spare. The question is the SHAPE of the viewport, so the query asks
+          about the shape — landscape and wide enough for two columns, otherwise
+          stacked with the queue underneath.
+        */
+        className={`relative z-10 grid min-h-0 gap-[clamp(0.5rem,2vw,2.5rem)] px-[clamp(0.75rem,2.5vw,3rem)] pb-[clamp(0.5rem,2.5vh,2rem)] ${
+          hasQueue
+            ? "grid-rows-[minmax(0,1.55fr)_minmax(0,1fr)] [@media(orientation:landscape)and(min-width:900px)]:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] [@media(orientation:landscape)and(min-width:900px)]:grid-rows-1"
+            : "grid-cols-1"
         }`}
       >
-        <p
-          data-greeting
-          className={`font-serif leading-none text-ink italic ${
-            hasStrip
-              ? "text-[clamp(1rem,min(3vw,4vh),2.5rem)]"
-              : "text-[clamp(1.15rem,min(4.4vw,6vh),4rem)]"
-          }`}
-        >
-          Welcome
-        </p>
+        <div className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-[clamp(0.25rem,1vh,1rem)]">
+          <p
+            data-greeting
+            className="shrink-0 font-serif text-[clamp(1.15rem,min(4.4vw,6vh),4rem)] leading-none text-ink italic"
+          >
+            Welcome
+          </p>
 
-        <h1
-          data-headline
-          className={`mt-[0.12em] text-center leading-[0.92] font-bold tracking-[-0.02em] uppercase ${
-            hasStrip
-              ? "text-[clamp(1.25rem,min(5.5vw,8vh),5.5rem)]"
-              : "text-[clamp(1.5rem,min(8.6vw,12vh),8.5rem)]"
-          }`}
-          style={{ color: "var(--accent)" }}
-        >
-          To the Expo
-        </h1>
-
-        <div className="mt-[clamp(0.5rem,2.5vh,3rem)] flex items-center gap-[clamp(0.75rem,4vw,4rem)]">
-          <Dots />
-
-          <div data-photo className="relative shrink-0">
-            {/*
-              THE SHARED ELEMENT. `ArrivalStrip` renders a thumbnail carrying the
-              same layoutId, so a promotion animates that thumbnail into this
-              position and size as one continuous move — the face travels rather
-              than one card fading out while another fades in.
-
-              The `lg:` floor is the 3–5 metre constraint made literal: 400px on
-              the lobby panel. Below `lg` this is a phone held at arm's length —
-              somebody checking the screen is alive — where 400px would overflow
-              a 375px-tall viewport, so the min() clamp still governs there.
-            */}
-            <motion.div
-              layoutId={`arrival-photo-${event.id}`}
-              transition={{ type: "spring", stiffness: 240, damping: 30 }}
-              className="aspect-square w-[clamp(84px,min(26vh,22vw),340px)] overflow-hidden rounded-full bg-stage-raised lg:w-[clamp(400px,min(38vh,26vw),460px)]"
-              style={{ boxShadow: "0 0 0 clamp(4px,0.6vh,9px) var(--accent)" }}
+          {/* Measured too. It is a fixed string, but the box it has to fit in
+              is not — at some widths the letters were escaping their column. */}
+          <div
+            data-headline
+            className="w-full shrink-0"
+            style={{ color: "var(--accent)" }}
+          >
+            <FitText
+              as="h1"
+              max={headline.max}
+              min={headline.min}
+              maxLines={1}
+              lineHeight={0.95}
+              className="text-center font-bold tracking-[-0.02em] uppercase"
             >
-              {event.photo_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={event.photo_url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  draggable={false}
-                />
-              ) : null}
-            </motion.div>
-
-            {/* Thrown from the centre of the face, so the burst reads as coming
-                off the person rather than off the layout. */}
-            <ParticleBurst burstKey={event.id} vip={vip} />
+              To the Expo
+            </FitText>
           </div>
 
-          <Dots />
-        </div>
+          {/*
+            THE ROW THAT YIELDS, and a size container so the photo can be sized
+            from what is left rather than from the viewport.
 
-        {/* The name, in a plate. The reference's strongest move: it lifts the one
+            `flex-1 min-h-0` means every fixed-height sibling — greeting,
+            headline, name plate, detail line — takes its height first and this
+            row gets the remainder, however small that is. `container-type:size`
+            then publishes that remainder as `cqh`, which is the only honest
+            source for the photo's size: `vh` describes the window, not the room
+            actually left after a three-line name.
+          */}
+          <div className="mt-[clamp(0.5rem,2.5vh,3rem)] flex min-h-0 flex-1 items-center justify-center gap-[clamp(0.75rem,4vw,4rem)] [container-type:size]">
+            <Dots />
+
+            <div data-photo className="relative flex min-h-0 items-center justify-center self-stretch">
+              {/*
+                THE SHARED ELEMENT. `ArrivalQueue` renders a row carrying the same
+                layoutId, so a promotion animates that avatar into this position
+                and size as one continuous move — the face travels rather than one
+                card fading out while another fades in.
+
+                NO HARD PIXEL FLOOR. A `min-width: 400px` here read as "hold
+                the 3–5 metre spec", but on a 1366x768 projector it forced 400px
+                into a 768px-tall viewport and pushed the name off the bottom —
+                the floor caused the overflow it was meant to prevent.
+
+                AND NO `vh` EITHER, which was the second attempt and was also
+                wrong. `shrink` cannot shrink this: `aspect-square` with an
+                explicit width means the width is definite and the height merely
+                derived, so flex has nothing to take and `max-h-full` only
+                clips. A viewport-derived width is the same size whether the
+                name took one line or three.
+
+                `100cqh` is the row's OWN height — the space remaining after the
+                text has been served — so a third line of name shrinks the face
+                by exactly the height that line consumed. `58cqw` keeps it from
+                outgrowing the column on a short wide panel, and 760px stops a
+                4K wall turning it into a billboard.
+              */}
+              <motion.div
+                layoutId={`arrival-photo-${event.id}`}
+                transition={{ type: "spring", stiffness: 240, damping: 30 }}
+                className="aspect-square w-[min(100cqh,58cqw,760px)] overflow-hidden rounded-full bg-stage-raised"
+                style={{
+                  boxShadow: "0 0 0 clamp(3px,0.55vh,9px) var(--accent)",
+                }}
+              >
+                {event.photo_url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={event.photo_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                ) : null}
+              </motion.div>
+
+              {/* Thrown from the centre of the face, so the burst reads as coming
+                off the person rather than off the layout. */}
+              <ParticleBurst burstKey={event.id} vip={vip} />
+            </div>
+
+            <Dots />
+          </div>
+
+          {/* The name, in a plate. The reference's strongest move: it lifts the one
             string that matters off the background entirely. */}
-        <div
-          data-plate
-          className="mt-[clamp(-1.1rem,-2vh,-0.8rem)] max-w-[92vw] rounded-full bg-ink px-[clamp(1.4rem,4vw,3.5rem)] py-[clamp(0.5rem,1.4vh,1.1rem)]"
-        >
-          <p
-            data-name
-            className="text-center text-[clamp(0.85rem,min(3.4vw,4.6vh),3rem)] leading-tight font-bold tracking-[-0.01em] text-stage uppercase lg:text-[clamp(72px,min(4.4vw,7.4vh),92px)]"
+          {/*
+            `shrink-0`, so the plate keeps whatever height the name needs and the
+            photo above gives up the difference. This is the whole ordering rule:
+            a face the guest can recognise is worth less than a name they can read.
+          */}
+          <div
+            data-plate
+            className="w-full max-w-full shrink-0 rounded-full bg-ink px-[clamp(1rem,3vw,3rem)] py-[clamp(0.4rem,1.2vh,1rem)]"
           >
-            {event.full_name}
+            <FitText
+              max={name.max}
+              min={name.min}
+              maxLines={3}
+              lineHeight={1.04}
+              className="text-center font-bold tracking-[-0.01em] text-stage uppercase"
+            >
+              {event.full_name}
+            </FitText>
+          </div>
+
+          <p
+            data-line
+            className="mt-[clamp(0.6rem,2vh,2rem)] shrink-0 text-center text-[clamp(0.8rem,min(2.2vw,3vh),2rem)] leading-tight font-medium text-ink-soft"
+          >
+            {event.country}
+            {event.organization ? (
+              <>
+                <span aria-hidden className="mx-[0.6em] text-ink-faint">
+                  ·
+                </span>
+                {event.organization}
+              </>
+            ) : null}
+          </p>
+
+          <p
+            data-line
+            className="mt-[clamp(0.5rem,1.5vh,1.4rem)] rounded-full px-[clamp(0.9rem,2vw,1.6rem)] py-[clamp(0.25rem,0.7vh,0.5rem)] text-[clamp(0.6rem,min(1.5vw,2vh),1.35rem)] font-bold tracking-[0.28em] uppercase"
+            style={{
+              color: "var(--accent)",
+              border:
+                "1px solid color-mix(in srgb, var(--accent) 45%, transparent)",
+            }}
+          >
+            {status}
           </p>
         </div>
 
-        <p
-          data-line
-          className="mt-[clamp(0.6rem,2vh,2rem)] text-center text-[clamp(0.8rem,min(2.2vw,3vh),2rem)] leading-tight font-medium text-ink-soft"
-        >
-          {event.country}
-          {event.organization ? (
-            <>
-              <span aria-hidden className="mx-[0.6em] text-ink-faint">
-                ·
-              </span>
-              {event.organization}
-            </>
-          ) : null}
-        </p>
-
-        <p
-          data-line
-          className="mt-[clamp(0.5rem,1.5vh,1.4rem)] rounded-full px-[clamp(0.9rem,2vw,1.6rem)] py-[clamp(0.25rem,0.7vh,0.5rem)] text-[clamp(0.6rem,min(1.5vw,2vh),1.35rem)] font-bold tracking-[0.28em] uppercase"
-          style={{
-            color: "var(--accent)",
-            border: "1px solid color-mix(in srgb, var(--accent) 45%, transparent)",
-          }}
-        >
-          {status}
-        </p>
+        {hasQueue ? <ArrivalQueue queued={queued} /> : null}
       </div>
 
       <Wave />
@@ -247,7 +341,7 @@ function Wave() {
     <div
       aria-hidden
       data-wave
-      className="pointer-events-none absolute inset-x-0 bottom-0 h-[clamp(44px,13vh,190px)]"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[clamp(44px,13vh,190px)]"
     >
       <svg
         viewBox="0 0 1440 200"
@@ -307,10 +401,16 @@ export function useArrivalAnimation(
       const dots = host.querySelectorAll<HTMLElement>("[data-dots] span");
       const lines = host.querySelectorAll<HTMLElement>("[data-line]");
 
-      if (wash) timeline.from(wash, { duration: 1.1, opacity: 0, scale: 0.8 }, 0);
+      if (wash)
+        timeline.from(wash, { duration: 1.1, opacity: 0, scale: 0.8 }, 0);
       if (wave)
-        timeline.from(wave, { duration: 0.9, yPercent: 100, ease: "expo.out" }, 0);
-      if (header) timeline.from(header, { duration: 0.6, y: -24, opacity: 0 }, 0.1);
+        timeline.from(
+          wave,
+          { duration: 0.9, yPercent: 100, ease: "expo.out" },
+          0,
+        );
+      if (header)
+        timeline.from(header, { duration: 0.6, y: -24, opacity: 0 }, 0.1);
 
       if (greeting) {
         timeline.from(greeting, { duration: 0.6, y: 26, opacity: 0 }, 0.15);
