@@ -24,6 +24,7 @@ export function VisitorForm({
   initial,
   existingPhotoUrl,
   badgeSerial,
+  registeredAt,
   submitting,
   formError,
   fieldErrors,
@@ -35,6 +36,8 @@ export function VisitorForm({
   existingPhotoUrl?: string;
   /** Known when editing; on registration the server assigns it. */
   badgeSerial?: string;
+  /** Known when editing. On registration the card will carry today's date. */
+  registeredAt?: string;
   submitting: boolean;
   formError?: string;
   fieldErrors?: FieldErrors;
@@ -126,14 +129,14 @@ export function VisitorForm({
 
         <fieldset>
           <legend className="text-xs font-medium text-ink-2">Category</legend>
-          <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {CATEGORIES.map((option) => (
               <label
                 key={option.value}
-                className={`cursor-pointer rounded-md border px-3.5 py-3 transition-colors ${
+                className={`cursor-pointer rounded-2xl px-4 py-3.5 transition-colors ${
                   category === option.value
-                    ? "border-ink bg-ink/5"
-                    : "border-line-strong hover:border-ink/40"
+                    ? "bg-graphite-950 text-white"
+                    : "bg-card-2 hover:bg-line"
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -143,13 +146,21 @@ export function VisitorForm({
                     value={option.value}
                     checked={category === option.value}
                     onChange={() => setCategory(option.value)}
-                    className="accent-ink"
+                    className="accent-accent"
                   />
-                  <span className="text-sm font-medium text-ink">
+                  <span
+                    className={`text-sm font-medium ${
+                      category === option.value ? "text-white" : "text-ink"
+                    }`}
+                  >
                     {option.label}
                   </span>
                 </span>
-                <span className="mt-0.5 block pl-6 text-xs text-ink-3">
+                <span
+                  className={`mt-0.5 block pl-6 text-xs ${
+                    category === option.value ? "text-graphite-300" : "text-ink-3"
+                  }`}
+                >
                   {option.note}
                 </span>
               </label>
@@ -165,7 +176,7 @@ export function VisitorForm({
         {formError ? (
           <p
             role="alert"
-            className="rounded-md bg-revoked-soft px-3 py-2.5 text-sm text-revoked"
+            className="rounded-2xl bg-revoked-soft px-4 py-3 text-sm text-revoked"
           >
             {formError}
           </p>
@@ -175,7 +186,7 @@ export function VisitorForm({
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-graphite-800 disabled:opacity-70"
+            className="btn btn-primary disabled:opacity-70"
           >
             {submitting
               ? mode === "create"
@@ -188,14 +199,14 @@ export function VisitorForm({
 
           <Link
             href={cancelHref}
-            className="rounded-md px-3 py-2.5 text-sm text-ink-2 transition-colors hover:text-ink"
+            className="btn btn-ghost"
           >
             Cancel
           </Link>
         </div>
       </div>
 
-      <div className="w-full lg:w-80">
+      <div className="w-full lg:w-64">
         {/*
           The card, updating as the form is filled in. A name too long for the
           plate, a photo cropped through someone's chin, a VIP band that was
@@ -214,6 +225,7 @@ export function VisitorForm({
               badge_serial: badgeSerial ?? PENDING_SERIAL,
               photo: previewUrl ?? existingPhotoUrl ?? "",
               category,
+              created_at: registeredAt ?? new Date().toISOString(),
             }}
             width="100%"
             detail
@@ -275,10 +287,10 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-        className={`mt-1.5 w-full rounded-md border bg-card px-3 py-2.5 text-sm text-ink transition-colors ${
+        className={`field mt-1.5 ${
           error
-            ? "border-revoked focus:border-revoked"
-            : "border-line-strong focus:border-ink"
+            ? "bg-revoked-soft"
+            : "bg-card-2 focus:bg-white"
         }`}
       />
       {error ? (
