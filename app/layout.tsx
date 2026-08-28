@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo } from "next/font/google";
+import { Archivo, Instrument_Serif } from "next/font/google";
 
 import "./globals.css";
 
@@ -10,6 +10,21 @@ import "./globals.css";
 const archivo = Archivo({
   variable: "--font-archivo",
   subsets: ["latin"],
+  display: "swap",
+});
+
+/**
+ * Instrument Serif, italic, for the single word "Welcome".
+ *
+ * The greeting and the information should not be set in the same voice. One
+ * weight, one style, one word — anything more and it stops being a flourish and
+ * starts being a second typeface to manage.
+ */
+const instrument = Instrument_Serif({
+  variable: "--font-instrument",
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
   display: "swap",
 });
 
@@ -29,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${archivo.variable} h-full`}>
+    <html lang="en" className={`${archivo.variable} ${instrument.variable} h-full`}>
       <body className="h-full font-display antialiased">{children}</body>
     </html>
   );
