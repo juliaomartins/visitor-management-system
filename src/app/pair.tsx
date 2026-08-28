@@ -4,6 +4,16 @@
  * Someone reads a 6-character code off the dashboard and types it here. That is
  * the whole of this screen, and the whole of this app's authentication — there is
  * no login screen and there will not be one (CLAUDE.md constraint #4).
+ *
+ * Laid out like the lobby screen's pairing page and the dashboard's sign-in: a
+ * mark, a title, one line of instruction, the field, one button, and the server
+ * address kept quiet at the foot. Three surfaces doing the same job should not
+ * each invent their own shape.
+ *
+ * THE CODE COUNTER IS GONE — a rule fills instead, which says the same thing
+ * without asking anyone to read "4 of 6" while typing. The device NAME STAYS:
+ * there are several phones on several doors, and that name is how the devices
+ * page tells a quiet door from a dead phone.
  */
 import { router } from "expo-router";
 import { useState } from "react";
@@ -23,7 +33,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError, NetworkError } from "@/api/client";
 import { ServerSetup } from "@/components/ServerSetup";
 import { useServer } from "@/hooks/useServer";
-import { CODE_LENGTH, normaliseCode, pairDevice, suggestedDeviceName } from "@/api/pairing";
+import {
+  CODE_LENGTH,
+  normaliseCode,
+  pairDevice,
+  suggestedDeviceName,
+} from "@/api/pairing";
 import { useSession } from "@/session";
 import { colors, HIT_SIZE, radius, spacing } from "@/theme";
 
@@ -81,18 +96,21 @@ export default function PairScreen() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <View>
-            <Text style={styles.eyebrow}>VMS SCANNER</Text>
+          <View style={styles.header}>
+            <View style={styles.mark}>
+              <Text style={styles.markLetter}>V</Text>
+            </View>
+            <Text style={styles.markLabel}>VISITOR{"\n"}MANAGEMENT</Text>
+          </View>
+
+          <View style={styles.intro}>
             <Text style={styles.title}>Pair this phone</Text>
             <Text style={styles.body}>
-              Open the dashboard, generate a scanner pairing code, and type it below.
-              You only do this once — after pairing, this app opens straight to the
-              camera.
+              Enter the scanner pairing code from the dashboard.
             </Text>
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Pairing code</Text>
+          <View>
             <TextInput
               value={code}
               onChangeText={(next) => {
@@ -113,13 +131,20 @@ export default function PairScreen() {
               style={styles.codeInput}
               accessibilityLabel="Six character pairing code"
             />
-            <Text style={styles.counter}>
-              {code.length} of {CODE_LENGTH}
-            </Text>
+
+            {/* Progress without a number to read: the rule fills as they type. */}
+            <View style={styles.track}>
+              <View
+                style={[
+                  styles.trackFill,
+                  { width: `${(code.length / CODE_LENGTH) * 100}%` },
+                ]}
+              />
+            </View>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Name this device</Text>
+            <Text style={styles.label}>Name this phone</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -130,9 +155,6 @@ export default function PairScreen() {
               style={styles.nameInput}
               accessibilityLabel="Device name"
             />
-            <Text style={styles.hint}>
-              Shown in the dashboard and against every scan this phone records.
-            </Text>
           </View>
 
           {!storageAvailable ? (
@@ -161,7 +183,7 @@ export default function PairScreen() {
             {busy ? (
               <ActivityIndicator color={colors.onAccent} />
             ) : (
-              <Text style={styles.buttonLabel}>Pair device</Text>
+              <Text style={styles.buttonLabel}>Pair phone</Text>
             )}
           </Pressable>
 
@@ -186,51 +208,83 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     padding: spacing.lg,
-    gap: spacing.xl,
+    gap: spacing.lg,
     justifyContent: "center",
   },
-  eyebrow: {
-    color: colors.textFaint,
-    fontSize: 12,
-    letterSpacing: 2,
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  mark: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: colors.text,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  markLetter: {
+    color: colors.background,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  markLabel: {
+    color: colors.textMuted,
+    fontSize: 10,
+    lineHeight: 12,
+    letterSpacing: 1.6,
     fontWeight: "600",
   },
+
+  intro: { alignItems: "center", gap: spacing.sm },
   title: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: "700",
-    marginTop: spacing.xs,
+    textAlign: "center",
   },
   body: {
     color: colors.textMuted,
     fontSize: 16,
-    lineHeight: 24,
-    marginTop: spacing.md,
+    lineHeight: 23,
+    textAlign: "center",
   },
+
+  codeInput: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    color: colors.text,
+    fontSize: 34,
+    fontWeight: "700",
+    letterSpacing: 10,
+    textAlign: "center",
+    paddingVertical: spacing.lg,
+    fontVariant: ["tabular-nums"],
+  },
+  track: {
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: colors.border,
+    marginTop: spacing.sm,
+    overflow: "hidden",
+  },
+  trackFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+  },
+
   field: { gap: spacing.sm },
   label: {
     color: colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.5,
-  },
-  codeInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    color: colors.text,
-    fontSize: 34,
-    fontWeight: "700",
-    letterSpacing: 10,
-    textAlign: "center",
-    paddingVertical: spacing.md,
-    fontVariant: ["tabular-nums"],
-  },
-  counter: {
-    color: colors.textFaint,
-    fontSize: 12,
-    textAlign: "center",
   },
   nameInput: {
     backgroundColor: colors.surface,
@@ -242,18 +296,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
-  hint: { color: colors.textFaint, fontSize: 13 },
+
   error: {
     color: colors.invalid,
     fontSize: 15,
     lineHeight: 22,
     backgroundColor: "#2A1116",
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     padding: spacing.md,
   },
+
   button: {
     backgroundColor: colors.accent,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     minHeight: HIT_SIZE,
     alignItems: "center",
     justifyContent: "center",
@@ -265,6 +320,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
+
   server: {
     color: colors.textFaint,
     fontSize: 12,
