@@ -17,10 +17,10 @@ import type { ScreenEvent } from "@/lib/api";
  */
 export function VipWelcomeCard({
   event,
-  hasStrip = false,
+  queued = [],
 }: {
   event: ScreenEvent;
-  hasStrip?: boolean;
+  queued?: ScreenEvent[];
 }) {
-  return <ArrivalStage event={event} vip hasStrip={hasStrip} />;
+  return <ArrivalStage event={event} vip queued={queued} />;
 }
