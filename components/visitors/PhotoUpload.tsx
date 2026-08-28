@@ -216,7 +216,7 @@ export function PhotoUpload({
         </span>
       </div>
 
-      <div className="mt-1.5 rounded-md border border-line-strong bg-card p-4">
+      <div className="mt-1.5 rounded-2xl border border-line-strong bg-card p-4">
         {loaded ? (
           <>
             <canvas
@@ -227,7 +227,7 @@ export function PhotoUpload({
               role="img"
               aria-label="Badge photo crop. Drag to reposition, or use the arrow keys."
               style={{ width: STAGE_WIDTH, height: STAGE_HEIGHT }}
-              className="max-w-full cursor-grab touch-none rounded bg-graphite-950 active:cursor-grabbing"
+              className="max-w-full cursor-grab touch-none rounded-2xl bg-graphite-950 active:cursor-grabbing"
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId);
                 dragRef.current = {
@@ -286,7 +286,7 @@ export function PhotoUpload({
                 onChange={(event) => zoomTo(Number(event.target.value))}
                 className="h-1 flex-1 accent-ink"
               />
-              <label className="cursor-pointer rounded-md border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-line-strong hover:text-ink">
+              <label className="btn btn-ghost cursor-pointer px-3 py-1.5 text-xs">
                 Replace
                 <input
                   type="file"
@@ -299,7 +299,7 @@ export function PhotoUpload({
           </>
         ) : (
           <label
-            className="flex cursor-pointer flex-col items-center justify-center rounded border border-dashed border-line-strong px-6 py-10 text-center hover:border-ink"
+            className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-line-strong px-6 py-12 text-center transition-colors hover:border-accent hover:bg-card-2"
             style={{ minHeight: STAGE_HEIGHT }}
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
@@ -312,7 +312,7 @@ export function PhotoUpload({
               <img
                 src={existingUrl}
                 alt="Photo currently on file"
-                className="mb-4 h-24 rounded object-cover"
+                className="mb-4 h-24 rounded-xl object-cover"
                 style={{ aspectRatio: PHOTO_ASPECT }}
               />
             ) : null}
