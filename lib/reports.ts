@@ -79,31 +79,100 @@ export function useEntryReport(filters: ReportFilters) {
  * link would simply 401. Fetching with the bearer token and handing the browser a
  * blob is the way to get an authenticated download.
  */
-export async function downloadEntriesCsv(filters: ReportFilters): Promise<void> {
+/**
+ * Turn a failed download into something actionable.
+ *
+ * A 404 on an export route means exactly one thing: the server does not have
+ * that route, so it is running an older build than this page. The dashboard
+ * rebuilds the instant its source changes; the backend only picks up new code
+ * when uvicorn is restarted by hand, and there is always a window between the
+ * two. "HTTP 404" is true and tells nobody what to do about it.
+ */
+function describeExportFailure(status: number, what: string): string {
+  if (status === 404) {
+    return (
+      `${what} is not available on the server yet — it is running an older ` +
+      "build than this page. Restart the backend and try again."
+    );
+  }
+  if (status === 401 || status === 403) {
+    return "Your session expired. Reload the page and sign in again.";
+  }
+  if (status >= 500) {
+    return `The server could not build ${what.toLowerCase()} (HTTP ${status}).`;
+  }
+  return `${what} could not be downloaded (HTTP ${status}).`;
+}
+
+export type ReportFormat = "csv" | "xlsx" | "pdf";
+
+/** What each format is actually for, in the words the button uses. */
+export const REPORT_FORMATS: {
+  format: ReportFormat;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    format: "pdf",
+    label: "PDF report",
+    hint: "The written report — findings, charts and tables. For sending on.",
+  },
+  {
+    format: "xlsx",
+    label: "Excel workbook",
+    hint: "Six sheets, figures as numbers. For anyone who wants to pivot it.",
+  },
+  {
+    format: "csv",
+    label: "CSV log",
+    hint: "The raw scan log, one row per badge presented. No analysis.",
+  },
+];
+
+/**
+ * Fetch an export and hand it to the browser.
+ *
+ * Every format goes through a blob for the same reason: a plain anchor carries
+ * no Authorization header and would simply 401.
+ *
+ * The filename comes from the server where it offers one — it carries the
+ * event's local date range, which is the thing that makes a folder of these
+ * navigable a month later.
+ */
+export async function downloadEntriesExport(
+  filters: ReportFilters,
+  format: ReportFormat,
+): Promise<void> {
   await ensureAccessToken();
 
   const response = await fetch(
-    `/api/v1/reports/entries.csv?${new URLSearchParams(toQuery(filters))}`,
+    `/api/v1/reports/entries.${format}?${new URLSearchParams(toQuery(filters))}`,
     { headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` } },
   );
 
   if (!response.ok) {
-    throw new ApiError(`The export failed (HTTP ${response.status}).`);
+    const what =
+      REPORT_FORMATS.find((option) => option.format === format)?.label ??
+      "The export";
+    throw new ApiError(describeExportFailure(response.status, what));
   }
 
-  // Prefer the filename the server chose — it carries the event's local date.
   const disposition = response.headers.get("Content-Disposition") ?? "";
   const named = /filename="?([^";]+)"?/.exec(disposition)?.[1];
 
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(await response.blob());
 
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = named ?? `entrance-log-${filters.from}.csv`;
+  anchor.download = named ?? `entrance-report-${filters.from}.${format}`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
 
   URL.revokeObjectURL(url);
+}
+
+/** Kept so nothing that already asked for a CSV has to change. */
+export async function downloadEntriesCsv(filters: ReportFilters): Promise<void> {
+  return downloadEntriesExport(filters, "csv");
 }
