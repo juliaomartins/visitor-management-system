@@ -49,7 +49,7 @@ export function RevokeDialog({
       }}
       onClose={onCancel}
       aria-labelledby="revoke-title"
-      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-line bg-card p-0 text-ink backdrop:bg-graphite-950/60"
+      className="m-auto w-[min(28rem,calc(100vw-2rem))] card p-0 text-ink backdrop:bg-graphite-950/60"
     >
       <div className="px-6 py-6">
         <h2 id="revoke-title" className="text-lg font-semibold tracking-tight">
@@ -74,7 +74,7 @@ export function RevokeDialog({
         {error ? (
           <p
             role="alert"
-            className="mt-4 rounded-md bg-revoked-soft px-3 py-2.5 text-sm text-revoked"
+            className="mt-4 rounded-2xl bg-revoked-soft px-4 py-3 text-sm text-revoked"
           >
             {error}
           </p>
@@ -85,7 +85,7 @@ export function RevokeDialog({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-md px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink disabled:opacity-60"
+            className="btn btn-ghost disabled:opacity-60"
           >
             Keep it active
           </button>
@@ -93,7 +93,7 @@ export function RevokeDialog({
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className="rounded-md bg-revoked px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-70"
+            className="btn btn-danger disabled:opacity-70"
           >
             {pending ? "Revoking…" : "Revoke badge"}
           </button>
