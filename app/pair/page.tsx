@@ -11,18 +11,25 @@ import { getDeviceToken, setDeviceToken } from "@/lib/device-token";
 /**
  * Setup, once, on the machine that will run the wall.
  *
- * Whoever does this is standing at the kiosk with a keyboard, reading a code off
- * a laptop across the room — so the input is large and the type is big, the same
- * reasoning as the dashboard's code panel but from the other end.
+ * One field and one button. Whoever does this is standing at a kiosk reading six
+ * characters off a laptop across the room, so the code is the screen — everything
+ * else is small enough to ignore.
+ *
+ * THE NAME FIELD IS GONE. There is one lobby screen in this deployment, so asking
+ * an installer to name it was asking them to make a decision with one right
+ * answer. The dashboard already shows the kind and the last-seen time, which is
+ * what anyone actually looks for. Guard phones still take a name, because there
+ * are several of them and the name is how you tell a quiet door from a dead one.
  *
  * After this the machine is switched on each morning and goes straight to the
  * display. There is no sign-in and nothing to remember.
  */
+const SCREEN_NAME = "Lobby screen";
+
 export default function PairPage() {
   const router = useRouter();
   const server = useServer();
   const [code, setCode] = useState("");
-  const [name, setName] = useState("Lobby screen");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -31,26 +38,24 @@ export default function PairPage() {
     if (getDeviceToken()) router.replace("/");
   }, [router]);
 
+  const ready = code.length === CODE_LENGTH && !busy;
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (code.length !== CODE_LENGTH || busy) return;
+    if (!ready) return;
 
     setBusy(true);
     setError(null);
 
     try {
-      const device = await pairScreen(
-        server.origin ?? "",
-        code,
-        name.trim() || "Lobby screen",
-      );
+      const device = await pairScreen(server.origin ?? "", code, SCREEN_NAME);
       setDeviceToken(device.token);
       router.replace("/");
     } catch (cause) {
       setError(
         cause instanceof ApiError
           ? cause.message
-          : `Could not reach ${server.origin ?? "the server"}. Check this machine is on the event network.`,
+          : "Could not reach the server. Check this machine is on the event network.",
       );
       setBusy(false);
     }
@@ -62,21 +67,31 @@ export default function PairPage() {
   }
 
   return (
-    <main className="flex h-dvh w-dvw items-center justify-center bg-stage px-8">
-      <form onSubmit={submit} className="w-full max-w-xl">
-        <p className="text-sm font-semibold tracking-[0.3em] text-ink-faint uppercase">
-          Lobby screen
-        </p>
-        <h1 className="mt-2 text-5xl font-bold tracking-tight text-ink">
+    <main className="flex h-dvh w-dvw flex-col items-center justify-center bg-stage px-6">
+      <form onSubmit={submit} className="w-full max-w-md text-center">
+        <div className="flex items-center justify-center gap-2.5">
+          <span
+            aria-hidden
+            className="flex aspect-square w-9 items-center justify-center rounded-[28%] bg-ink text-sm font-bold text-stage"
+          >
+            V
+          </span>
+          <span className="text-left text-[0.68rem] leading-[1.15] font-semibold tracking-[0.16em] text-ink-soft uppercase">
+            Visitor
+            <br />
+            Management
+          </span>
+        </div>
+
+        <h1 className="mt-8 text-[clamp(1.75rem,5vw,2.75rem)] leading-tight font-bold tracking-tight text-ink">
           Pair this display
         </h1>
-        <p className="mt-4 text-lg leading-relaxed text-ink-soft">
-          On the dashboard, generate a <strong className="text-ink">screen</strong>{" "}
-          pairing code and type it below. You only do this once.
+        <p className="mt-3 text-[clamp(0.95rem,1.6vw,1.15rem)] leading-relaxed text-ink-soft">
+          Enter the screen pairing code from the dashboard.
         </p>
 
-        <label htmlFor="code" className="mt-10 block text-sm font-medium text-ink-soft">
-          Pairing code
+        <label htmlFor="code" className="sr-only">
+          Six character pairing code
         </label>
         <input
           id="code"
@@ -90,25 +105,23 @@ export default function PairPage() {
           autoComplete="off"
           spellCheck={false}
           maxLength={CODE_LENGTH}
-          aria-label="Six character pairing code"
-          className="mt-2 w-full rounded-xl border border-edge bg-stage-raised px-6 py-6 text-center text-6xl font-medium tracking-[0.25em] text-ink tabular-nums placeholder:text-ink-faint focus:border-live focus:outline-none"
+          // Tracking pushes the last character off-centre; the negative margin
+          // pulls the block back so it reads as centred.
+          className="mt-9 w-full -mr-[0.3em] rounded-2xl border border-edge bg-stage-raised py-6 text-center text-[clamp(2.25rem,9vw,3.5rem)] font-bold tracking-[0.3em] text-ink tabular-nums placeholder:text-ink-faint/50 focus:border-live focus:outline-none"
         />
 
-        <label htmlFor="name" className="mt-6 block text-sm font-medium text-ink-soft">
-          Name this display
-        </label>
-        <input
-          id="name"
-          value={name}
-          onChange={(changed) => setName(changed.target.value)}
-          maxLength={100}
-          className="mt-2 w-full rounded-xl border border-edge bg-stage-raised px-5 py-4 text-xl text-ink focus:border-live focus:outline-none"
-        />
+        {/* Progress, without a counter to read: the rule fills as they type. */}
+        <span aria-hidden className="mt-3 block h-[3px] overflow-hidden rounded-full bg-edge">
+          <span
+            className="block h-full origin-left rounded-full bg-live transition-transform duration-200"
+            style={{ transform: `scaleX(${code.length / CODE_LENGTH})` }}
+          />
+        </span>
 
         {error ? (
           <p
             role="alert"
-            className="mt-6 rounded-xl bg-down/15 px-5 py-4 text-lg text-down"
+            className="mt-6 rounded-xl bg-down/15 px-5 py-4 text-left text-base leading-relaxed text-down"
           >
             {error}
           </p>
@@ -116,21 +129,22 @@ export default function PairPage() {
 
         <button
           type="submit"
-          disabled={code.length !== CODE_LENGTH || busy}
-          className="mt-8 w-full rounded-xl bg-ink px-6 py-5 text-xl font-bold text-stage transition-opacity disabled:opacity-30"
+          disabled={!ready}
+          className="mt-8 w-full rounded-2xl bg-ink px-6 py-5 text-lg font-bold text-stage transition-opacity disabled:opacity-25"
         >
           {busy ? "Pairing…" : "Pair display"}
         </button>
 
-        {/* At an event this answers "is it pointed at the right box?" in a glance. */}
+        {/* At an event this answers "is it pointed at the right box?" in a glance,
+            and tapping it looks again. */}
         <button
           type="button"
           onClick={server.rescan}
-          className="mt-6 w-full text-center text-sm text-ink-faint hover:text-ink-soft"
+          className="mt-8 w-full text-center text-sm text-ink-faint transition-colors hover:text-ink-soft"
         >
           {server.searching
             ? "Finding the server…"
-            : (server.origin ?? "No server found") + " — tap to search again"}
+            : (server.origin ?? "No server found")}
         </button>
       </form>
     </main>
