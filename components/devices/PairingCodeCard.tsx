@@ -59,9 +59,9 @@ export function PairingCodeCard() {
   const error = create.error instanceof ApiError ? create.error.message : null;
 
   return (
-    <section className="rounded-lg border border-line bg-card">
+    <section className="card">
       <div className="border-b border-line px-6 py-5">
-        <h2 className="display text-base font-semibold text-ink">Pair a device</h2>
+        <h2 className="display text-base text-ink">Pair a device</h2>
         <p className="mt-1 text-sm text-ink-3">
           Open the app on the phone or screen, then read it the code below. Each
           code works once.
@@ -78,7 +78,7 @@ export function PairingCodeCard() {
               onClick={() =>
                 create.mutate(kind.value, { onSuccess: (code) => setIssued(code) })
               }
-              className="flex-1 rounded-md border border-line-strong px-4 py-3 text-left transition-colors hover:border-ink disabled:opacity-60"
+              className="flex-1 rounded-2xl border border-line-strong px-4 py-3 text-left transition-colors hover:border-ink disabled:opacity-60"
             >
               <span className="block text-sm font-medium text-ink">
                 {kindLabel(kind.value)} code
@@ -91,7 +91,7 @@ export function PairingCodeCard() {
         {error ? (
           <p
             role="alert"
-            className="mt-4 rounded-md bg-revoked-soft px-3 py-2.5 text-sm text-revoked"
+            className="mt-4 rounded-2xl bg-revoked-soft px-4 py-3 text-sm text-revoked"
           >
             {error}
           </p>
@@ -99,11 +99,15 @@ export function PairingCodeCard() {
 
         {issued ? (
           <div
-            className={`mt-6 rounded-lg border px-6 py-7 text-center ${
-              expired ? "border-line bg-paper" : "border-ink bg-ink/5"
+            className={`mt-6 rounded-xl px-6 py-8 text-center ${
+              expired ? "bg-card-2" : "bg-graphite-950 text-white"
             }`}
           >
-            <p className="mono text-[11px] uppercase tracking-widest text-ink-3">
+            <p
+              className={`mono text-[11px] tracking-widest uppercase ${
+                expired ? "text-ink-3" : "text-graphite-300"
+              }`}
+            >
               {kindLabel(issued.kind)} pairing code
             </p>
 
@@ -112,7 +116,7 @@ export function PairingCodeCard() {
               // Tracking is on the element and a trailing space is added by the
               // browser; the negative right margin pulls the block back to centre.
               className={`mono mt-3 -mr-[0.22em] text-[clamp(2.75rem,11vw,4.5rem)] leading-none font-medium tracking-[0.22em] tabular-nums ${
-                expired ? "text-ink-3 line-through" : "text-ink"
+                expired ? "text-ink-3 line-through" : "text-white"
               }`}
             >
               {issued.code}
@@ -125,17 +129,17 @@ export function PairingCodeCard() {
               </p>
             ) : (
               <>
-                <p className="mt-4 text-sm text-ink-2">
+                <p className="mt-4 text-sm text-graphite-300">
                   Expires in{" "}
                   <span
                     className={`mono font-medium ${
-                      remaining < 60_000 ? "text-revoked" : "text-ink"
+                      remaining < 60_000 ? "text-accent" : "text-white"
                     }`}
                   >
                     {formatRemaining(remaining)}
                   </span>
                 </p>
-                <p className="mx-auto mt-2 max-w-sm text-xs text-ink-3">
+                <p className="mx-auto mt-2 max-w-sm text-xs text-graphite-500">
                   Codes never contain 0, O, 1 or I — those four are left out
                   because they are the ones people mishear and mistype. The device
                   appears in the list below the moment it pairs.
