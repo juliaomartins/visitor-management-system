@@ -24,8 +24,8 @@ export default function EditVisitorPage() {
 
   if (isError || !visitor) {
     return (
-      <div className="rounded-lg border border-line bg-card px-6 py-16 text-center">
-        <p className="display text-lg font-semibold text-revoked">
+      <div className="card px-6 py-16 text-center">
+        <p className="display text-lg text-revoked">
           Could not load this visitor
         </p>
         <Link
@@ -60,6 +60,7 @@ export default function EditVisitorPage() {
           }}
           existingPhotoUrl={visitor.photo}
           badgeSerial={visitor.badge_serial}
+          registeredAt={visitor.created_at}
           submitting={update.isPending}
           formError={
             error && Object.keys(error.fields).length === 0 ? error.message : undefined
