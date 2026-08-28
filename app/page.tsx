@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { ConnectionDot } from "@/components/ConnectionDot";
 import { ServerSetup } from "@/components/ServerSetup";
 import { IdleScreen } from "@/components/IdleScreen";
+import { ArrivalStrip } from "@/components/ArrivalStrip";
 import { VipWelcomeCard } from "@/components/VipWelcomeCard";
 import { WelcomeCard } from "@/components/WelcomeCard";
 import { useArrivalFeed } from "@/hooks/useArrivalFeed";
@@ -27,6 +35,9 @@ const DISPLAY_MS = 8000;
  */
 const BUSY_DISPLAY_MS = 3500;
 const BUSY_QUEUE = 3;
+
+/** Ceiling on the seen-event set, so a long shift cannot grow it forever. */
+const HANDLED_CAP = 400;
 
 /** Same window the backend uses, applied again here — see the note below. */
 const REPEAT_SUPPRESSION_MS = 60_000;
@@ -76,7 +87,22 @@ export default function ScreenPage() {
   );
 
   const [showing, setShowing] = useState<ScreenEvent | null>(null);
+
+  /*
+    The queue is STATE now, not a ref.
+
+    Its behaviour is unchanged — same order, same 8s hold, same 3.5s once three
+    are backed up — but a ref cannot be rendered, and the strip has to draw the
+    people waiting. `queue.current` was invisible to React by construction.
+
+    `pending` mirrors it for rendering; `queue` stays the source of truth the
+    timer reads, so the dismiss path never waits on a re-render to find the next
+    arrival.
+  */
   const queue = useRef<ScreenEvent[]>([]);
+  const [pending, setPending] = useState<ScreenEvent[]>([]);
+  const syncPending = useCallback(() => setPending([...queue.current]), []);
+
   const handled = useRef<Set<number>>(new Set());
   const lastShownFor = useRef<Map<string, number>>(new Map());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,6 +117,20 @@ export default function ScreenPage() {
     for (const event of incoming) {
       if (handled.current.has(event.id)) continue;
       handled.current.add(event.id);
+
+      /*
+        Bounded. This runs for fourteen hours on a kiosk, and an unbounded Set of
+        every event id ever seen is a slow leak with no upper limit — thousands
+        of entries by the afternoon of a busy event.
+
+        `useArrivalFeed` caps `arrivals` at 50, so the window this has to
+        remember is small; a few hundred is generous. Pruning to the newest half
+        keeps the check O(1) and the memory flat.
+      */
+      if (handled.current.size > HANDLED_CAP) {
+        const recent = [...handled.current].slice(-HANDLED_CAP / 2);
+        handled.current = new Set(recent);
+      }
 
       // Do not replay history onto the wall after a restart.
       const age = Date.now() - new Date(event.scanned_at).getTime();
@@ -122,7 +162,8 @@ export default function ScreenPage() {
     if (!showing && queue.current.length > 0) {
       setShowing(queue.current.shift() ?? null);
     }
-  }, [incoming, ready, showing]);
+    syncPending();
+  }, [incoming, ready, showing, syncPending]);
 
   // Hold the current card, then move on.
   useEffect(() => {
@@ -131,12 +172,13 @@ export default function ScreenPage() {
     const duration = queue.current.length >= BUSY_QUEUE ? BUSY_DISPLAY_MS : DISPLAY_MS;
     timer.current = setTimeout(() => {
       setShowing(queue.current.shift() ?? null);
+      syncPending();
     }, duration);
 
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [showing]);
+  }, [showing, syncPending]);
 
   // Unpaired, or the very first paint before hydration resolves the token.
   if (!deviceToken) {
@@ -168,13 +210,25 @@ export default function ScreenPage() {
         // Keyed on the event id so React remounts the card and the entry
         // animation replays for each arrival rather than only the first.
         showing.category === "vip" ? (
-          <VipWelcomeCard key={showing.id} event={showing} />
+          <VipWelcomeCard
+            key={showing.id}
+            event={showing}
+            hasStrip={pending.length > 0}
+          />
         ) : (
-          <WelcomeCard key={showing.id} event={showing} />
+          <WelcomeCard
+            key={showing.id}
+            event={showing}
+            hasStrip={pending.length > 0}
+          />
         )
       ) : (
         <IdleScreen waiting={connected} />
       )}
+
+      {/* Only when somebody is actually waiting. One arrival with nothing behind
+          it gets the whole wall, which is the common case all morning. */}
+      {showing && pending.length > 0 ? <ArrivalStrip queued={pending} /> : null}
 
       <ConnectionDot connected={connected} />
     </main>
