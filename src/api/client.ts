@@ -48,6 +48,21 @@ const PROBE_TIMEOUT_MS = 2500;
 
 let deviceToken: string | null = null;
 
+/**
+ * Told when the server rejects this phone's token.
+ *
+ * A revoked device is not a request that failed; it is a session that has ended.
+ * Every authenticated call goes through `request()`, so this is the one place
+ * that can notice, and the session provider is the one place that can act. The
+ * alternative — each screen checking for a 401 — leaves whichever screen forgot
+ * to check sitting on a dead token.
+ */
+let onRevoked: (() => void) | null = null;
+
+export function setDeviceRevokedHandler(handler: (() => void) | null): void {
+  onRevoked = handler;
+}
+
 /** Called by the session provider on load, after pairing, and on unpair. */
 export function setDeviceToken(token: string | null): void {
   deviceToken = token;
@@ -159,7 +174,19 @@ export async function request<T>(
   const text = await response.text();
   const payload = text ? safeJson(text) : null;
 
-  if (!response.ok) throw describe(response.status, payload);
+  if (!response.ok) {
+    /*
+      401 on an authenticated call means this phone is finished — revoked from
+      the dashboard, or its device row is gone. Either way the stored token will
+      never work again, so the session ends here and the app returns to pairing.
+
+      Only for authenticated calls: pairing itself posts unauthenticated, and a
+      wrong pairing code must stay an error on the form rather than tearing down
+      a session that does not exist yet.
+    */
+    if (response.status === 401 && authenticated) onRevoked?.();
+    throw describe(response.status, payload);
+  }
   return payload as T;
 }
 
