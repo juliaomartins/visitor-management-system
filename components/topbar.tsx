@@ -1,30 +1,33 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { usePageMeta } from "@/components/page-meta";
-import { logout } from "@/lib/auth";
 
 /**
- * The page's name, its size, and the time.
+ * The page's name, its size, and the time. Nothing else.
  *
- * The clock is not decoration. Everything this app does is measured against
- * "doors open at nine" — an arrival is early or late, a badge is printed in time
- * or it is not — and a wall clock is the one thing a registration desk always has
- * and a laptop screen usually hides. It also proves the page is live: a frozen
- * clock is a frozen tab.
+ * A global search box and a notification bell used to sit here. Both are gone.
+ * The search duplicated the one already on the visitor list a few pixels below
+ * it — which was the only place a result could land anyway — and the bell
+ * repeated the amber dot the rail already shows on Devices. A second control for
+ * a job the page already does is not a feature; it is a thing to keep in sync.
+ *
+ * The clock stays because it duplicates nothing. Everything this app does is
+ * measured against "doors open at nine", and a stopped clock is also the cheapest
+ * possible proof that the tab has frozen.
  */
 export function Topbar() {
-  const router = useRouter();
   const { title, subtitle, count } = usePageMeta();
-  const [signingOut, setSigningOut] = useState(false);
   const [clock, setClock] = useState<string | null>(null);
 
   useEffect(() => {
     const tick = () =>
       setClock(
-        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       );
 
     // Deferred to its own task rather than run in the effect body, so mounting
@@ -38,45 +41,32 @@ export function Topbar() {
     };
   }, []);
 
-  async function handleSignOut() {
-    setSigningOut(true);
-    await logout();
-    router.replace("/login");
-  }
-
   return (
-    <header className="flex items-baseline gap-5 border-b border-line bg-card px-8 pt-7 pb-5">
-      <div className="min-w-0">
-        <div className="flex items-baseline gap-3">
-          <h1 className="display truncate text-[1.75rem] leading-none font-bold text-ink">
-            {title}
-          </h1>
-          {count !== undefined ? (
-            <span className="mono shrink-0 text-[0.8rem] text-ink-3">{count}</span>
+    <header className="sticky top-0 z-30 border-b border-line bg-card/85 px-4 py-4 backdrop-blur sm:px-6">
+      <div className="flex items-center gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2.5">
+            <h1 className="display truncate text-[1.35rem] leading-tight text-ink">
+              {title}
+            </h1>
+            {count !== undefined ? (
+              <span className="pill-status shrink-0 bg-card-2 text-ink-2">
+                {count}
+              </span>
+            ) : null}
+          </div>
+          {subtitle ? (
+            <p className="mt-0.5 truncate text-sm text-ink-3">{subtitle}</p>
           ) : null}
         </div>
-        {subtitle ? (
-          <p className="mt-1.5 truncate text-sm text-ink-2">{subtitle}</p>
-        ) : null}
-      </div>
 
-      <div className="ml-auto flex shrink-0 items-baseline gap-5">
         <p
           suppressHydrationWarning
-          className="mono text-[0.95rem] font-medium text-ink"
+          className="mono hidden shrink-0 text-sm font-medium text-ink sm:block"
           aria-label="Local time"
         >
           {clock ?? "--:--"}
         </p>
-
-        <button
-          type="button"
-          onClick={handleSignOut}
-          disabled={signingOut}
-          className="text-sm text-ink-3 underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-ink disabled:opacity-60"
-        >
-          {signingOut ? "Signing out…" : "Sign out"}
-        </button>
       </div>
     </header>
   );
