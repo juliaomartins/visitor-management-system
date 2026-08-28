@@ -104,7 +104,7 @@ export function BadgeTokenReceipt({
 
   return (
     <div className="max-w-2xl">
-      <div className="rounded-lg border border-vip bg-vip-soft px-6 py-6">
+      <div className="rounded-2xl border border-vip bg-vip-soft px-6 py-6">
         <p className="mono text-[11px] uppercase text-vip">Print this now</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink">
           {visitor.full_name} is registered
@@ -116,7 +116,7 @@ export function BadgeTokenReceipt({
         </p>
 
         <div className="mt-5 flex flex-wrap items-start gap-5">
-          <div className="rounded-md border border-vip/40 bg-card p-3">
+          <div className="rounded-2xl bg-card p-4">
             <canvas
               ref={screenQr}
               className="block h-52 w-52"
@@ -128,7 +128,7 @@ export function BadgeTokenReceipt({
           <div className="min-w-56 flex-1 space-y-3">
             <div>
               <p className="text-xs text-ink-3">Badge token</p>
-              <code className="mono mt-1 block overflow-x-auto rounded border border-vip/40 bg-card px-3 py-2 text-xs text-ink">
+              <code className="mono mt-1 block overflow-x-auto rounded-xl bg-card-2 px-3 py-2.5 text-xs text-ink">
                 {visitor.badge_token}
               </code>
             </div>
@@ -138,7 +138,7 @@ export function BadgeTokenReceipt({
                 type="button"
                 onClick={savePdf}
                 disabled={saving}
-                className="rounded-md bg-ink px-3.5 py-2.5 text-sm font-medium text-white hover:bg-graphite-800 disabled:opacity-70"
+                className="btn btn-primary disabled:opacity-70"
               >
                 {saving ? "Rendering…" : "Download badge PDF"}
               </button>
@@ -147,14 +147,14 @@ export function BadgeTokenReceipt({
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink"
+                className="btn btn-ghost"
               >
                 Print from browser
               </button>
               <button
                 type="button"
                 onClick={copy}
-                className="rounded-md border border-vip/40 px-3.5 py-2.5 text-sm text-ink-2 hover:text-ink"
+                className="btn btn-ghost"
               >
                 {copied ? "Copied" : "Copy token"}
               </button>
@@ -190,13 +190,13 @@ export function BadgeTokenReceipt({
         <button
           type="button"
           onClick={onRegisterAnother}
-          className="rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-white hover:bg-graphite-800"
+          className="btn btn-primary"
         >
           Register another visitor
         </button>
         <Link
           href={`/visitors/${visitor.id}`}
-          className="rounded-md border border-line px-3.5 py-2.5 text-sm text-ink-2 hover:border-line-strong hover:text-ink"
+          className="btn btn-ghost"
         >
           Open {visitor.full_name}
         </Link>
@@ -225,7 +225,7 @@ export function BadgeTokenReceipt({
             alignItems: "stretch",
             background: "#ffffff",
             color: "#000000",
-            fontFamily: "var(--font-bricolage), sans-serif",
+            fontFamily: "var(--font-jakarta), sans-serif",
             borderLeft: vip ? "3mm solid #a16207" : "3mm solid #17212b",
           }}
         >
