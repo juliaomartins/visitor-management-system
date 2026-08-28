@@ -11,7 +11,11 @@ import { WelcomeCard } from "@/components/WelcomeCard";
 import { useArrivalFeed } from "@/hooks/useArrivalFeed";
 import { useServer } from "@/hooks/useServer";
 import type { ScreenEvent } from "@/lib/api";
-import { getDeviceToken } from "@/lib/device-token";
+import {
+  clearDeviceToken,
+  getDeviceToken,
+  subscribeToDeviceToken,
+} from "@/lib/device-token";
 
 /** Long enough to read a name across a lobby and look up at the person. */
 const DISPLAY_MS = 8000;
@@ -37,8 +41,6 @@ const REPEAT_SUPPRESSION_MS = 60_000;
 const STALE_ARRIVAL_MS = 2 * 60_000;
 
 /** localStorage never changes under us here, so there is nothing to subscribe to. */
-const subscribeNothing = () => () => {};
-
 export default function ScreenPage() {
   const router = useRouter();
 
@@ -46,7 +48,7 @@ export default function ScreenPage() {
   // client-only external store, and this gives the value during render without a
   // mount-then-setState round trip.
   const deviceToken = useSyncExternalStore(
-    subscribeNothing,
+    subscribeToDeviceToken,
     getDeviceToken,
     () => null,
   );
@@ -59,7 +61,19 @@ export default function ScreenPage() {
   // this page's own hostname, which on a single-machine deployment is always the
   // server — so the screen usually reconfigures itself when the IP changes.
   const server = useServer();
-  const { arrivals, connected, ready } = useArrivalFeed(deviceToken, server.origin);
+  /*
+    Revoked from the dashboard.
+
+    Dropping the token is all this has to do: the store notifies, the effect
+    above sees a null token and routes to the pairing form, and whoever revoked
+    the screen can hand over a fresh code. Nobody is standing at the kiosk to
+    press reload, so it has to happen on its own.
+  */
+  const { arrivals, connected, ready } = useArrivalFeed(
+    deviceToken,
+    server.origin,
+    clearDeviceToken,
+  );
 
   const [showing, setShowing] = useState<ScreenEvent | null>(null);
   const queue = useRef<ScreenEvent[]>([]);
