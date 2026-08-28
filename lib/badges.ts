@@ -52,7 +52,11 @@ async function download(path: string, fallbackName: string, body?: unknown) {
       .catch(() => undefined);
 
     throw new ApiError(
-      detail ?? `The badge could not be rendered (HTTP ${response.status}).`,
+      detail ??
+        (response.status === 404
+          ? "That endpoint is not available on the server yet — it is running " +
+            "an older build than this page. Restart the backend and try again."
+          : `The badge could not be rendered (HTTP ${response.status}).`),
     );
   }
 
