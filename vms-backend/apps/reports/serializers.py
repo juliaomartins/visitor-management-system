@@ -87,11 +87,75 @@ class EntrySummarySerializer(serializers.Serializer):
     by_category = CategoryCountSerializer(many=True, read_only=True)
 
 
+class DoorLoadSerializer(serializers.Serializer):
+    """One door's share of the traffic."""
+
+    device = serializers.CharField(read_only=True)
+    total = serializers.IntegerField(read_only=True)
+    valid = serializers.IntegerField(read_only=True)
+    refused = serializers.IntegerField(read_only=True)
+    share = serializers.FloatField(read_only=True)
+
+
+class AbsentVisitorSerializer(serializers.Serializer):
+    """Registered, with no valid scan in the period."""
+
+    badge_serial = serializers.CharField(read_only=True)
+    full_name = serializers.CharField(read_only=True)
+    country = serializers.CharField(read_only=True)
+    organization = serializers.CharField(read_only=True, allow_blank=True)
+    category = serializers.CharField(read_only=True)
+
+
+class ReportInsightsSerializer(serializers.Serializer):
+    """The derived findings — what the counts mean.
+
+    Served alongside the raw summary so the dashboard shows the same conclusions
+    the PDF and the workbook print, rather than the page re-deriving them in
+    TypeScript and quietly drifting.
+    """
+
+    registered = serializers.IntegerField(read_only=True)
+    arrived = serializers.IntegerField(read_only=True)
+    attendance_rate = serializers.FloatField(read_only=True)
+    refused = serializers.IntegerField(read_only=True)
+    refusal_rate = serializers.FloatField(read_only=True)
+    quiet_hours = serializers.IntegerField(read_only=True)
+    not_arrived_count = serializers.IntegerField(read_only=True)
+
+    first_arrival = serializers.DateTimeField(read_only=True, allow_null=True)
+    last_arrival = serializers.DateTimeField(read_only=True, allow_null=True)
+    median_arrival = serializers.DateTimeField(read_only=True, allow_null=True)
+    span_minutes = serializers.IntegerField(read_only=True)
+
+    peak_hour = serializers.DateTimeField(read_only=True, allow_null=True)
+    peak_total = serializers.IntegerField(read_only=True)
+    peak_share = serializers.FloatField(read_only=True)
+
+    vip_arrived = serializers.IntegerField(read_only=True)
+    vip_share = serializers.FloatField(read_only=True)
+    repeat_people = serializers.IntegerField(read_only=True)
+    repeat_share = serializers.FloatField(read_only=True)
+
+    doors = DoorLoadSerializer(many=True, read_only=True)
+    not_arrived = AbsentVisitorSerializer(many=True, read_only=True)
+    narrative = serializers.ListField(
+        child=serializers.CharField(), read_only=True,
+        help_text="The findings in sentences, in the order they should be read.",
+    )
+
+
 class EntryReportSerializer(serializers.Serializer):
-    """`GET /reports/entries` — the log and its totals, from one filtered query."""
+    """`GET /reports/entries` — the log, its totals, and what they mean.
+
+    `insights` carries the derived findings the PDF and the workbook print, so the
+    dashboard renders the same conclusions rather than re-deriving them in
+    TypeScript and quietly drifting from the exports.
+    """
 
     timezone = serializers.CharField(read_only=True)
     date_from = serializers.DateField(read_only=True)
     date_to = serializers.DateField(read_only=True)
     summary = EntrySummarySerializer(read_only=True)
+    insights = ReportInsightsSerializer(read_only=True)
     entries = EntrySerializer(many=True, read_only=True)
