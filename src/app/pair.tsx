@@ -19,6 +19,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -97,10 +98,15 @@ export default function PairScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <View style={styles.mark}>
-              <Text style={styles.markLetter}>V</Text>
-            </View>
-            <Text style={styles.markLabel}>VISITOR{"\n"}MANAGEMENT</Text>
+            <Image
+              source={require("../../assets/images/brand/drcc-event.png")}
+              style={styles.mark}
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
+            <Text style={styles.markLabel}>
+              DÍLI REGIONAL COOPERATIVE{"\n"}CONFERENCE 2026
+            </Text>
           </View>
 
           <View style={styles.intro}>
@@ -196,6 +202,31 @@ export default function PairScreen() {
                 : (server.origin ?? "No server found")}
             </Text>
           </Pressable>
+
+          {/*
+            Both organisers, together, at the foot -- never one alone, because
+            dropping either misrepresents who is hosting. This is the only screen
+            in the app anyone looks at for more than a second: after pairing, the
+            guard sees the camera and nothing else, forever.
+
+            They keep their white plate in this dark app on purpose. A government
+            seal knocked back to "fit the theme" is a liberty nobody here is
+            entitled to take.
+          */}
+          <View style={styles.organisers}>
+            <Image
+              source={require("../../assets/images/brand/rdtl.png")}
+              style={styles.seal}
+              resizeMode="contain"
+              accessibilityLabel="República Democrática de Timor-Leste"
+            />
+            <Image
+              source={require("../../assets/images/brand/secoop.png")}
+              style={styles.seal}
+              resizeMode="contain"
+              accessibilityLabel="Secretária de Estado de Cooperativas"
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -212,6 +243,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  organisers: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    gap: spacing.md,
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  seal: {
+    width: 34,
+    height: 34,
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -219,17 +266,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   mark: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: colors.text,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  markLetter: {
-    color: colors.background,
-    fontSize: 15,
-    fontWeight: "700",
+    // 38, not 34. The pin carries two rings of type and a plume; below the
+    // high thirties it stops reading as a crest and turns into a smudge.
+    width: 38,
+    height: 38,
   },
   markLabel: {
     color: colors.textMuted,
