@@ -6,27 +6,57 @@
  * Everything here is either near-black or near-white, with the three scan verdicts
  * saturated far enough to read at a glance without looking away from the visitor.
  *
- * Fixed dark. No light mode: a bright screen at a night entrance blinds the person
- * holding it, and a theme that changes under a guard mid-shift is a liability.
+ * Fixed dark, and it stays that way. The dashboard and the lobby screen both got
+ * a light/dark toggle; this one deliberately did not. A bright screen at a night
+ * entrance blinds the person holding it, a guard cannot stop to change a setting
+ * with a visitor in front of them, and a theme that shifts mid-shift is a
+ * liability rather than a preference.
  */
 export const colors = {
-  background: "#0B0F14",
-  surface: "#161C24",
+  /*
+    THE EVENT PALETTE, SAMPLED FROM THE ARTWORK.
+
+    Taken from the event PIN supplied with the design brief "for colour reference
+    only, to guide the design and colour selection":
+
+        red #CC0000   gold #FCB400   green #006C30   blue #00309C
+
+    Those are print inks on white. This screen is near-black, and against it the
+    pin's blue reads 1.7:1 and its green 2.9:1 -- invisible in a dim lobby and
+    worse in sun. Each hue keeps its hue and saturation and moves only in
+    lightness, by the smallest step that clears 4.5:1 on this ground. Gold needed
+    no help: on a dark field the pin's own #FCB400 reads 10.6:1.
+
+    THE THREE VERDICTS WERE RE-CHECKED, not assumed. Run through dichromat
+    simulation in Lab, the worst pair is valid/invalid at dE 29.3 protan and 13.6
+    deutan, against a floor of 10 -- marginally better than the set they replace.
+    They are still never shown as colour alone: each verdict has its own sound,
+    its own haptic and its own word.
+  */
+  background: "#0B1016",
+  surface: "#141B24",
   surfaceRaised: "#1F2833",
-  border: "#2E3A47",
+  border: "#26313F",
 
-  text: "#F5F8FA",
-  textMuted: "#94A7B8",
-  textFaint: "#5D6E7E",
+  text: "#F4F8FB",
+  textMuted: "#A8B6C4",
+  textFaint: "#75838F",
 
-  accent: "#2F81F7",
-  accentPressed: "#1F5FBF",
+  accent: "#3372FF",
+  accentPressed: "#1F4FC0",
   onAccent: "#FFFFFF",
 
-  // The three verdicts. Phase 3b part 2 pairs each with its own sound.
-  valid: "#1FA463",
-  invalid: "#D2354A",
-  revoked: "#D18A1F",
+  // The three verdicts, each paired with its own sound.
+  valid: "#00B050",
+  invalid: "#F24141",
+  revoked: "#FCB400",
+
+  // The event's inks, unmodified, for anywhere the brand itself is drawn rather
+  // than the interface -- never for text on this background.
+  brandRed: "#CC0000",
+  brandGold: "#FCB400",
+  brandGreen: "#006C30",
+  brandBlue: "#00309C",
 } as const;
 
 export const spacing = {
