@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { ConnectionDot } from "@/components/ConnectionDot";
+import { EventSplash } from "@/components/EventSplash";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ServerSetup } from "@/components/ServerSetup";
 import { IdleScreen } from "@/components/IdleScreen";
@@ -53,6 +54,7 @@ const STALE_ARRIVAL_MS = 2 * 60_000;
 
 /** localStorage never changes under us here, so there is nothing to subscribe to. */
 export default function ScreenPage() {
+  const [splash, setSplash] = useState(true);
   const router = useRouter();
 
   // Read through useSyncExternalStore rather than an effect: localStorage is a
@@ -64,9 +66,29 @@ export default function ScreenPage() {
     () => null,
   );
 
+  /*
+    THE REDIRECT WAITS FOR THE SPLASH.
+
+    An unpaired screen used to navigate to /pair the instant this mounted, which
+    tore the mark's entrance in half -- the sweep would be two blades in when the
+    route changed. Waiting for `splash` to clear means the sequence always plays
+    to its end, and since it now runs in well under two seconds nobody setting a
+    screen up is kept waiting for it.
+
+    The timer is the safety net, and it is not optional. If the bundle half-loads
+    or GSAP throws, `onDone` never fires and an unpaired screen would sit on the
+    logo forever with no way to reach the pairing form. After 2.6s the splash is
+    dismissed regardless of what the timeline did.
+  */
   useEffect(() => {
-    if (!deviceToken) router.replace("/pair");
-  }, [deviceToken, router]);
+    if (!splash) return;
+    const bail = setTimeout(() => setSplash(false), 2600);
+    return () => clearTimeout(bail);
+  }, [splash]);
+
+  useEffect(() => {
+    if (!deviceToken && !splash) router.replace("/pair");
+  }, [deviceToken, splash, router]);
 
   // Where the backend is, before anything tries to talk to it. Falls back to
   // this page's own hostname, which on a single-machine deployment is always the
@@ -184,9 +206,24 @@ export default function ScreenPage() {
     };
   }, [showing, syncPending]);
 
-  // Unpaired, or the very first paint before hydration resolves the token.
+  /*
+    Unpaired, or the very first paint before hydration resolves the token.
+
+    THE SPLASH BELONGS HERE TOO. This branch is the boot frame -- the panel is
+    powered on, the bundle has run, and the device token is being read out of
+    storage. Mounting the splash only in the arrivals branch below meant the wall
+    showed a black rectangle first and then began the animation, which reads as a
+    stall rather than as a start. A paired screen now goes straight into the mark.
+
+    An unpaired one gets the mark for the moment before it redirects to pairing,
+    which is the correct answer to "what is this screen" while it decides.
+  */
   if (!deviceToken) {
-    return <main className="h-dvh w-dvw bg-stage" />;
+    return (
+      <main className="h-dvh w-dvw bg-stage">
+        {splash ? <EventSplash onDone={() => setSplash(false)} /> : null}
+      </main>
+    );
   }
 
   // Every candidate address failed. Nothing else on this screen can work until
@@ -224,6 +261,17 @@ export default function ScreenPage() {
 
       <ConnectionDot connected={connected} />
       <ThemeToggle />
+
+      {/*
+        The first-load splash. An overlay, not a gate: the WebSocket connects and
+        the backfill runs underneath it, and an arrival that lands during those
+        three seconds is already queued by the logic above -- so the visitor
+        appears the moment the splash retires rather than being dropped.
+
+        Once per page load, with no persistence. A kiosk reload is a new load and
+        should show the mark; a React re-render does not remount this page.
+      */}
+      {splash ? <EventSplash onDone={() => setSplash(false)} /> : null}
     </main>
   );
 }
