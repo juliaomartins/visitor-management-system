@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
+import { EventMark } from "@/components/brand";
 import { logout } from "@/lib/auth";
 import { isSilent, useDevices, useNow } from "@/lib/devices";
 
@@ -227,19 +228,10 @@ export function Sidebar() {
           collapsed ? "justify-center px-2" : "px-4"
         }`}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-white">
-          V
-        </span>
-        {collapsed ? null : (
-          <span className="min-w-0 flex-1">
-            <span className="display block truncate text-[0.95rem] text-ink">
-              VMS
-            </span>
-            <span className="block truncate text-[11px] text-ink-3">
-              Accreditation
-            </span>
-          </span>
-        )}
+        {/* The event's own mark replaces the placeholder letter tile. Collapsed,
+            the rail is narrow, so the mark drops its text and stands alone at
+            32px -- below that the PIN's inner ring of type turns to mush. */}
+        <EventMark size={collapsed ? 32 : 34} showText={!collapsed} />
       </div>
 
       <nav aria-label="Sections" className="flex-1 overflow-y-auto px-2.5 py-4">
