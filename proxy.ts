@@ -45,7 +45,17 @@ export default function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except the proxied backend routes, Next internals and static files.
-    "/((?!api/|media/|_next/|favicon.ico|.*\\.svg$).*)",
+    /*
+      Everything except the proxied backend routes, Next internals and static
+      files.
+
+      THE EXTENSION LIST IS NOT DECORATIVE. It excluded `.svg` alone, so the first
+      PNGs dropped into `public/` -- the event mark and the two organiser seals --
+      were treated as protected pages and 307'd to the sign-in screen. The sign-in
+      page then rendered its own logos as broken images, on the one screen that by
+      definition has no session. Any static extension that can appear in `public/`
+      belongs here.
+    */
+    "/((?!api/|media/|_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|avif|gif|ico)$).*)",
   ],
 };
