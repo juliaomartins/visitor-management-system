@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Class-based, not `prefers-color-scheme`: the registration desk chooses,
+   and the choice has to survive a laptop whose OS theme flips at sunset. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * A LIGHT CONSOLE WITH A COLLAPSIBLE RAIL.
  *
@@ -26,44 +30,149 @@
  * ship one of these as colour alone.
  */
 @theme {
+  /*
+    THE EVENT PALETTE, TAKEN FROM THE ARTWORK RATHER THAN GUESSED.
+
+    Sampled from the event PIN (DRCC-logo.png), which the design brief supplies
+    "for colour reference only, to guide the design and colour selection". These
+    four are the pin's own inks and nothing here is a designer's approximation:
+
+        red #CC0000   gold #FCB400   green #006C30   blue #00309C
+
+    They are print colours, and three of them cannot be used unchanged in both
+    themes -- measured against each ground:
+
+        blue    11.0 on white   1.7 on the dark ground   invisible on dark
+        green    6.6 on white   2.9 on the dark ground   invisible on dark
+        gold     1.8 on white  10.6 on the dark ground   invisible on white
+
+    So each hue keeps its hue and saturation and moves only in lightness, by the
+    smallest step that clears 4.5:1 against the ground it sits on. Where the print
+    colour already clears it, it is used untouched -- red, green and blue in light
+    mode, gold in dark mode.
+  */
+  --color-brand-red: #cc0000;
+  --color-brand-gold: #fcb400;
+  --color-brand-green: #006c30;
+  --color-brand-blue: #00309c;
+  --color-brand-ink: #000000;
+
   --color-ground: #f7f8fa;
   --color-card: #ffffff;
   --color-card-2: #f7f8fa;
   --color-paper: #f7f8fa;
 
-  --color-line: #ecedf1;
-  --color-line-strong: #dfe2e8;
+  --color-line: #e6e8ee;
+  --color-line-strong: #d6dae3;
 
-  --color-ink: #111827;
-  --color-ink-2: #4b5563;
-  --color-ink-3: #9ca3af;
+  --color-ink: #0b1016;
+  --color-ink-2: #4a5560;
+  --color-ink-3: #8a94a0;
 
-  --color-graphite-950: #0b0f19;
-  --color-graphite-900: #141a26;
-  --color-graphite-800: #1f2734;
-  --color-graphite-700: #2e3745;
-  --color-graphite-500: #6b7280;
+  --color-graphite-950: #0b1016;
+  --color-graphite-900: #141b24;
+  --color-graphite-800: #1f2833;
+  --color-graphite-700: #2e3a47;
+  --color-graphite-500: #6b7684;
   --color-graphite-300: #b6bcc7;
 
-  /* The product hue. Navigation, the arrivals curve, the primary action. */
-  --color-accent: #2563eb;
-  --color-accent-2: #3b82f6;
-  --color-accent-soft: #eff6ff;
+  /*
+    The product hue is now the pin's blue. Navigation state, the arrivals curve,
+    the primary action. It is never a status, so a blue chart and a coloured
+    status pill can share a screen without arguing.
+  */
+  --color-accent: #00309c;
+  --color-accent-2: #0a45c4;
+  --color-accent-soft: #e5eaf5;
 
-  /* Validated status set — see the note above. Always paired with its word. */
-  --color-valid: #059669;
-  --color-valid-soft: #e7f6f0;
-  --color-vip: #ca8a04;
-  --color-vip-soft: #fdf5e3;
-  --color-revoked: #dc2626;
-  --color-revoked-soft: #fdeaea;
-  --color-neutral-mark: #94a3b8;
+  /*
+    STATUS COLOURS ARE STILL VALIDATED, and the brand did not get a free pass.
+    The quartet below was re-run through dichromat simulation in Lab. Worst pair
+    is valid/revoked at dE 12.5 protan and 32.8 deutan, against a floor of 10 --
+    better than the set it replaces, which sat at 17.5 deutan.
+
+    THE ONE TRAP: gold as *text* does not survive that check. Dark gold ink and
+    the brand red land within dE 3.2 under deuteranopia -- indistinguishable. Gold
+    only stays separable as a light FILL, where the lightness gap carries it, and
+    lightness is what dichromacy preserves. Hence two tokens: `vip` is the ink for
+    text, `vip-fill` is the pill. Never put `text-vip` next to `text-revoked` as
+    the only difference between two rows.
+
+    Every status in this app is also shown with its word, and the reports page is
+    the table view. Never ship one of these as colour alone.
+  */
+  --color-valid: #006c30;
+  --color-valid-soft: #e0ede6;
+  --color-vip: #8a6200;
+  --color-vip-fill: #fcb400;
+  --color-vip-soft: #f7eeda;
+  --color-revoked: #cc0000;
+  --color-revoked-soft: #f9e0e0;
+  --color-neutral-mark: #8a94a0;
 
   --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
 
   --radius-card: 0.9rem;
+}
+
+/*
+  DARK MODE IS A TOKEN SWAP, NOT A SECOND STYLESHEET.
+
+  Every utility in this app resolves through `var(--color-*)`, so redefining the
+  variables under `.dark` re-themes the entire console without touching a single
+  component. A `dark:` class on every element would be several hundred edits and
+  a permanent tax on every new component -- and it drifts the moment somebody
+  forgets one.
+
+  The chromatic tokens are not simply inverted. They are the same four brand hues
+  re-solved against the dark ground: the pin's blue and green are unreadable there
+  and lift to #3372ff and #008f3f, while gold finally gets to be the pin's own
+  #fcb400 because on a dark field it reads at 10.6:1.
+*/
+.dark {
+  --color-ground: #0b1016;
+  --color-card: #141b24;
+  --color-card-2: #1a222c;
+  --color-paper: #0f151c;
+
+  --color-line: #26313f;
+  --color-line-strong: #33404f;
+
+  --color-ink: #f4f8fb;
+  --color-ink-2: #a8b6c4;
+  --color-ink-3: #75838f;
+
+  --color-graphite-950: #f4f8fb;
+  --color-graphite-900: #e2e9f0;
+  --color-graphite-800: #c3cdd8;
+  --color-graphite-700: #9aa7b4;
+  --color-graphite-500: #75838f;
+  --color-graphite-300: #3c4855;
+
+  --color-accent: #3372ff;
+  --color-accent-2: #6d9bff;
+  --color-accent-soft: #16233d;
+
+  --color-valid: #008f3f;
+  --color-valid-soft: #0c2a1b;
+  --color-vip: #fcb400;
+  --color-vip-fill: #fcb400;
+  --color-vip-soft: #33290d;
+  --color-revoked: #f24141;
+  --color-revoked-soft: #331416;
+  --color-neutral-mark: #8a94a0;
+}
+
+/* The browser's own widgets -- scrollbars, form controls, the caret -- follow
+   the theme too, or a dark console gets a white scrollbar down its edge. */
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
 }
 
 html,
