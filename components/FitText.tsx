@@ -8,9 +8,8 @@ import { useEffect, useRef, useState } from "react";
  * `clamp()` cannot do this. A CSS clamp knows the viewport and nothing else — it
  * has no idea whether the string is "Ada Lovelace" or
  * "(UPDATE IT) JULIAO MARTINS", so it sizes both the same and the long one runs
- * off the screen, taking the header and the name plate with it. The only way to
- * size text to its content is to measure the rendered result, which means the
- * DOM, which means a hook.
+ * off the screen, taking the name plate and the header with it. The only way to
+ * size text to its content is to measure the rendered result.
  *
  * THE LADDER, in order. Identity beats decoration, so the name never pays first:
  *
@@ -19,10 +18,20 @@ import { useEffect, useRef, useState } from "react";
  *   3. step down toward `min`, still within `maxLines`
  *   4. at `min` it stops. Below the floor a name is not "smaller", it is
  *      unreadable at five metres, which defeats the point of the screen — so the
- *      photo gives up its height instead (it is `shrink` in the hero column).
+ *      photo gives up its height instead (it is sized from what is left).
  *
  * Never ellipsized, never overflowed. A truncated name cannot tell the person
  * standing there whether the screen means them.
+ *
+ * MEASUREMENT HAPPENS ON A HIDDEN TWIN, not on the visible text, and that is not
+ * fussiness. The visible name gets split into per-character spans and thrown
+ * around by the arrival animation, and a transformed child enlarges its parent's
+ * scrollable overflow: measured in Chrome, one line of a split name goes from
+ * `scrollWidth` 600 to 897 while the characters are still in flight. Measuring
+ * that would size the name from where its letters happen to be mid-animation and
+ * collapse it to the floor. The twin is never split and never animated, so it
+ * always reports the resting shape. It also means the search no longer reflows
+ * text the viewer can see.
  */
 type Props = {
   children: string;
@@ -49,13 +58,13 @@ export function FitText({
   as: Tag = "p",
 }: Props) {
   const box = useRef<HTMLDivElement | null>(null);
-  const text = useRef<HTMLElement | null>(null);
+  const probe = useRef<HTMLSpanElement | null>(null);
   const [size, setSize] = useState(max);
 
   useEffect(() => {
     const boxEl = box.current;
-    const textEl = text.current;
-    if (!boxEl || !textEl) return;
+    const probeEl = probe.current;
+    if (!boxEl || !probeEl) return;
 
     // Only the WIDTH of the box drives a refit. The box's height changes as a
     // side effect of resizing the text inside it, so reacting to height would
@@ -76,12 +85,12 @@ export function FitText({
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
-        textEl.style.fontSize = `${mid}px`;
+        probeEl.style.fontSize = `${mid}px`;
 
-        const lines = Math.round(textEl.scrollHeight / (mid * lineHeight));
+        const lines = Math.round(probeEl.scrollHeight / (mid * lineHeight));
         // scrollWidth catches a single token too long to break — the height
         // check alone would call that a pass.
-        const fits = lines <= maxLines && textEl.scrollWidth <= width + 1;
+        const fits = lines <= maxLines && probeEl.scrollWidth <= width + 1;
 
         if (fits) {
           best = mid;
@@ -91,7 +100,6 @@ export function FitText({
         }
       }
 
-      textEl.style.fontSize = "";
       setSize(best);
     };
 
@@ -116,14 +124,24 @@ export function FitText({
   }, [children, max, min, maxLines, lineHeight]);
 
   return (
-    <div ref={box} className="w-full min-w-0">
+    <div ref={box} className="relative w-full min-w-0">
       <Tag
-        ref={text as React.Ref<never>}
+        data-fit-text
         className={`break-words ${className}`}
         style={{ fontSize: `${size}px`, lineHeight }}
       >
         {children}
       </Tag>
+
+      {/* The twin. Same box, same typography, never touched by an animation. */}
+      <span
+        ref={probe}
+        aria-hidden
+        className={`pointer-events-none absolute top-0 left-0 block w-full break-words ${className}`}
+        style={{ visibility: "hidden", lineHeight }}
+      >
+        {children}
+      </span>
     </div>
   );
 }
