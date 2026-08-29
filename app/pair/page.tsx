@@ -69,17 +69,40 @@ export default function PairPage() {
   return (
     <main className="flex h-dvh w-dvw flex-col items-center justify-center bg-stage px-6">
       <form onSubmit={submit} className="w-full max-w-md text-center">
-        <div className="flex items-center justify-center gap-2.5">
-          <span
+        {/* The event's own mark, matching the dashboard's sign-in and the
+            scanner's pairing screen. Three surfaces doing the same job should
+            not each introduce a different brand. */}
+        <div className="flex items-center justify-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/drcc-event.png"
+            alt=""
             aria-hidden
-            className="flex aspect-square w-9 items-center justify-center rounded-[28%] bg-ink text-sm font-bold text-stage"
-          >
-            V
+            className="aspect-square w-11 shrink-0 object-contain"
+          />
+          <span className="text-left text-[0.68rem] leading-[1.25] font-semibold tracking-[0.16em] uppercase">
+            <span className="block text-ink-soft">
+              Díli Regional Cooperative Conference
+            </span>
+            <span className="block text-expo">Ministerial Dialogue 2026</span>
           </span>
-          <span className="text-left text-[0.68rem] leading-[1.15] font-semibold tracking-[0.16em] text-ink-soft uppercase">
-            Visitor
-            <br />
-            Management
+        </div>
+
+        {/* Both organisers, together, under the mark. Never one alone. */}
+        <div className="mt-5 flex justify-center">
+          <span className="inline-flex items-center gap-3 rounded-lg bg-white px-3 py-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/rdtl.png"
+            alt="República Democrática de Timor-Leste"
+            className="h-7 w-auto object-contain"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/secoop.png"
+            alt="Secretária de Estado de Cooperativas"
+            className="h-7 w-auto object-contain"
+            />
           </span>
         </div>
 
