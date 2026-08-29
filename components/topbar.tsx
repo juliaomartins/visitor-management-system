@@ -1,5 +1,7 @@
 "use client";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 import { useEffect, useState } from "react";
 
 import { usePageMeta } from "@/components/page-meta";
@@ -67,6 +69,11 @@ export function Topbar() {
         >
           {clock ?? "--:--"}
         </p>
+
+        {/* Next to the clock rather than buried in a settings page: the reason
+            anyone reaches for it is the room they are sitting in, and that
+            changes during the day. */}
+        <ThemeToggle compact />
       </div>
     </header>
   );
