@@ -168,3 +168,44 @@ body {
 .animate-breathe {
   animation: breathe 3.5s ease-in-out infinite;
 }
+
+
+/*
+  THE SPLASH'S NO-JAVASCRIPT ESCAPE HATCH.
+
+  The overlay is fixed and covers the wall. If the bundle fails to load, or
+  JavaScript is off, or GSAP throws, nothing would ever remove it and the lobby
+  screen would sit behind a logo for the entire event -- a far worse failure than
+  no animation at all.
+
+  So retiring is CSS, not script. The keyframes run regardless, and the
+  timeline's first act is to set `animation: none` on this element so that when
+  JavaScript *is* working the two are not animating the same property at once.
+
+  The timings match the GSAP sequence, and `forwards` holds the cleared state.
+  `visibility` rather than `display` so the fade can actually be seen.
+*/
+@keyframes splash-retire {
+  0%,
+  77% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.event-splash {
+  animation: splash-retire 1.75s ease-in forwards;
+}
+
+/* A reader who has asked for less motion still needs the overlay to leave. It
+   simply leaves sooner, and without the fade drawing attention to itself. */
+@media (prefers-reduced-motion: reduce) {
+  .event-splash {
+    animation-duration: 1.25s;
+    animation-timing-function: linear;
+  }
+}
