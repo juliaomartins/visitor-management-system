@@ -1,5 +1,7 @@
 "use client";
 
+import { EventMark, Organisers } from "@/components/Brand";
+
 import { useEffect, useRef, useState } from "react";
 
 import { gsap, particleBudget, prefersReducedMotion, useGSAP } from "@/lib/gsap";
@@ -53,6 +55,13 @@ export function IdleScreen({ waiting }: { waiting: boolean }) {
       ref={root}
       className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden px-[6vw]"
     >
+      {/* The event identifies itself even with nobody on the wall. An idle
+          lobby screen showing only a clock could belong to any building. */}
+      <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-[clamp(0.75rem,2vw,2rem)] px-[clamp(1rem,3vw,3rem)] pt-[clamp(0.9rem,2.5vh,2rem)]">
+        <EventMark />
+        <Organisers />
+      </div>
+
       <AmbientEmbers />
 
       {/* A slow halo behind the clock. It is the only thing on this screen that
