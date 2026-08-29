@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
 import { Providers } from "./providers";
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 import "./globals.css";
 
 /**
@@ -36,7 +37,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VMS — Visitor Management",
+  title: "DRCC 2026 — Accreditation",
   description: "Event badge registration and arrivals, on the local network.",
 };
 
@@ -46,6 +47,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${inter.variable} ${jakarta.variable} ${jetbrains.variable} h-full antialiased`}
     >
+      <head>
+        {/*
+          Runs before the first paint. Without it the server's light markup
+          paints, React hydrates, and only then does the class land -- a white
+          flash on every navigation for anyone working in dark mode. It reads
+          one localStorage key and sets one class; nothing else belongs here.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>
