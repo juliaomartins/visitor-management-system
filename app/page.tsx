@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { ConnectionDot } from "@/components/ConnectionDot";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ServerSetup } from "@/components/ServerSetup";
 import { IdleScreen } from "@/components/IdleScreen";
 import { VipWelcomeCard } from "@/components/VipWelcomeCard";
@@ -222,6 +223,7 @@ export default function ScreenPage() {
       )}
 
       <ConnectionDot connected={connected} />
+      <ThemeToggle />
     </main>
   );
 }
