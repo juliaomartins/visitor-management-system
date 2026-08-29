@@ -1,5 +1,7 @@
 "use client";
 
+import { EVENT, OrganiserCredit } from "@/components/brand";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useSyncExternalStore } from "react";
 
@@ -51,15 +53,27 @@ function SignInPanel() {
 
   return (
     <div className="w-full max-w-sm">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white">
-          V
-        </span>
-        <span>
-          <span className="display block text-[1rem] leading-tight text-ink">
-            VMS
+      {/* The sign-in page is the one screen where the event introduces itself,
+          so the mark is given room and the conference name is spelled out in
+          full rather than abbreviated. */}
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/drcc-event.png"
+          alt=""
+          aria-hidden
+          className="h-14 w-14 shrink-0 object-contain"
+        />
+        <span className="min-w-0">
+          <span className="display block text-[0.95rem] leading-tight text-ink">
+            {EVENT.name}
           </span>
-          <span className="block text-[11px] text-ink-3">Accreditation</span>
+          <span className="block text-[12px] leading-tight text-ink-2">
+            {EVENT.subtitle}
+          </span>
+          <span className="block text-[11px] leading-tight text-ink-3">
+            {EVENT.dates}
+          </span>
         </span>
       </div>
 
@@ -110,6 +124,11 @@ function SignInPanel() {
       <p className="mono mt-8 text-xs text-ink-3">
         Serving from <span className="text-ink-2">{host || "…"}</span>
       </p>
+
+      {/* Both organisers, together, at the foot of the page. Never one alone. */}
+      <div className="mt-6 border-t border-line pt-5">
+        <OrganiserCredit />
+      </div>
     </div>
   );
 }
