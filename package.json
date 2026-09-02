@@ -6,6 +6,7 @@
     "@expo/ui": "~57.0.13",
     "@vms/contracts": "file:../vms-contracts",
     "expo": "~57.0.16",
+    "expo-asset": "~57.0.16",
     "expo-audio": "~57.0.4",
     "expo-build-properties": "~57.0.16",
     "expo-camera": "~57.0.4",
