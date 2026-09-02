@@ -229,10 +229,18 @@ export default function ScannerScreen() {
         />
       ) : null}
 
-      {/* Moves to settings.tsx when that screen exists; without it, re-pairing
-          during a rehearsal means reinstalling the app. */}
+      {/* The only chrome on the camera screen, and only while it is idle. A
+          guard mid-shift whose server has moved needs a way to the address
+          without unpairing the phone and starting over. */}
       {scanning ? (
         <SafeAreaView style={styles.footer} pointerEvents="box-none">
+          <Pressable
+            onPress={() => router.push("/settings")}
+            hitSlop={10}
+            accessibilityRole="button"
+          >
+            <Text style={styles.unpair}>Server</Text>
+          </Pressable>
           <Pressable onPress={confirmUnpair} hitSlop={10} accessibilityRole="button">
             <Text style={styles.unpair}>Unpair</Text>
           </Pressable>
@@ -269,6 +277,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     bottom: 0,
+    // A row now that it carries two links. Wide gap so a gloved thumb reaching
+    // for one cannot catch the other -- unpairing by accident mid-shift is a
+    // far more expensive slip than opening the wrong screen.
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xl,
     padding: spacing.md,
   },
   unpair: {
