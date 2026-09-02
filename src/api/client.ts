@@ -212,6 +212,78 @@ export type Health = { service: string; status: string; lan_ip?: string };
  * four dead addresses at ten seconds each has given up on the person, not the
  * network.
  */
+/**
+ * Why an address did not work, in the terms a person at a door can act on.
+ *
+ * "It failed" is useless when the fix depends on which failure it was: a typo
+ * needs the address checked, a timeout usually means the wrong subnet or a
+ * firewall, and a server that answers but is not this one means the port belongs
+ * to something else entirely -- routers, printers and captive portals all answer
+ * on 8000 somewhere.
+ */
+export type ReachResult =
+  | { ok: true; health: Health }
+  | { ok: false; reason: "bad-address" }
+  | { ok: false; reason: "timeout" }
+  | { ok: false; reason: "unreachable" }
+  | { ok: false; reason: "not-vms"; status: number | null };
+
+/**
+ * Five seconds, not the 2.5 the startup probe uses.
+ *
+ * The startup probe is walking a list and must not make a guard wait on each
+ * dead entry. This one is a person tapping "Test" and watching for an answer,
+ * where giving up too early on a slow LAN is the worse mistake.
+ */
+const TEST_TIMEOUT_MS = 5000;
+
+/**
+ * Test one address, with the reason it failed.
+ *
+ * IT CHECKS THE IDENTITY, not just reachability. Accepting any HTTP response as
+ * success would let somebody save the address of a router's admin page, and the
+ * failure would surface later at a badge instead of here. `/api/v1/health` is
+ * unauthenticated by design and names the service, so a positive answer proves
+ * both that something is listening and that it is this system.
+ */
+export async function testConnection(origin: string): Promise<ReachResult> {
+  const normalised = normaliseOrigin(origin);
+  if (!normalised) return { ok: false, reason: "bad-address" };
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, TEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${normalised}/api/v1/health`, {
+      signal: controller.signal,
+    });
+
+    // Something answered. Whether it is the right something is the next question.
+    let body: Health | null = null;
+    try {
+      body = (await response.json()) as Health;
+    } catch {
+      body = null;
+    }
+
+    if (response.ok && body?.service === "vms") return { ok: true, health: body };
+    return { ok: false, reason: "not-vms", status: response.status };
+  } catch {
+    // A refused connection throws almost immediately; an unroutable address
+    // hangs until the abort fires. That difference is the only signal React
+    // Native gives us here, so the flag set by the timer is what separates them.
+    return timedOut
+      ? { ok: false, reason: "timeout" }
+      : { ok: false, reason: "unreachable" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function probeServer(origin: string): Promise<Health | null> {
   const normalised = normaliseOrigin(origin);
   if (!normalised) return null;
