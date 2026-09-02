@@ -7,7 +7,7 @@
     "icon": "./assets/images/brand/drcc-event.png",
     "scheme": "vmsscanner",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#FFFFFF",
+    "backgroundColor": "#0B1016",
     "ios": {
       "icon": "./assets/images/brand/drcc-event.png"
     },
@@ -37,12 +37,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FFFFFF",
+          "backgroundColor": "#0B1016",
           "image": "./assets/images/brand/drcc-event.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "dark": {
-            "backgroundColor": "#FFFFFF",
+            "backgroundColor": "#0B1016",
             "image": "./assets/images/brand/drcc-event.png"
           }
         }
