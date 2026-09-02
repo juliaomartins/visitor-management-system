@@ -7,13 +7,13 @@
     "icon": "./assets/images/brand/drcc-event.png",
     "scheme": "vmsscanner",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B1016",
+    "backgroundColor": "#FFFFFF",
     "ios": {
       "icon": "./assets/images/brand/drcc-event.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/brand/drcc-event.png",
         "backgroundImage": "./assets/images/brand/drcc-event.png",
         "monochromeImage": "./assets/images/brand/drcc-event.png"
