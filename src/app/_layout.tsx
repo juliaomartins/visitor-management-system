@@ -18,6 +18,7 @@
  * There is no tab bar and no header. The guard sees one screen, forever
  * (CLAUDE.md constraint #4).
  */
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -46,7 +47,20 @@ function Routes() {
     background underneath it instead of blinking.
   */
   useEffect(() => {
-    SplashScreen.setOptions({ duration: 220, fade: true });
+    /*
+      `setOptions` is unavailable in Expo Go, which warns about it on every
+      launch. Expo Go owns its own splash screen and cannot hand over control of
+      it, so the call is not merely unsupported there -- it has nothing to
+      configure. Guarding it keeps the development console clean without
+      changing what a real build does, where the fade is exactly what stops the
+      OS image cutting to the animated screen.
+
+      `hideAsync` is fine in Expo Go and still runs, so the launch animation
+      plays in development too.
+    */
+    if (Constants.executionEnvironment !== ExecutionEnvironment.StoreClient) {
+      SplashScreen.setOptions({ duration: 220, fade: true });
+    }
     SplashScreen.hideAsync();
   }, []);
 
