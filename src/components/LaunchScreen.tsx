@@ -203,10 +203,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   mark: {
-    // Matches `imageWidth` in the app.json splash config, so the handover from
-    // the OS splash to this screen does not resize the artwork.
+    /*
+      A SQUARE BOX, and the aspect ratio is the image's business rather than
+      this file's. It used to be `200 * (419 / 628)`, hardcoded from the
+      artwork's dimensions -- which silently became wrong the moment the asset
+      was replaced with a 512x512 square for icon use. `contentFit: "contain"`
+      fits either shape inside the box correctly, so the mark can be re-cropped
+      again without anybody remembering to edit a ratio here.
+
+      200 matches `imageWidth` in the app.json splash config, so the handover
+      from the OS splash to this screen does not resize the artwork.
+    */
     width: 200,
-    height: 200 * (419 / 628),
+    height: 200,
   },
   title: {
     marginTop: spacing.lg,
