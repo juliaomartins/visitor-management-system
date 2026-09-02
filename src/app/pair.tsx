@@ -32,6 +32,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ApiError, NetworkError } from "@/api/client";
+import { ServerBar } from "@/components/ServerBar";
 import { ServerSetup } from "@/components/ServerSetup";
 import { useServer } from "@/hooks/useServer";
 import {
@@ -97,7 +98,11 @@ export default function PairScreen() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
+          {/* Before pairing is exactly when a wrong address has to be fixable:
+            there is no code to redeem against a server nobody can reach. */}
+        <ServerBar />
+
+        <View style={styles.header}>
             <Image
               source={require("../../assets/images/brand/drcc-event.png")}
               style={styles.mark}
