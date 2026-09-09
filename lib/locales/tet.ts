@@ -75,4 +75,70 @@ export const tet: Messages = {
   "error.visitorActivate": "La bele ativa vizitante ne\u2019e.",
   "error.visitorDeactivate": "La bele dezativa vizitante ne\u2019e.",
   "error.visitorDelete": "La bele hasai vizitante ne\u2019e.",
+
+  // -------------------------------------------------------- visitor list --
+  "visitors.title": "Vizitante sira",
+  "visitors.subtitle": "Ema hotu ne\u2019eb\u00e9 rejista ba eventu",
+  "visitors.search": "Buka vizitante",
+  "visitors.searchPlaceholder":
+    "Naran, organizasaun, nasaun ka n\u00fameru kartaun",
+  "visitors.filterCategory": "Filtra tuir kategoria",
+  "visitors.tab.all": "Hotu",
+  "visitors.tab.normal": "Norm\u00e1l",
+  "visitors.tab.vip": "VIP",
+  "visitors.exportTitle":
+    "Folha k\u00e1lkulu ho ema hotu ne\u2019eb\u00e9 rejista. La f\u00f3 sai kartaun foun.",
+  "visitors.exporting": "Esporta hela\u2026",
+  "visitors.export": "Esporta .xlsx",
+  "visitors.exportFailed": "La bele esporta lista.",
+  "visitors.register": "Rejista vizitante",
+  "visitors.refreshing": "Atualiza hela\u2026",
+  "visitors.loadFailed": "La bele karga vizitante sira",
+  "visitors.requestFailed": "Pedidu falla molok to\u2019o servid\u00f3r.",
+  "visitors.serverRejected": "Servid\u00f3r rejeita pedidu ne\u2019e.",
+  "visitors.noneMatch": "Laiha ema ida tuir filtru sira ne\u2019e",
+  "visitors.noneMatchBody":
+    "Koko buka ho liafuan badak liu, ka loke kategoria.",
+  "visitors.empty": "Seidauk iha vizitante",
+  "visitors.emptyBody": "Rejista vizitante primeiru atu f\u00f3 sai kartaun.",
+  "visitors.menu.edit": "Edita dadus",
+  "visitors.menu.deactivate": "Dezativa vizitante",
+  "visitors.menu.activate": "Ativa vizitante",
+  "visitors.menu.delete": "Hasai permanente",
+  "visitors.status.deactivated": "Dezativadu",
+
+  // --------------------------------------------------- deactivate dialog --
+  "deactivate.title": "Dezativa {name}?",
+  "deactivate.body":
+    "Kartaun {serial} para funsiona kedas. Leitura tuirmai sei mosu mean iha odamatan.",
+  "deactivate.point1":
+    "Sira sei hela iha lista vizitante, ho marka dezativadu.",
+  "deactivate.point2": "Ist\u00f3ria leitura sei rai nafatin.",
+  "deactivate.point3":
+    "Bele fila fali. Ativa f\u00f3 fila kartaun ne\u2019eb\u00e9 imprime ona ba servisu \u2014 laiha buat atu imprime fali.",
+  "deactivate.cancel": "Rai ativu nafatin",
+  "deactivate.confirm": "Dezativa",
+  "deactivate.pending": "Dezativa hela\u2026",
+
+  // -------------------------------------------------------- purge dialog --
+  "purge.warning": "La bele fila fali",
+  "purge.title": "Hasai {name} permanente?",
+  "purge.body":
+    "Ne\u2019e hasai rejistu no vizitante nia foto husi servid\u00f3r. Dezativa mak opsaun ne\u2019eb\u00e9 bele fila fali; ida ne\u2019e lae.",
+  "purge.scansUnknown":
+    "Leitura kartaun ne\u2019e nian sei hela iha rejistu tama, maib\u00e9 la naran ema ida ona.",
+  "purge.scansNone":
+    "Laiha leitura ida afetadu \u2014 kartaun ne\u2019e seidauk aprezenta.",
+  "purge.scansOne":
+    "Leitura {count} sei hela iha rejistu tama, maib\u00e9 la naran ema ida ona.",
+  "purge.scansMany":
+    "Leitura {count} sei hela iha rejistu tama, maib\u00e9 la naran ema ida ona.",
+  "purge.serialRetired":
+    "Kartaun {serial} hasai ona. N\u00fameru ne\u2019e la uza fali.",
+  "purge.reRegister":
+    "Rejista fila sira sei kria vizitante foun, n\u00fameru foun no QR foun.",
+  "purge.typeToConfirm": "Hakerek {serial} atu konfirma",
+  "purge.cancel": "Kansela",
+  "purge.confirm": "Hasai permanente",
+  "purge.pending": "Hasai hela\u2026",
 };
