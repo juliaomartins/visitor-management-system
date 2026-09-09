@@ -6,9 +6,7 @@ import { useState } from "react";
 
 import { BadgeCard } from "@/components/badge-card";
 import { useSetPageMeta } from "@/components/page-meta";
-import { ReissueDialog } from "@/components/badges/ReissueDialog";
 import { RevokeDialog } from "@/components/visitors/RevokeDialog";
-import { downloadReissuedSheet, reissueBadges } from "@/lib/badges";
 import {
   ApiError,
   useRevokeVisitor,
@@ -30,19 +28,15 @@ export default function VisitorDetailPage() {
   const { data: visitor, isPending, isError, error } = useVisitor(id);
   const revoke = useRevokeVisitor(id);
   const [confirming, setConfirming] = useState(false);
-  const [reissuing, setReissuing] = useState(false);
-  const [reissuePending, setReissuePending] = useState(false);
-  const [reissueError, setReissueError] = useState<string | undefined>();
 
   /*
-    The raw token, held only while this page is open.
+    THE QR IS ISSUED ONCE, AT REGISTRATION, AND NOTHING HERE CHANGES IT.
 
-    It arrives from a reissue and is never stored — a refresh loses it and the
-    card reverts to showing an empty QR frame, which is the truth: the server
-    cannot hand it back a second time.
+    `visitor.badge_token` is derived from the visitor's id and token version, so
+    it is the same string every time it is read. There is no local copy to keep
+    in sync, and no code path on this page can mint a different one -- the card
+    already in somebody's hand stays scannable for the life of the event.
   */
-  const [rawToken, setRawToken] = useState<string | undefined>();
-  const [showingQr, setShowingQr] = useState(false);
 
   useSetPageMeta({
     title: visitor?.full_name ?? "Visitor",
@@ -105,26 +99,20 @@ export default function VisitorDetailPage() {
           caught before fifty cards come off the printer.
         */}
         <div className="card p-4 sm:p-5">
-          <BadgeCard visitor={visitor} width="100%" detail token={rawToken} />
+          {/* The QR is simply here now. The token is derived from the visitor,
+              so this is the same code that is on the printed card and it can be
+              shown, reprinted or photographed any number of times. */}
+          <BadgeCard
+            visitor={visitor}
+            width="100%"
+            detail
+            token={visitor.badge_token}
+          />
           <p className="mono mt-3 text-[11px] text-ink-3">
             CR80 · 54 × 85.6 mm · as it prints
           </p>
 
-          {rawToken ? (
-            <p className="mt-2 text-xs leading-relaxed text-valid">
-              This is the live QR for the badge just issued. It is on screen
-              only — leaving this page loses it, and the card must be reissued
-              again to see one.
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowingQr(true)}
-              className="btn btn-ghost mt-3 w-full"
-            >
-              Reissue &amp; show QR
-            </button>
-          )}
+
         </div>
 
         <div className="min-w-0">
@@ -140,7 +128,7 @@ export default function VisitorDetailPage() {
           </h2>
           <p className="mt-2 text-sm text-ink-3">
             {revoked
-              ? "The next scan of it shows red. Reissue to print a working replacement."
+              ? "The next scan of it shows red. The QR does not change, so reprinting will not bring it back."
               : "Any paired scanner will accept it and the lobby screen will welcome them."}
           </p>
 
@@ -168,18 +156,15 @@ export default function VisitorDetailPage() {
             </Link>
 
             {/*
-              Not "download" — there is nothing to download. The raw token behind
-              this visitor's QR was never stored, so the server cannot redraw the
-              card it issued; it can only issue a new one. The label says so, and
-              the dialog spells out the consequence.
+              "REPLACE BADGE" WAS HERE AND IS DELIBERATELY GONE.
+
+              It called `POST /badges/reissue`, the rotation endpoint, which
+              bumps `token_version` and re-derives the hash -- the only thing in
+              the system that can change a QR. A badge is issued once at
+              registration and stays valid until the visitor is revoked or
+              deleted, so a control that quietly re-mints it does not belong on
+              this page. A lost card is handled by revoking it, below.
             */}
-            <button
-              type="button"
-              onClick={() => setReissuing(true)}
-              className="btn btn-ghost text-vip hover:text-vip"
-            >
-              Reissue &amp; print badge
-            </button>
 
             {revoked ? null : (
               <button
@@ -193,9 +178,10 @@ export default function VisitorDetailPage() {
           </div>
 
           <p className="mt-3 max-w-lg text-xs leading-relaxed text-ink-3">
-            Reissuing prints a new card and kills the old one — badge tokens are
-            stored only as a hash, so an issued card can never be reprinted.
-            Collect the old card when you hand over the new one.
+            This QR was generated when the visitor was registered and never
+            changes. Reprint the card as often as you need &mdash; it scans the
+            same every time. Revoking is the only thing that stops it, and it
+            cannot be undone from here.
           </p>
         </div>
       </div>
@@ -233,69 +219,6 @@ export default function VisitorDetailPage() {
           )}
         </div>
       </section>
-
-      {/* Showing a QR means minting one, so it goes through the same
-          confirmation as printing. */}
-      <ReissueDialog
-        open={showingQr}
-        count={1}
-        name={visitor.full_name}
-        pending={reissuePending}
-        error={reissueError}
-        onConfirm={async () => {
-          setReissuePending(true);
-          setReissueError(undefined);
-          try {
-            const [issued] = await reissueBadges([visitor.id]);
-            setRawToken(issued.token);
-            setShowingQr(false);
-          } catch (cause) {
-            setReissueError(
-              cause instanceof ApiError
-                ? cause.message
-                : "The badge could not be reissued.",
-            );
-          } finally {
-            setReissuePending(false);
-          }
-        }}
-        onCancel={() => {
-          if (!reissuePending) {
-            setShowingQr(false);
-            setReissueError(undefined);
-          }
-        }}
-      />
-
-      <ReissueDialog
-        open={reissuing}
-        count={1}
-        name={visitor.full_name}
-        pending={reissuePending}
-        error={reissueError}
-        onConfirm={async () => {
-          setReissuePending(true);
-          setReissueError(undefined);
-          try {
-            await downloadReissuedSheet([visitor.id]);
-            setReissuing(false);
-          } catch (cause) {
-            setReissueError(
-              cause instanceof ApiError
-                ? cause.message
-                : "The badge could not be rendered.",
-            );
-          } finally {
-            setReissuePending(false);
-          }
-        }}
-        onCancel={() => {
-          if (!reissuePending) {
-            setReissuing(false);
-            setReissueError(undefined);
-          }
-        }}
-      />
 
       <RevokeDialog
         open={confirming}
