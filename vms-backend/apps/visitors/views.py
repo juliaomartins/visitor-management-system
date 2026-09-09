@@ -24,6 +24,7 @@ from .serializers import (
     VisitorIssuedSerializer,
     VisitorPurgedSerializer,
     VisitorSerializer,
+    VisitorWithTokenSerializer,
 )
 
 TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -52,6 +53,17 @@ FALSE_VALUES = {"0", "false", "no", "off"}
                 OpenApiTypes.STR,
                 description="Exact country match, case-insensitive.",
             ),
+            OpenApiParameter(
+                "with_tokens",
+                OpenApiTypes.BOOL,
+                description=(
+                    "Include `badge_token` on every row. Off by default. Each "
+                    "token is a working credential, so this turns one request "
+                    "into a set of usable badges -- ask for it only where the "
+                    "codes are the point, such as a print queue that draws the "
+                    "real QR. The same codes are already in the .xlsx export."
+                ),
+            ),
         ],
     ),
     retrieve=extend_schema(summary="Visitor detail, with scan history"),
@@ -77,6 +89,11 @@ class VisitorViewSet(viewsets.ModelViewSet):
     ordering = ["full_name"]
     # No PUT: the API surface offers PATCH only.
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def _wants_tokens(self) -> bool:
+        return (self.request.query_params.get("with_tokens") or "").lower() in (
+            TRUE_VALUES
+        )
 
     def get_queryset(self):
         # Soft-deleted registrations are invisible everywhere in the API.
@@ -108,6 +125,9 @@ class VisitorViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "retrieve":
             return VisitorDetailSerializer
+        if self.action == "list" and self._wants_tokens():
+            # Opt-in, never the default. See the `with_tokens` parameter above.
+            return VisitorWithTokenSerializer
         if self.action == "create":
             # `badge_token` is read-only, so this is the plain visitor payload on
             # the way in and the token-bearing payload on the way out.
