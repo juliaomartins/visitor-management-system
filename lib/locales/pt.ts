@@ -137,4 +137,40 @@ export const pt: Messages = {
   "purge.cancel": "Cancelar",
   "purge.confirm": "Eliminar definitivamente",
   "purge.pending": "A eliminar\u2026",
+
+  // ------------------------------------------------------ visitor detail --
+  "common.loading": "A carregar\u2026",
+  "visitor.fallbackTitle": "Visitante",
+  "visitor.notFound": "N\u00e3o foi poss\u00edvel carregar este visitante",
+  "visitor.notFoundBody":
+    "Pode ter sido eliminado. Consulte a lista de visitantes.",
+  "visitor.backToAll": "Voltar a todos os visitantes",
+  "visitor.allVisitors": "Todos os visitantes",
+  "visitor.status.active": "Ativo",
+  "visitor.headingActive": "Este crach\u00e1 abre a porta",
+  "visitor.headingOff": "Este crach\u00e1 est\u00e1 desligado",
+  "visitor.subActive":
+    "Qualquer leitor emparelhado aceita-o e o ecr\u00e3 do \u00e1trio d\u00e1 as boas-vindas.",
+  "visitor.subOff":
+    "A pr\u00f3xima leitura mostra vermelho. Ativar p\u00f5e o mesmo cart\u00e3o a funcionar \u2014 n\u00e3o \u00e9 preciso reimprimir.",
+  "visitor.registered": "Registado",
+  "visitor.arrivals": "Chegadas",
+  "visitor.lastArrival": "\u00daltima chegada",
+  "visitor.notYet": "Ainda n\u00e3o",
+  "visitor.scansLogged": "Leituras registadas",
+  "visitor.activating": "A ativar\u2026",
+  "visitor.qrNote":
+    "Este QR foi gerado no registo do visitante e nunca muda. Reimprima o cart\u00e3o as vezes que precisar \u2014 l\u00ea-se sempre igual. Desativar para-o e ativar volta a p\u00f4-lo a funcionar, sem tocar no c\u00f3digo do cart\u00e3o. Eliminar definitivamente \u00e9 a \u00fanica coisa aqui que n\u00e3o pode ser anulada.",
+  "visitor.scanHistory": "Hist\u00f3rico de leituras",
+  "visitor.scanHistoryBody":
+    "Todas as vezes que este crach\u00e1 foi apresentado, incluindo as recusadas.",
+  "visitor.noScans": "Este crach\u00e1 ainda n\u00e3o foi lido.",
+  "visitor.col.event": "Evento",
+  "visitor.col.scannedAt": "Lido em",
+  "visitor.col.result": "Resultado",
+  "visitor.col.device": "Dispositivo",
+  "scan.valid": "V\u00e1lido",
+  "scan.duplicate": "Duplicado",
+  "scan.revoked": "Revogado",
+  "scan.invalid": "Inv\u00e1lido",
 };
