@@ -8,7 +8,7 @@ somebody read one to a colleague or type it into a phone without guessing.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 from config import service_urls
 from i18n import t
 from network import is_lan_address
-from widgets import theme
+from widgets import icons, theme
 from widgets.theme import subtle, title
 
 
@@ -93,6 +93,8 @@ class NetworkCard(QFrame):
     def restyle(self) -> None:
         self.setStyleSheet(theme.card_qss())
         self._refresh.setStyleSheet(theme.ghost_button_qss())
+        self._refresh.setIcon(icons.refresh(theme.current().text_muted))
+        self._refresh.setIconSize(QSize(16, 16))
         theme.restyle_labels(self)
         if self._lan_ip:
             self.set_address(self._lan_ip)
