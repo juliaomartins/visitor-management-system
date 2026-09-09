@@ -87,7 +87,11 @@ def _publish_arrival(scan: ScanEvent) -> None:
     gone along with anything sent in those seconds. `/screen/feed?since=` is what
     makes that survivable, which is why both exist (constraint #6).
     """
-    payload = ScreenEventSerializer(scan).data
+    # Ensure the visitor is loaded before serializing. This is important because
+    # the serializer accesses obj.visitor.photo to build the absolute URL, and
+    # we want to do this inside the transaction before on_commit runs.
+    scan = ScanEvent.objects.select_related("visitor").get(pk=scan.pk)
+    payload = ScreenEventSerializer(scan, context={}).data
 
     transaction.on_commit(
         lambda: async_to_sync(get_channel_layer().group_send)(
