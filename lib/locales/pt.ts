@@ -70,4 +70,71 @@ export const pt: Messages = {
   "error.visitorDeactivate":
     "N\u00e3o foi poss\u00edvel desativar o visitante.",
   "error.visitorDelete": "N\u00e3o foi poss\u00edvel eliminar o visitante.",
+
+  // -------------------------------------------------------- visitor list --
+  "visitors.title": "Visitantes",
+  "visitors.subtitle": "Todos os inscritos no evento",
+  "visitors.search": "Procurar visitantes",
+  "visitors.searchPlaceholder":
+    "Nome, organiza\u00e7\u00e3o, pa\u00eds ou n\u00famero do crach\u00e1",
+  "visitors.filterCategory": "Filtrar por categoria",
+  "visitors.tab.all": "Todos",
+  "visitors.tab.normal": "Normal",
+  "visitors.tab.vip": "VIP",
+  "visitors.exportTitle":
+    "Folha de c\u00e1lculo com todos os inscritos. Nada \u00e9 reemitido.",
+  "visitors.exporting": "A exportar\u2026",
+  "visitors.export": "Exportar .xlsx",
+  "visitors.exportFailed": "N\u00e3o foi poss\u00edvel exportar a lista.",
+  "visitors.register": "Registar visitante",
+  "visitors.refreshing": "A atualizar\u2026",
+  "visitors.loadFailed": "N\u00e3o foi poss\u00edvel carregar os visitantes",
+  "visitors.requestFailed": "O pedido falhou antes de chegar ao servidor.",
+  "visitors.serverRejected": "O servidor rejeitou o pedido.",
+  "visitors.noneMatch": "Ningu\u00e9m corresponde a esses filtros",
+  "visitors.noneMatchBody":
+    "Tente uma pesquisa mais curta ou alargue a categoria.",
+  "visitors.empty": "Ainda n\u00e3o h\u00e1 visitantes",
+  "visitors.emptyBody":
+    "Registe o primeiro visitante para emitir um crach\u00e1.",
+  "visitors.menu.edit": "Editar dados",
+  "visitors.menu.deactivate": "Desativar visitante",
+  "visitors.menu.activate": "Ativar visitante",
+  "visitors.menu.delete": "Eliminar definitivamente",
+  "visitors.status.deactivated": "Desativado",
+
+  // --------------------------------------------------- deactivate dialog --
+  "deactivate.title": "Desativar {name}?",
+  "deactivate.body":
+    "O crach\u00e1 {serial} deixa de funcionar de imediato. A pr\u00f3xima leitura mostra vermelho \u00e0 porta.",
+  "deactivate.point1":
+    "Continuam na lista de visitantes, marcados como desativados.",
+  "deactivate.point2": "O hist\u00f3rico de leituras \u00e9 mantido.",
+  "deactivate.point3":
+    "Revers\u00edvel. Ativar p\u00f5e o mesmo cart\u00e3o impresso a funcionar \u2014 n\u00e3o h\u00e1 nada para reimprimir.",
+  "deactivate.cancel": "Manter ativo",
+  "deactivate.confirm": "Desativar",
+  "deactivate.pending": "A desativar\u2026",
+
+  // -------------------------------------------------------- purge dialog --
+  "purge.warning": "N\u00e3o pode ser anulado",
+  "purge.title": "Eliminar {name} definitivamente?",
+  "purge.body":
+    "Isto remove o registo e a fotografia do visitante do servidor. Desativar \u00e9 a op\u00e7\u00e3o revers\u00edvel; esta n\u00e3o \u00e9.",
+  "purge.scansUnknown":
+    "As leituras deste crach\u00e1 permanecem no registo de entradas, mas deixam de identificar algu\u00e9m.",
+  "purge.scansNone":
+    "Nenhuma leitura \u00e9 afetada \u2014 este crach\u00e1 nunca foi apresentado.",
+  "purge.scansOne":
+    "{count} leitura permanece no registo de entradas, mas deixa de identificar algu\u00e9m.",
+  "purge.scansMany":
+    "{count} leituras permanecem no registo de entradas, mas deixam de identificar algu\u00e9m.",
+  "purge.serialRetired":
+    "O crach\u00e1 {serial} \u00e9 retirado. O n\u00famero n\u00e3o \u00e9 reutilizado.",
+  "purge.reRegister":
+    "Voltar a regist\u00e1-los cria um novo visitante, um novo n\u00famero e um novo QR.",
+  "purge.typeToConfirm": "Escreva {serial} para confirmar",
+  "purge.cancel": "Cancelar",
+  "purge.confirm": "Eliminar definitivamente",
+  "purge.pending": "A eliminar\u2026",
 };
