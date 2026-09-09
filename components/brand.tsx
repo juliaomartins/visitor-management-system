@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * The event's identity, in one place.
  *
@@ -14,6 +16,8 @@
  * Strings live here rather than in each page so that "Ministerial Dialogue 2026"
  * cannot end up spelled three ways across the app.
  */
+import { useRichT } from "@/lib/i18n";
+
 export const EVENT = {
   name: "Díli Regional Cooperative Conference",
   subtitle: "and Ministerial Dialogue 2026",
@@ -111,13 +115,26 @@ export function Organisers({ compact = false }: { compact?: boolean }) {
 
 /** The organisers with their titles spelled out. For a page foot, not a rail. */
 export function OrganiserCredit() {
+  const rich = useRichT();
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
       <Organisers />
       <p className="min-w-0 flex-1 text-[11px] leading-snug text-ink-3">
-        Organised by the{" "}
-        <span className="text-ink-2">{EVENT.organisers[0].label}</span> and the{" "}
-        <span className="text-ink-2">{EVENT.organisers[1].label}</span>.
+        {/*
+          No article in front of the names. English wants "the", Portuguese
+          wants "pelo" or "pela" depending on each organiser's gender, and the
+          organisers are configuration rather than messages -- so the sentence
+          is written to need neither.
+        */}
+        {rich("brand.organisedBy", {
+          first: (
+            <span className="text-ink-2">{EVENT.organisers[0].label}</span>
+          ),
+          second: (
+            <span className="text-ink-2">{EVENT.organisers[1].label}</span>
+          ),
+        })}
       </p>
     </div>
   );
