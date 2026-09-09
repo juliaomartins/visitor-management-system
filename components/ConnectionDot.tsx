@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 /**
  * Is the feed alive?
  *
@@ -12,11 +13,14 @@
  * artefact on a frozen panel, a moving one could not.
  */
 export function ConnectionDot({ connected }: { connected: boolean }) {
+  const t = useT();
   return (
     <div
       className="pointer-events-none absolute right-6 bottom-6 flex items-center gap-2"
       role="status"
-      aria-label={connected ? "Arrival feed connected" : "Arrival feed disconnected"}
+      aria-label={t(
+        connected ? "feed.connected" : "feed.disconnected",
+      )}
     >
       <span
         className={`block h-3 w-3 rounded-full ${
