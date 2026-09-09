@@ -25,6 +25,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 
 import { LaunchScreen } from "@/components/LaunchScreen";
+import { LocaleProvider, useLocale } from "@/i18n";
 import { SessionProvider, useSession } from "@/session";
 import { colors } from "@/theme";
 
@@ -32,6 +33,16 @@ SplashScreen.preventAutoHideAsync();
 
 function Routes() {
   const { loading } = useSession();
+  /*
+    The language is a THIRD condition on the same gate.
+
+    It comes from the keystore too, so it lands a beat after the first frame.
+    Without waiting, a phone set to Tetun would paint one English frame and then
+    swap every word -- a visible flicker on every cold start. The launch
+    animation is already covering this window for the device token, so waiting
+    for one more read costs nothing that anybody sees.
+  */
+  const { ready: localeReady } = useLocale();
   const [introDone, setIntroDone] = useState(false);
 
   /*
@@ -66,7 +77,7 @@ function Routes() {
 
   // Both, whichever is later. `introDone` latches, so a slow keystore holds the
   // finished frame rather than replaying anything.
-  if (loading || !introDone) {
+  if (loading || !localeReady || !introDone) {
     return <LaunchScreen onFinish={() => setIntroDone(true)} />;
   }
 
@@ -84,8 +95,10 @@ function Routes() {
 export default function RootLayout() {
   return (
     <SessionProvider>
-      <StatusBar style="light" />
-      <Routes />
+      <LocaleProvider>
+        <StatusBar style="light" />
+        <Routes />
+      </LocaleProvider>
     </SessionProvider>
   );
 }
