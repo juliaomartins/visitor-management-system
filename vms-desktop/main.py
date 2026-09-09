@@ -26,7 +26,7 @@ from pathlib import Path
 # up itself, so it is only needed for the developer path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from PySide6.QtCore import Qt, QTimer  # noqa: E402
+from PySide6.QtCore import QSize, Qt, QTimer  # noqa: E402
 from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QIcon  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
@@ -51,7 +51,7 @@ from i18n import t  # noqa: E402
 from launcher import Orchestrator  # noqa: E402
 from network import detect_lan_ip  # noqa: E402
 from services import ServiceRegistry, State  # noqa: E402
-from widgets import theme  # noqa: E402
+from widgets import icons, theme  # noqa: E402
 from widgets.log_viewer import LogViewer  # noqa: E402
 from widgets.network_card import NetworkCard  # noqa: E402
 from widgets.service_card import ServiceCard  # noqa: E402
@@ -182,6 +182,42 @@ class ControlCenter(QMainWindow):
         self._split.setStretchFactor(1, 2)
         root.addWidget(self._split, stretch=1)
 
+        self._balanced = False
+
+    def _balance_split(self) -> None:
+        """Give the panels the height they actually want, once.
+
+        A STRETCH FACTOR IS A RATIO, NOT A FIT. 3:2 handed the panels about
+        510px while two rows of cards plus the network panel wanted 650, so the
+        bottom row was sliced through the middle -- scrollable, but looking
+        broken. This asks the panel column how tall it is and gives it that,
+        leaving the log its minimum and whatever is over.
+
+        Once only: after this the user's own drag is the authority, and
+        re-balancing on every resize would keep undoing it.
+        """
+        if self._balanced:
+            return
+        self._balanced = True
+
+        total = self._split.height()
+        if total <= 0:
+            return
+
+        wanted = self._scroll.widget().sizeHint().height()
+        # The log's own floor, not an inflated one. Rounding it up to 150 left
+        # the panels seventeen pixels short of their content, which lands the
+        # cut through the middle of a row of buttons -- scrollable, but it
+        # reads as broken. The log is still guaranteed its minimum.
+        log_floor = self._logs.minimumHeight()
+        panels = max(0, min(wanted, total - log_floor))
+        self._split.setSizes([panels, total - panels])
+
+    def showEvent(self, event) -> None:  # noqa: N802  (Qt naming)
+        super().showEvent(event)
+        # After the first layout pass, when the splitter has a real height.
+        QTimer.singleShot(0, self._balance_split)
+
     def _relayout_cards(self, columns: int) -> None:
         """Arrange the four cards in 1, 2 or 4 columns.
 
@@ -200,12 +236,37 @@ class ControlCenter(QMainWindow):
         for column in range(4):
             self._grid.setColumnStretch(column, 1 if column < columns else 0)
 
+    def _columns_for(self, width: int) -> int:
+        """How many cards fit across, asked of the cards rather than guessed.
+
+        A COLUMN COUNT IS ONLY RIGHT IF THE CARD IN IT IS. Four columns at
+        1180px gives each card about 280px, which is narrower than its own
+        button row wants once the buttons carry icons -- so every card with an
+        Open button wrapped to two rows, grew taller than the panel area, and
+        was cut off half way down. Fewer, wider columns is the better trade:
+        the cards stay one row tall and nothing is clipped.
+
+        Falls back to a plain width rule if the cards cannot be asked yet,
+        which is only true during construction.
+        """
+        cards = list(self._cards.values())
+        if not cards:
+            return 1
+
+        spacing = self._grid.horizontalSpacing()
+        margins = 32  # the root layout's left and right
+        # The widest of the four: they differ, and a column has to hold any.
+        needed = max(card._row_needs() for card in cards)
+
+        for columns in (4, 2):
+            if width - margins >= columns * needed + (columns - 1) * spacing:
+                return columns
+        return 1
+
     def resizeEvent(self, event) -> None:  # noqa: N802  (Qt naming)
         super().resizeEvent(event)
         width = event.size().width()
-        # Thresholds are the card's own minimum (232px) plus spacing, so a
-        # column is only offered when a card at that width still reads.
-        self._relayout_cards(4 if width >= 1150 else 2 if width >= 620 else 1)
+        self._relayout_cards(self._columns_for(width))
         rows = 1 if width >= 900 else 2
         self._lay_out_header(rows=rows)
         # Measured against what the buttons ACTUALLY report, which already
@@ -441,9 +502,28 @@ class ControlCenter(QMainWindow):
         self._heading.setStyleSheet(f"color: {p.text};")
         self._subtitle.setStyleSheet(f"color: {p.text_faint};")
         self._language.setStyleSheet(theme.ghost_button_qss())
+        self._language.setIcon(icons.globe(p.text_muted))
         self._theme.setStyleSheet(theme.ghost_button_qss())
+        # The button names its DESTINATION, so it shows the icon of the mode it
+        # will give you -- a sun while dark, a moon while light. Showing the
+        # current mode's icon is the same ambiguity the label avoids.
+        self._theme.setIcon(
+            icons.sun(p.text_muted)
+            if theme.current().name == "dark"
+            else icons.moon(p.text_muted)
+        )
         self._run_all.setStyleSheet(theme.primary_button_qss())
+        self._run_all.setIcon(icons.play(p.on_accent))
         self._stop_all.setStyleSheet(theme.danger_button_qss())
+        self._stop_all.setIcon(icons.stop(p.invalid))
+
+        for button in (
+            self._language,
+            self._theme,
+            self._run_all,
+            self._stop_all,
+        ):
+            button.setIconSize(QSize(16, 16))
         self._network.restyle()
         self._logs.restyle()
         for card in self._cards.values():
@@ -453,26 +533,32 @@ class ControlCenter(QMainWindow):
     def retranslate(self) -> None:
         self._subtitle.setText(t("app.subtitle"))
         dark = theme.current().name == "dark"
+
+        # THE ICON CARRIES THE MEANING WHEN THE LABEL CANNOT.
+        #
+        # Compact mode used to substitute a Unicode glyph for the words, which
+        # relied on whatever the system font had for U+25B6 and rendered at a
+        # different weight to everything around it. The icon is drawn to the
+        # same conventions as every other mark here, and the tooltip carries
+        # the word that no longer fits -- so nothing is lost, only shortened.
         if getattr(self, "_compact", False):
             self._language.setText(i18n.current().upper())
-            self._language.setToolTip(t("pref.language"))
-            self._theme.setText("☀" if dark else "☽")
-            self._theme.setToolTip(
-                t("pref.toLight") if dark else t("pref.toDark")
-            )
-            self._run_all.setText("▶")
-            self._run_all.setToolTip(t("app.runAll"))
-            self._stop_all.setText("■")
-            self._stop_all.setToolTip(t("app.stopAll"))
+            self._theme.setText("")
+            self._run_all.setText("")
+            self._stop_all.setText("")
         else:
             self._language.setText(i18n.language_name(i18n.current()))
-            self._language.setToolTip(t("pref.language"))
             self._theme.setText(t("pref.toLight") if dark else t("pref.toDark"))
-            self._theme.setToolTip("")
-            self._run_all.setText(f"▶  {t('app.runAll')}")
-            self._run_all.setToolTip("")
-            self._stop_all.setText(f"■  {t('app.stopAll')}")
-            self._stop_all.setToolTip("")
+            self._run_all.setText(t("app.runAll"))
+            self._stop_all.setText(t("app.stopAll"))
+
+        # Tooltips always, not only when compact: a control that has room for
+        # its label still benefits from one, and it means the compact path is
+        # not the only place the word exists.
+        self._language.setToolTip(t("pref.language"))
+        self._theme.setToolTip(t("pref.toLight") if dark else t("pref.toDark"))
+        self._run_all.setToolTip(t("app.runAll"))
+        self._stop_all.setToolTip(t("app.stopAll"))
         self._network.retranslate()
         self._logs.retranslate()
         for card in self._cards.values():
@@ -483,6 +569,8 @@ class ControlCenter(QMainWindow):
         nxt = "light" if theme.current().name == "dark" else "dark"
         theme.set_palette(nxt)
         i18n.settings().setValue("theme", nxt)
+        # restyle first: it repaints the icons from the new palette, and
+        # retranslate then sets the labels and tooltips that go beside them.
         self.restyle()
         self.retranslate()
 
