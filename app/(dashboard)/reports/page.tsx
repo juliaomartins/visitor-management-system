@@ -1,5 +1,7 @@
 "use client";
 
+import { useErrorText, useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
 import { useState } from "react";
 
 import { useSetPageMeta } from "@/components/page-meta";
@@ -14,7 +16,6 @@ import {
   type ReportFilters,
   type ReportFormat,
 } from "@/lib/reports";
-import { ApiError } from "@/lib/visitors";
 
 /**
  * The entrance report: attendance record and security audit, one page.
@@ -32,21 +33,24 @@ import { ApiError } from "@/lib/visitors";
  * table in three wrappers: the PDF is the written report, the workbook is the
  * figures to pivot, the CSV is the raw log.
  */
-const RESULTS = [
-  { value: "", label: "All outcomes" },
-  { value: "valid", label: "Valid" },
-  { value: "duplicate", label: "Duplicate" },
-  { value: "revoked", label: "Revoked" },
-  { value: "invalid", label: "Invalid" },
+/* Keys, not words -- module constants, built before any translator. */
+const RESULTS: { value: string; labelKey: MessageKey }[] = [
+  { value: "", labelKey: "reports.allOutcomes" },
+  { value: "valid", labelKey: "scan.valid" },
+  { value: "duplicate", labelKey: "scan.duplicate" },
+  { value: "revoked", labelKey: "scan.revoked" },
+  { value: "invalid", labelKey: "scan.invalid" },
 ];
 
-const CATEGORIES = [
-  { value: "", label: "All categories" },
-  { value: "normal", label: "Normal" },
-  { value: "vip", label: "VIP" },
+const CATEGORIES: { value: string; labelKey: MessageKey }[] = [
+  { value: "", labelKey: "reports.allCategories" },
+  { value: "normal", labelKey: "form.cat.normal" },
+  { value: "vip", labelKey: "form.cat.vip" },
 ];
 
 export default function ReportsPage() {
+  const t = useT();
+  const errorText = useErrorText();
   const [filters, setFilters] = useState<ReportFilters>(() => ({
     from: todayISO(),
     to: todayISO(),
@@ -59,12 +63,12 @@ export default function ReportsPage() {
   const refused = (summary?.by_result.invalid ?? 0) + (summary?.by_result.revoked ?? 0);
 
   useSetPageMeta({
-    title: "Entrance log",
+    title: t("reports.title"),
     subtitle: summary
       ? refused > 0
-        ? `${refused} refused at the door`
-        : "No badges refused in this range"
-      : "Arrivals and refusals",
+        ? t("reports.subtitleRefused", { count: refused })
+        : t("reports.subtitleNoRefusals")
+      : t("reports.subtitleQuiet"),
     count: summary?.total,
   });
 
@@ -78,7 +82,7 @@ export default function ReportsPage() {
       await downloadEntriesExport(filters, format);
     } catch (cause) {
       setExportError(
-        cause instanceof ApiError ? cause.message : "The export could not be saved.",
+        errorText(cause, "reports.exportFailed"),
       );
     } finally {
       setExporting(null);
@@ -89,7 +93,7 @@ export default function ReportsPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Filters in one row above the data, as a group. */}
       <div className="card flex flex-wrap items-end gap-3 p-4 sm:p-5">
-        <Field label="From">
+        <Field label={t("reports.from")}>
           <input
             type="date"
             value={filters.from}
@@ -99,7 +103,7 @@ export default function ReportsPage() {
           />
         </Field>
 
-        <Field label="To">
+        <Field label={t("reports.to")}>
           <input
             type="date"
             value={filters.to}
@@ -109,28 +113,34 @@ export default function ReportsPage() {
           />
         </Field>
 
-        <Field label="Outcome">
+        <Field label={t("reports.outcome")}>
           <Select
             value={filters.result ?? ""}
-            options={RESULTS}
+            options={RESULTS.map((option) => ({
+              value: option.value,
+              label: t(option.labelKey),
+            }))}
             onChange={(value) => update({ result: value || undefined })}
           />
         </Field>
 
-        <Field label="Category">
+        <Field label={t("form.category")}>
           <Select
             value={filters.category ?? ""}
-            options={CATEGORIES}
+            options={CATEGORIES.map((option) => ({
+              value: option.value,
+              label: t(option.labelKey),
+            }))}
             onChange={(value) => update({ category: value || undefined })}
           />
         </Field>
 
-        <Field label="Country">
+        <Field label={t("form.country")}>
           <input
             type="search"
             value={filters.country ?? ""}
             onChange={(event) => update({ country: event.target.value || undefined })}
-            placeholder="Any"
+            placeholder={t("reports.any")}
             className="field w-36"
           />
         </Field>
@@ -153,7 +163,7 @@ export default function ReportsPage() {
           </p>
         </div>
         <p className="mt-0.5 text-xs text-ink-3">
-          Whatever the filters above are set to, exactly as shown.
+          {t("reports.exportNote")}
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -166,10 +176,12 @@ export default function ReportsPage() {
               className="card cursor-pointer p-4 text-left transition-colors hover:border-accent disabled:cursor-default disabled:opacity-60"
             >
               <span className="block text-sm font-semibold text-ink">
-                {exporting === option.format ? "Preparing…" : option.label}
+                {exporting === option.format
+                  ? t("reports.preparing")
+                  : t(option.labelKey)}
               </span>
               <span className="mt-1 block text-xs leading-relaxed text-ink-3">
-                {option.hint}
+                {t(option.hintKey)}
               </span>
             </button>
           ))}
@@ -186,24 +198,26 @@ export default function ReportsPage() {
 
       <section className="card">
         {isPending ? (
-          <p className="mono px-6 py-12 text-center text-xs text-ink-3">Loading…</p>
+          <p className="mono px-6 py-12 text-center text-xs text-ink-3">
+            {t("common.loading")}
+          </p>
         ) : isError ? (
           <div className="px-6 py-12 text-center">
-            <p className="display text-lg text-revoked">Could not load the log</p>
+            <p className="display text-lg text-revoked">
+              {t("reports.logFailed")}
+            </p>
             <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
-              {error instanceof ApiError
-                ? error.message
-                : "The request failed before it reached the server."}
+              {errorText(error, "visitors.requestFailed")}
             </p>
           </div>
         ) : (
           <>
             <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
               <h2 className="display text-[1.05rem] text-ink">
-                Every badge presented
+                {t("reports.everyBadge")}
               </h2>
               <p className="text-xs text-ink-3">
-                The rows behind the figures above, refusals included
+                {t("reports.everyBadgeNote")}
               </p>
             </div>
 
@@ -212,7 +226,7 @@ export default function ReportsPage() {
               <EntryTable entries={data.entries} />
             </div>
             <p className="border-t border-line px-6 py-3 text-xs text-ink-3">
-              Times shown in {data.timezone}.
+              {t("reports.timezone", { zone: data.timezone })}
             </p>
           </>
         )}
