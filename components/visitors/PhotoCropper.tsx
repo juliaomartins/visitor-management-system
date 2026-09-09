@@ -12,6 +12,8 @@ import {
   OUTPUT_WIDTH,
   PHOTO_ASPECT,
 } from "@/lib/badge-geometry";
+import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
 
 /**
  * Crop a visitor photo. Two panes: the image on the left, the decisions on the
@@ -35,10 +37,11 @@ type Source = { url: string; name: string };
 
 type RatioMode = "badge" | "square" | "free";
 
-const RATIOS: { value: RatioMode; label: string; aspect?: number }[] = [
-  { value: "badge", label: "Badge (locked)", aspect: PHOTO_ASPECT },
-  { value: "square", label: "Square", aspect: 1 },
-  { value: "free", label: "Free" },
+/* Keys, not words -- a module constant, built before any translator. */
+const RATIOS: { value: RatioMode; labelKey: MessageKey; aspect?: number }[] = [
+  { value: "badge", labelKey: "crop.ratio.badge", aspect: PHOTO_ASPECT },
+  { value: "square", labelKey: "crop.ratio.square", aspect: 1 },
+  { value: "free", labelKey: "crop.ratio.free" },
 ];
 
 const QUALITY_MIN = 0.5;
@@ -133,6 +136,7 @@ export function PhotoCropper({
   onCancel: () => void;
   onChangeImage: () => void;
 }) {
+  const t = useT();
   const imageRef = useRef<HTMLImageElement | null>(null);
   const previewRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -305,7 +309,7 @@ export function PhotoCropper({
           <img
             ref={imageRef}
             src={source.url}
-            alt="The photo being cropped"
+            alt={t("crop.alt")}
             onLoad={onImageLoad}
             className="max-h-[52dvh] w-auto"
           />
@@ -317,7 +321,7 @@ export function PhotoCropper({
       <div className="min-w-0 space-y-4 lg:max-h-[52dvh] lg:overflow-y-auto lg:pr-1">
         <div>
           <p className="mono text-[10px] tracking-[0.18em] text-ink-3 uppercase">
-            Cropped image
+            {t("crop.preview")}
           </p>
           <div className="mt-1.5 flex items-start gap-3">
             <canvas
@@ -326,14 +330,15 @@ export function PhotoCropper({
               style={{ aspectRatio: aspect ?? PHOTO_ASPECT }}
             />
             <p className="min-w-0 text-[11px] leading-snug text-ink-3">
-              Only the circle is printed and shown on the lobby screen. Fill it
-              with the head and shoulders.
+              {t("crop.circleHint")}
             </p>
           </div>
         </div>
 
         <label className="block">
-          <span className="text-xs font-medium text-ink-2">Aspect ratio</span>
+          <span className="text-xs font-medium text-ink-2">
+            {t("crop.aspect")}
+          </span>
           <select
             value={ratio}
             onChange={(event) => chooseRatio(event.target.value as RatioMode)}
@@ -341,7 +346,7 @@ export function PhotoCropper({
           >
             {RATIOS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -349,7 +354,9 @@ export function PhotoCropper({
 
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="text-xs font-medium text-ink-2">Width</span>
+            <span className="text-xs font-medium text-ink-2">
+              {t("crop.width")}
+            </span>
             <input
               readOnly
               value={sourcePixels ? `${sourcePixels.width} px` : "—"}
@@ -358,7 +365,13 @@ export function PhotoCropper({
           </label>
           <label className="block">
             <span className="text-xs font-medium text-ink-2">
-              Height{ratio !== "free" ? " (locked)" : ""}
+              {/*
+                "Height" and "Height (locked)" are separate messages rather than
+                a suffix bolted on. The parenthetical is not a suffix in every
+                language, and gluing one on is how a translation ends up with
+                English grammar wearing translated words.
+              */}
+              {t(ratio !== "free" ? "crop.heightLocked" : "crop.height")}
             </span>
             <input
               readOnly
@@ -370,14 +383,17 @@ export function PhotoCropper({
 
         {tooSmall ? (
           <p role="alert" className="rounded-lg bg-vip-soft px-3 py-2 text-[11px] leading-snug text-vip">
-            This crop is {sourcePixels?.width}px wide. The badge prints the photo
-            at {MIN_OUTPUT_WIDTH}px for 300dpi, so it will look soft on the card.
-            Crop less, or use a larger photo.
+            {t("crop.tooSmall", {
+              width: sourcePixels?.width ?? 0,
+              min: MIN_OUTPUT_WIDTH,
+            })}
           </p>
         ) : null}
 
         <label className="block">
-          <span className="text-xs font-medium text-ink-2">Image quality</span>
+          <span className="text-xs font-medium text-ink-2">
+            {t("crop.quality")}
+          </span>
           <input
             type="range"
             min={QUALITY_MIN}
@@ -388,8 +404,8 @@ export function PhotoCropper({
             className="mt-1.5 w-full accent-accent"
           />
           <span className="mt-1 flex justify-between text-[10px] text-ink-3">
-            <span>Best compression</span>
-            <span>Best quality</span>
+            <span>{t("crop.bestCompression")}</span>
+            <span>{t("crop.bestQuality")}</span>
           </span>
         </label>
 
@@ -400,14 +416,14 @@ export function PhotoCropper({
             disabled={busy || !completed?.width}
             className="btn btn-primary w-full py-2 text-sm disabled:opacity-60"
           >
-            {busy ? "Applying…" : "Use this photo"}
+            {busy ? t("crop.applying") : t("crop.use")}
           </button>
           <button
             type="button"
             onClick={onChangeImage}
             className="btn btn-ghost w-full py-2 text-sm"
           >
-            Change image
+            {t("crop.changeImage")}
           </button>
           <button
             type="button"
