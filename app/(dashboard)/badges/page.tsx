@@ -10,6 +10,8 @@ import {
   downloadReissuedSheet,
 } from "@/lib/badges";
 import { api } from "@/lib/api";
+import { useErrorText, useT } from "@/lib/i18n";
+import { DEFAULT_LOCALE, translate } from "@/lib/locales";
 import { queryKeys } from "@/lib/query-client";
 import { type Visitor } from "@/lib/api";
 import { ApiError } from "@/lib/visitors";
@@ -35,6 +37,8 @@ const PER_SHEET = 9;
  * code.
  */
 export default function BadgesPage() {
+  const t = useT();
+  const errorText = useErrorText();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   /*
@@ -61,7 +65,7 @@ export default function BadgesPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, error: loadError } = useQuery({
     queryKey: queryKeys.visitors({ badges: true }),
     queryFn: async ({ signal }) => {
       const { data, error } = await api.GET("/api/v1/visitors", {
@@ -70,7 +74,13 @@ export default function BadgesPage() {
         params: { query: { with_tokens: true } },
         signal,
       });
-      if (error) throw new ApiError("The visitor list could not be loaded.");
+      if (error) {
+        throw new ApiError(
+          translate(DEFAULT_LOCALE, "badges.loadFailed"),
+          {},
+          "badges.loadFailed",
+        );
+      }
       return data;
     },
   });
@@ -92,8 +102,8 @@ export default function BadgesPage() {
   }, [data, search]);
 
   useSetPageMeta({
-    title: "Badge printing",
-    subtitle: "Nine to an A4 sheet, with cut marks",
+    title: t("badges.title"),
+    subtitle: t("badges.subtitle"),
     count: selected.size || undefined,
   });
 
@@ -121,14 +131,10 @@ export default function BadgesPage() {
         </span>
         <div>
           <p className="text-sm font-semibold text-ink">
-            Printing is safe to repeat
+            {t("badges.safeTitle")}
           </p>
           <p className="mt-1 text-sm text-ink-2">
-            Every sheet carries each visitor&apos;s existing QR, so a card can be
-            reprinted as often as you need and the ones already handed out keep
-            working. To stop a lost card, deactivate that visitor on their own
-            page &mdash; the QR itself never changes, so activating them again
-            puts the same card back to work.
+            {t("badges.safeBody")}
           </p>
         </div>
       </div>
@@ -139,7 +145,7 @@ export default function BadgesPage() {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Name, organisation, country or serial"
+            placeholder={t("badges.searchPlaceholder")}
             className="field min-w-56 flex-1"
           />
 
@@ -153,7 +159,9 @@ export default function BadgesPage() {
             disabled={visitors.length === 0}
             className="btn btn-ghost disabled:opacity-60"
           >
-            {allShown ? "Clear selection" : `Select all ${visitors.length}`}
+            {allShown
+              ? t("badges.clearSelection")
+              : t("badges.selectAll", { count: visitors.length })}
           </button>
 
           {/* Straight to the file. Printing redraws the QR already on the
@@ -171,7 +179,7 @@ export default function BadgesPage() {
                 setError(
                   cause instanceof ApiError
                     ? cause.message
-                    : "The sheet could not be produced.",
+                    : t("badges.sheetFailed"),
                 );
               } finally {
                 setPending(false);
@@ -179,7 +187,9 @@ export default function BadgesPage() {
             }}
             className="btn btn-primary disabled:opacity-40"
           >
-            Print {selected.size || ""}
+            {selected.size
+              ? t("badges.printCount", { count: selected.size })
+              : t("badges.print")}
           </button>
 
           {/*
@@ -194,7 +204,7 @@ export default function BadgesPage() {
             disabled={selected.size === 0}
             className="btn btn-ghost disabled:opacity-40"
           >
-            Export .xlsx
+            {t("badges.export")}
           </button>
 
           {/*
@@ -217,20 +227,27 @@ export default function BadgesPage() {
             selected.size > 0 ? "text-ink-2 opacity-100" : "opacity-0"
           }`}
         >
-          {selected.size} selected · {sheets}{" "}
-          {sheets === 1 ? "sheet" : "sheets"} of A4
+          {/* One sheet and many are separate messages: the noun and its
+              number agree differently in each language, and Tetun does not
+              inflect the noun at all. */}
+          {t(sheets === 1 ? "badges.selectedOne" : "badges.selectedMany", {
+            count: selected.size,
+            sheets,
+          })}
         </p>
       </div>
 
       {isPending ? (
-        <p className="mono py-16 text-center text-xs text-ink-3">Loading…</p>
+        <p className="mono py-16 text-center text-xs text-ink-3">
+          {t("common.loading")}
+        </p>
       ) : isError ? (
         <p className="py-16 text-center text-sm text-revoked">
-          Could not load visitors.
+          {errorText(loadError, "badges.loadFailed")}
         </p>
       ) : visitors.length === 0 ? (
         <p className="py-16 text-center text-sm text-ink-3">
-          No visitors match that search.
+          {t("badges.noMatch")}
         </p>
       ) : (
         <ul className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -263,7 +280,7 @@ export default function BadgesPage() {
             setError(
               cause instanceof ApiError
                 ? cause.message
-                : "The file could not be produced.",
+                : t("badges.fileFailed"),
             );
           } finally {
             setPending(false);
@@ -292,6 +309,7 @@ function SelectableCard({
   /** The badge's real code, from `?with_tokens=true`. Draws a scannable QR. */
   token?: string;
 }) {
+  const t = useT();
   // A real checkbox, hidden but focusable: this is a multi-select, and a button
   // pretending to be one loses the semantics screen readers and the keyboard
   // already understand. The whole card is the hit target.
@@ -324,7 +342,7 @@ function SelectableCard({
       </div>
 
       <span className="mono mt-2 block px-1 text-[11px] text-ink-3">
-        {checked ? "On the sheet" : "Not printing"}
+        {checked ? t("badges.onSheet") : t("badges.notPrinting")}
       </span>
     </label>
   );
