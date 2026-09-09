@@ -196,6 +196,13 @@ class ServiceProcess(QObject):
             self.output.emit(self.spec.key, f"Process error: {error.name}\n")
 
     def _on_finished(self, code: int, status: QProcess.ExitStatus) -> None:
+        # DRAIN BEFORE REPORTING. `readyReadStandardOutput` is not guaranteed to
+        # fire again for whatever was still in the pipe when the child exited,
+        # and for a service that dies during startup those last few lines are
+        # the entire reason anyone opens the log. Losing them leaves a card
+        # saying ERROR above an empty tab.
+        self._drain()
+
         if self._stopping:
             self.output.emit(self.spec.key, "Stopped.\n")
             self._set_state(State.STOPPED)
