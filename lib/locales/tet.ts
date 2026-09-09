@@ -371,4 +371,87 @@ export const tet: Messages = {
   "error.deviceLoad": "La bele karga lista aparellu.",
   "error.pairingCode": "La bele kria k\u00f3digu pareia.",
   "error.deviceRevoke": "La bele revoga aparellu.",
+
+  // ------------------------------------------------------------- reports --
+  "reports.title": "Rejistu tama",
+  "reports.subtitleQuiet": "Xegada no rejeisaun",
+  "reports.subtitleRefused": "{count} rejeita iha odamatan",
+  "reports.subtitleNoRefusals":
+    "Laiha kartaun rejeita iha per\u00edodu ne\u2019e",
+  "reports.allOutcomes": "Rezultadu hotu",
+  "reports.allCategories": "Kategoria hotu",
+  "reports.from": "Husi",
+  "reports.to": "To\u2019o",
+  "reports.outcome": "Rezultadu",
+  "reports.any": "Ida-idak",
+  "reports.exportNote": "Tuir duni filtru sira iha leten, hanesan hatudu.",
+  "reports.preparing": "Prepara hela\u2026",
+  "reports.exportFailed": "La bele rai esportasaun.",
+  "reports.logFailed": "La bele karga rejistu",
+  "reports.everyBadge": "Kartaun hotu ne\u2019eb\u00e9 aprezenta",
+  "reports.everyBadgeNote":
+    "Li\u00f1a sira iha n\u00fameru leten nia kotuk, inklui rejeisaun",
+  "reports.timezone": "Oras hatudu iha {zone}.",
+  "reports.format.pdf": "Relat\u00f3riu PDF",
+  "reports.format.pdfHint":
+    "Relat\u00f3riu hakerek \u2014 deskoberta, gr\u00e1fiku no tabela. Atu haruka ba.",
+  "reports.format.xlsx": "Livru Excel",
+  "reports.format.xlsxHint":
+    "Folha neen, val\u00f3r hanesan n\u00fameru. Ba ema ne\u2019eb\u00e9 hakarak halo an\u00e1lize.",
+  "reports.format.csv": "Rejistu CSV",
+  "reports.format.csvHint":
+    "Rejistu leitura krua, li\u00f1a ida ba kartaun ida-idak. Laiha an\u00e1lize.",
+  "reports.export.stale":
+    "Esportasaun ne\u2019e seidauk iha servid\u00f3r \u2014 nia la\u2019o versaun tuan liu duke p\u00e1jina ne\u2019e. Hah\u00fa fali backend no koko fali.",
+  "reports.export.expired":
+    "Ita-nia sesaun liu tempu ona. Karga fali p\u00e1jina no tama fali.",
+  "reports.export.serverError":
+    "Servid\u00f3r la konsege halo esportasaun ne\u2019e (HTTP {status}).",
+  "reports.export.downloadFailed":
+    "La bele deskarrega esportasaun ne\u2019e (HTTP {status}).",
+  "error.reportLoad": "La bele karga rejistu tama.",
+
+  // --------------------------------------------------------------- recap --
+  "recap.unavailable": "An\u00e1lize la disponivel",
+  "recap.unavailableBody":
+    "Servid\u00f3r hat\u00e1n laiha deskoberta derivadu, katak nia la\u2019o versaun tuan liu duke p\u00e1jina ne\u2019e. Hah\u00fa fali backend no karga fali \u2014 rejistu iha okos la afetadu no loos nafatin.",
+  "recap.scans": "Leitura",
+  "recap.inRange": "Iha per\u00edodu ne\u2019e",
+  "recap.people": "Ema",
+  "recap.distinct": "Vizitante la hanesan",
+  "recap.duplicates": "Duplikadu",
+  "recap.reEntries": "Tama fali, la\u2019\u00f3s rejeisaun",
+  "recap.refused": "Rejeita",
+  "recap.invalidOrRevoked": "Inv\u00e1lidu ka revogadu",
+  "recap.nothingScanned": "Laiha buat lee iha per\u00edodu ne\u2019e",
+  "recap.nothingScannedBody":
+    "Loke loron barak liu, ka hamoos filtru. Seidauk iha buat atu relata.",
+  "recap.attendance": "Prezensa",
+  "recap.attendanceNote": "{arrived} husi {registered} rejista",
+  "recap.scansLogged": "Leitura rejistadu",
+  "recap.repeatNote": "Ema {count} liu dala liu ida",
+  "recap.busiestHour": "Oras besik liu",
+  "recap.peakNote": "Leitura {total} \u00b7 {share}% husi per\u00edodu",
+  "recap.noArrivals": "Laiha xegada rejistadu",
+  "recap.refusalNote": "{rate}% husi buat hotu ne\u2019eb\u00e9 aprezenta",
+  "recap.noneTurnedAway": "Laiha kartaun rejeita",
+  "recap.whatNumbersSay": "N\u00fameru sira hatete saida",
+  "recap.whatNumbersSayNote":
+    "Kria husi per\u00edodu ne\u2019e \u2014 li\u00f1a ida-idak mak afirmasaun ne\u2019eb\u00e9 dadus sustenta",
+  "recap.loadByDoor": "Movimentu tuir odamatan",
+  "recap.loadByDoorNote":
+    "Odamatan ida ne\u2019eb\u00e9 rejeita kartaun mak odamatan ho problema",
+  "recap.noDoorScan": "Laiha odamatan rejista leitura.",
+  "recap.refusedHere": "{count} rejeita iha ne\u2019e",
+  "recap.notArrived": "Rejista ona, seidauk to\u2019o",
+  "recap.notArrivedCount": "{count} husi {registered}",
+  "recap.notArrivedNote":
+    "Laiha leitura v\u00e1lidu iha per\u00edodu ne\u2019e. Lista kompletu iha PDF no livru Excel.",
+
+  // ----------------------------------------------------------- entry log --
+  "entry.emptyBody": "Loke loron barak liu, ka hamoos filtru.",
+  "entry.col.time": "Oras",
+  "entry.col.name": "Naran",
+  "chart.noScans":
+    "Laiha leitura iha per\u00edodu ne\u2019e, tan ne\u2019e laiha buat atu hatudu.",
 };
