@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useMemo,
@@ -101,6 +102,47 @@ export function useT(): (
   const locale = useLocale();
   return useCallback(
     (key, params) => translate(locale, key, params),
+    [locale],
+  );
+}
+
+/**
+ * A message with React nodes dropped into its placeholders.
+ *
+ * FOR SENTENCES THAT WRAP A VALUE IN MARKUP -- a badge serial set in mono, a
+ * name in bold -- where splitting the sentence into "before" and "after" halves
+ * would be wrong. English puts the serial in the middle; another language may
+ * put it first or last, and two fragments glued around a value can only ever
+ * produce English word order wearing a translation.
+ *
+ * So the whole sentence stays one translatable message with a `{serial}` in it,
+ * and this splits the TRANSLATED string on its placeholders. The value lands
+ * wherever that language put it.
+ *
+ *     rich("purge.typeToConfirm", { serial: <span className="mono">{s}</span> })
+ *
+ * Anything without a node supplied is left as written, so a stray placeholder
+ * shows up as `{whatever}` on screen rather than vanishing silently.
+ */
+export function useRichT(): (
+  key: MessageKey,
+  nodes: Record<string, ReactNode>,
+) => ReactNode {
+  const locale = useLocale();
+
+  return useCallback(
+    (key, nodes) => {
+      const message = translate(locale, key);
+      const parts = message.split(/(\{\w+\})/g);
+
+      return parts.map((part, index) => {
+        const name = /^\{(\w+)\}$/.exec(part)?.[1];
+        if (name && name in nodes) {
+          return <Fragment key={index}>{nodes[name]}</Fragment>;
+        }
+        return <Fragment key={index}>{part}</Fragment>;
+      });
+    },
     [locale],
   );
 }
