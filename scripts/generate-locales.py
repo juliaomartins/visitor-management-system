@@ -487,6 +487,77 @@ M = [
     ("edit.title", "Edit {name}", "Editar {name}", "Edita {name}"),
     ("edit.fallbackTitle", "Edit visitor", "Editar visitante",
      "Edita vizitante"),
+
+    ("//photo upload and crop", "", "", ""),
+    ("photo.label", "Photo", "Fotografia", "Foto"),
+    # Numerals carry themselves; only the orientation is a word.
+    ("photo.spec", "3:4 PORTRAIT · 600 × 800", "3:4 VERTICAL · 600 × 800",
+     "3:4 VERTIKÁL · 600 × 800"),
+    ("photo.notImage", "That is not an image. Choose a JPEG or PNG.",
+     "Isso não é uma imagem. Escolha um JPEG ou PNG.",
+     "Ne’e la’ós imajen. Hili JPEG ka PNG."),
+    ("photo.tooLarge", "That image is over 20 MB. Choose a smaller one.",
+     "Essa imagem tem mais de 20 MB. Escolha uma mais pequena.",
+     "Imajen ne’e liu 20 MB. Hili ida ki’ik liu."),
+    ("photo.alt", "The visitor’s badge photo",
+     "A fotografia do crachá do visitante", "Vizitante nia foto kartaun"),
+    ("photo.ready", "Cropped and ready.", "Recortada e pronta.",
+     "Korta ona no prontu."),
+    ("photo.onFile",
+     "The photo already on file. It stays unless you replace it.",
+     "A fotografia já guardada. Mantém-se a menos que a substitua.",
+     "Foto ne’ebé rai ona. Nia sei hela to’o ita troka."),
+    ("photo.adjustCrop", "Adjust crop", "Ajustar recorte", "Ajusta korta"),
+    ("photo.chooseDifferent", "Choose a different photo",
+     "Escolher outra fotografia", "Hili foto seluk"),
+    ("photo.add", "Add a photo", "Adicionar fotografia", "Tau foto"),
+    ("photo.dropHint",
+     "Drop one here, or click to choose. You crop it next.",
+     "Largue uma aqui, ou clique para escolher. A seguir recorta-a.",
+     "Tau ida iha ne’e, ka klik atu hili. Tuirmai korta nia."),
+    ("photo.dialogLabel", "Crop the visitor photo",
+     "Recortar a fotografia do visitante", "Korta vizitante nia foto"),
+    ("photo.frameFace", "Frame the face", "Enquadrar o rosto",
+     "Tau oin iha kuadru"),
+    ("photo.closeWithoutSaving", "Close without saving",
+     "Fechar sem guardar", "Taka la rai"),
+    ("crop.alt", "The photo being cropped", "A fotografia a ser recortada",
+     "Foto ne’ebé korta hela"),
+    ("crop.preview", "Cropped image", "Imagem recortada", "Imajen korta"),
+    ("crop.circleHint",
+     "Only the circle is printed and shown on the lobby screen. Fill it with "
+     "the head and shoulders.",
+     "Só o círculo é impresso e mostrado no ecrã do átrio. Preencha-o com a "
+     "cabeça e os ombros.",
+     "Sírkulu deit mak imprime no hatudu iha ekrán resepsaun. Tau ulun ho "
+     "kabaas iha laran."),
+    ("crop.aspect", "Aspect ratio", "Proporção", "Proporsaun"),
+    ("crop.ratio.badge", "Badge (locked)", "Crachá (fixo)",
+     "Kartaun (fiksu)"),
+    ("crop.ratio.square", "Square", "Quadrado", "Kuadradu"),
+    ("crop.ratio.free", "Free", "Livre", "Livre"),
+    ("crop.width", "Width", "Largura", "Luan"),
+    ("crop.height", "Height", "Altura", "Aas"),
+    ("crop.heightLocked", "Height (locked)", "Altura (fixa)", "Aas (fiksu)"),
+    ("crop.tooSmall",
+     "This crop is {width}px wide. The badge prints the photo at {min}px for "
+     "300dpi, so it will look soft on the card. Crop less, or use a larger "
+     "photo.",
+     "Este recorte tem {width}px de largura. O crachá imprime a fotografia a "
+     "{min}px para 300dpi, por isso ficará desfocada no cartão. Recorte menos, "
+     "ou use uma fotografia maior.",
+     "Korta ne’e nia luan {width}px. Kartaun imprime foto ho {min}px ba "
+     "300dpi, tan ne’e sei mosu la klaru iha kartaun. Korta uitoan deit, ka "
+     "uza foto boot liu."),
+    ("crop.quality", "Image quality", "Qualidade da imagem",
+     "Kualidade imajen"),
+    ("crop.bestCompression", "Best compression", "Mais compressão",
+     "Kompresaun di’ak liu"),
+    ("crop.bestQuality", "Best quality", "Mais qualidade",
+     "Kualidade di’ak liu"),
+    ("crop.applying", "Applying…", "A aplicar…", "Aplika hela…"),
+    ("crop.use", "Use this photo", "Usar esta fotografia", "Uza foto ne’e"),
+    ("crop.changeImage", "Change image", "Mudar de imagem", "Troka imajen"),
 ]
 
 
