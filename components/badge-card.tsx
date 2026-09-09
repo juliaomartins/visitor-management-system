@@ -1,7 +1,7 @@
 "use client";
 
 import QRCode from "qrcode";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PHOTO_BOX_CQW } from "@/lib/badge-geometry";
 
@@ -54,12 +54,12 @@ export function BadgeCard({
   /** Show the fields and the QR block. Off for small tiles, where they are noise. */
   detail?: boolean;
   /**
-   * The RAW badge token, when the caller happens to hold one.
+   * The RAW badge token — the string the QR encodes.
    *
-   * Only two moments produce it: registering a visitor, and reissuing one. There
-   * is no third — the server keeps `sha256(token)` and cannot hand back the code
-   * already printed on a card. With it, the card below is the real thing; without
-   * it, the QR panel says so rather than drawing a shape that means nothing.
+   * Derived from the visitor, not random, so it is the same code every time and
+   * the same code on the printed card. `GET /visitors/{id}` returns it, and the
+   * list returns it for every row under `?with_tokens=true`. Without it the QR
+   * panel says so rather than drawing a shape that means nothing.
    */
   token?: string;
 }) {
@@ -135,14 +135,10 @@ export function BadgeCard({
             </p>
 
             {/*
-              The QR's footprint, drawn as an empty frame and labelled.
-
-              It cannot show the real code. The raw token exists only on the
-              printed card — the server keeps `sha256(token)` and nothing else —
-              so any pattern here would be decoration pretending to be a
-              credential. A checkerboard stood in for it before and just read as
-              a broken image. An outline that says what it is tells the truth
-              about the layout without lying about the contents.
+              The real QR wherever a token is in hand, and an honest empty frame
+              where one is not. It used to be the frame everywhere, because the
+              token was unrecoverable; it is derived now, so this is the same
+              code the printer draws.
             */}
             <QrPanel token={token} serial={visitor.badge_serial} />
           </>
@@ -170,33 +166,81 @@ export function BadgeCard({
 /**
  * The QR, drawn for real when there is a token and framed honestly when not.
  *
+ * SVG, NOT CANVAS, AND THAT IS A BUG FIX RATHER THAN A PREFERENCE. `toCanvas`
+ * writes `style.width` and `style.height` in pixels straight onto the element
+ * (see qrcode/lib/renderer/canvas.js), and an inline style outranks the
+ * `width: 26cqw` in `.cr80-qr`. The QR therefore rendered at a fixed 320px on
+ * every card — correct on none of them, and on the detail hero it burst out of
+ * the card and over the caption beneath. A vector in an `<img>` has no intrinsic
+ * pixel size to fight with, so the card's own container query decides how big it
+ * is, and it stays sharp whether the card is a 60mm tile or a full-width hero.
+ *
  * Error correction M, matching the PDF: a badge collects scuffs and lanyard
  * creases, and M recovers about 15% while keeping the modules large enough to
  * read across a doorway.
+ *
+ * The colours are literal black on white on purpose. This is the one element on
+ * the page that is not decoration but data — a scanner needs the contrast the
+ * spec assumes, and a themed QR that dims in dark mode is a QR that fails at the
+ * door.
  */
 function QrPanel({ token, serial }: { token?: string; serial: string }) {
-  const canvas = useRef<HTMLCanvasElement | null>(null);
-  const [failed, setFailed] = useState(false);
+  /*
+    One piece of state carrying WHICH token it belongs to, rather than a `src`
+    and a `failed` flag set separately.
+
+    Encoding is asynchronous and the token can change under us -- a different
+    visitor lands in the same grid slot as the print queue re-renders. Tagging
+    the result means a slow encode that resolves late cannot paint the previous
+    visitor's QR onto this card, and it means nothing has to be reset when the
+    token changes: the tag simply stops matching. That in turn keeps every
+    setState inside a callback instead of the effect body, which is the pattern
+    React asks for and the linter enforces.
+  */
+  const [drawn, setDrawn] = useState<{
+    token: string;
+    src: string | null;
+  } | null>(null);
 
   useEffect(() => {
-    if (!token || !canvas.current) return;
-    setFailed(false);
-    // Drawn large and scaled down by CSS so it stays crisp on a detail hero and
-    // on a print-queue tile alike.
-    QRCode.toCanvas(canvas.current, token, {
+    if (!token) return;
+
+    let live = true;
+
+    QRCode.toString(token, {
+      type: "svg",
       errorCorrectionLevel: "M",
+      // One module of quiet zone, as the PDF draws it. The spec asks for four;
+      // the card's own white margin supplies the rest.
       margin: 1,
-      width: 320,
       color: { dark: "#000000", light: "#ffffff" },
-    }).catch(() => setFailed(true));
+    })
+      .then((svg) => {
+        if (live) {
+          setDrawn({
+            token,
+            src: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+          });
+        }
+      })
+      .catch(() => {
+        if (live) setDrawn({ token, src: null });
+      });
+
+    return () => {
+      live = false;
+    };
   }, [token]);
 
-  if (token && !failed) {
+  const settled = token && drawn?.token === token ? drawn : null;
+
+  if (settled?.src) {
     return (
-      <canvas
-        ref={canvas}
-        aria-label={`QR code for badge ${serial}`}
-        className="cr80-qr mt-[2cqw] mb-[4cqw] aspect-square shrink-0 rounded-[1cqw]"
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img
+        src={settled.src}
+        alt={`QR code for badge ${serial}`}
+        className="cr80-qr mt-[2cqw] mb-[4cqw] aspect-square shrink-0 rounded-[1cqw] bg-white"
       />
     );
   }
@@ -207,7 +251,7 @@ function QrPanel({ token, serial }: { token?: string; serial: string }) {
         QR
       </span>
       <span className="mt-[1cqw] px-[1cqw] text-center text-[2.8cqw] leading-tight text-ink-3">
-        {failed ? "could not draw" : "on the printed card"}
+        {settled ? "could not draw" : token ? "drawing…" : "on the printed card"}
       </span>
     </div>
   );
