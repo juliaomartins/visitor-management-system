@@ -22,8 +22,16 @@ class Visitor(BaseModel):
     )
     # Human-readable and printed on the card, so staff can talk about a badge.
     badge_serial = models.CharField(max_length=20, unique=True)
-    # SHA-256 of the token inside the QR. The raw token is never stored.
+    # SHA-256 of the token inside the QR. The raw token is never stored -- it is
+    # derived on demand from the id and `token_version` (see visitors/services).
     token_hash = models.CharField(max_length=64, unique=True, db_index=True)
+    # Bumped to rotate ONE badge without touching anybody else's.
+    #
+    # The token is deterministic, which is what makes reprinting possible, but it
+    # also means a compromised card could not otherwise be replaced: the same
+    # inputs would always produce the same QR. This counter is the input that can
+    # change, so `POST /badges/reissue` remains a real revocation.
+    token_version = models.PositiveIntegerField(default=1)
     # Cleared to revoke a lost card without deleting its scan history.
     is_active = models.BooleanField(default=True)
     # DELETE /visitors/{id} is a soft delete: ScanEvent.visitor is PROTECT, and a
