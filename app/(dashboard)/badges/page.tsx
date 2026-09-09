@@ -8,7 +8,6 @@ import { useSetPageMeta } from "@/components/page-meta";
 import {
   downloadCredentialExport,
   downloadReissuedSheet,
-  reissueBadges,
 } from "@/lib/badges";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-client";
@@ -26,27 +25,32 @@ const PER_SHEET = 9;
  * Picking cards does: the photo crop, the length of a name, the amber band on a
  * VIP, all visible before the paper is spent.
  *
- * Everything here reissues, and the page says so above the fold rather than in a
- * footnote — printing a sheet of twenty invalidates twenty cards that may already
- * be around twenty necks. That makes it a setup-morning tool, not an event-day
- * one. On the day, the free print is the one on the registration receipt, which
- * still holds the raw token.
+ * NOTHING HERE CHANGES A QR. Badge tokens are derived from the visitor, so every
+ * sheet and every export carries the code already on the printed card. A visitor
+ * can be reprinted on the morning and again at the door and the result is
+ * identical, which makes this an event-day tool rather than a setup-only one.
  */
 export default function BadgesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [confirming, setConfirming] = useState<
-    "print" | "export" | "qr" | null
-  >(null);
+  /*
+    Only the export asks. Printing changes nothing now, so a confirmation there
+    would be a dialog whose honest text is "this is safe, continue?".
+  */
+  const [confirming, setConfirming] = useState<"export" | null>(null);
 
   /*
-    Raw tokens for the cards shown on this page, keyed by visitor.
+    NO TOKENS ARE HELD ON THIS PAGE, and the cards below show an empty QR frame
+    on purpose.
 
-    On screen only. They arrive from a reissue and are never stored, so a refresh
-    drops them and every card goes back to an empty QR frame — which is exactly
-    what the server can prove about them.
+    The list endpoint deliberately does not return `badge_token`: one request
+    should not hand back 250 working credentials. The cards here are a layout
+    preview -- name, photo, serial, VIP band -- so a badge that overflows is
+    caught before fifty come off the printer.
+
+    The real QR is in three places that matter: the printed sheet, the .xlsx,
+    and each visitor's own page.
   */
-  const [tokens, setTokens] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -105,12 +109,13 @@ export default function BadgesPage() {
         </span>
         <div>
           <p className="text-sm font-semibold text-ink">
-            Printing from here issues new badges
+            Printing is safe to repeat
           </p>
           <p className="mt-1 text-sm text-ink-2">
-            A badge token is stored only as a hash, so an already-printed card
-            can never be reprinted — only replaced. Every visitor on a sheet
-            gets a new QR, and their existing card stops working immediately.
+            Every sheet carries each visitor&apos;s existing QR, so a card can be
+            reprinted as often as you need and the ones already handed out keep
+            working. To stop a lost card, revoke it from that visitor&apos;s own
+            page &mdash; the QR itself never changes.
           </p>
         </div>
       </div>
@@ -138,20 +143,37 @@ export default function BadgesPage() {
             {allShown ? "Clear selection" : `Select all ${visitors.length}`}
           </button>
 
+          {/* Straight to the file. Printing redraws the QR already on the
+              card, so there is nothing to warn about and nothing to undo. */}
           <button
             type="button"
-            onClick={() => setConfirming("print")}
-            disabled={selected.size === 0}
+            disabled={selected.size === 0 || pending}
+            onClick={async () => {
+              setPending(true);
+              setError(undefined);
+              try {
+                await downloadReissuedSheet([...selected]);
+                setSelected(new Set());
+              } catch (cause) {
+                setError(
+                  cause instanceof ApiError
+                    ? cause.message
+                    : "The sheet could not be produced.",
+                );
+              } finally {
+                setPending(false);
+              }
+            }}
             className="btn btn-primary disabled:opacity-40"
           >
-            Reissue &amp; print {selected.size || ""}
+            Print {selected.size || ""}
           </button>
 
           {/*
-            The spreadsheet a card producer actually needs. Same destructive
-            reissue as the print sheet — it has to be, since the server keeps only
-            a digest of each token and cannot put a working QR in a file any other
-            way.
+            The spreadsheet a card producer actually needs. No longer destructive:
+            badge tokens are derived from the visitor, so the QR written into this
+            file is the one already on the printed card. Exporting twice produces
+            two identical, working files.
           */}
           <button
             type="button"
@@ -159,18 +181,21 @@ export default function BadgesPage() {
             disabled={selected.size === 0}
             className="btn btn-ghost disabled:opacity-40"
           >
-            Reissue &amp; export .xlsx
+            Export .xlsx
           </button>
 
-          {/* Draws the real code onto the cards below, which means minting it. */}
-          <button
-            type="button"
-            onClick={() => setConfirming("qr")}
-            disabled={selected.size === 0}
-            className="btn btn-ghost disabled:opacity-40"
-          >
-            Reissue &amp; show QR
-          </button>
+          {/*
+            "Reissue & show QR" USED TO LIVE HERE AND IT HAD TO GO.
+
+            It called `POST /badges/reissue`, the rotation endpoint -- so simply
+            looking at somebody's QR would have replaced their badge and killed
+            the card in their hand. The dashboard no longer calls that endpoint
+            from anywhere; a badge is issued once and stays valid until the
+            visitor is revoked or deleted.
+
+            Nothing is lost. Each visitor's live QR is on their own page, and
+            both the sheet and the .xlsx carry the real code.
+          */}
         </div>
 
         <p
@@ -202,7 +227,6 @@ export default function BadgesPage() {
                 visitor={visitor}
                 checked={selected.has(visitor.id)}
                 onToggle={() => toggle(visitor.id)}
-                token={tokens[visitor.id]}
               />
             </li>
           ))}
@@ -212,29 +236,14 @@ export default function BadgesPage() {
       <ReissueDialog
         open={confirming !== null}
         count={selected.size}
-        output={confirming === "export" ? "spreadsheet" : "sheet"}
         pending={pending}
         error={error}
         onConfirm={async () => {
           setPending(true);
           setError(undefined);
           try {
-            if (confirming === "export") {
-              await downloadCredentialExport([...selected]);
-              setSelected(new Set());
-            } else if (confirming === "qr") {
-              const issued = await reissueBadges([...selected]);
-              setTokens((current) => {
-                const next = { ...current };
-                for (const badge of issued)
-                  next[badge.visitor_id] = badge.token;
-                return next;
-              });
-              // The selection stays: these are the cards now showing a live QR.
-            } else {
-              await downloadReissuedSheet([...selected]);
-              setSelected(new Set());
-            }
+            await downloadCredentialExport([...selected]);
+            setSelected(new Set());
             setConfirming(null);
           } catch (cause) {
             setError(
