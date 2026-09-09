@@ -27,11 +27,33 @@ vms/
 ├── vms-dashboard/          Next.js — admin
 ├── vms-scanner/            React Native + Expo — guard
 ├── vms-screen/             Next.js — lobby display
+├── vms-desktop/            PySide6 — the control centre that starts the rest
 └── vms-contracts/          generated TypeScript types (OpenAPI → TS)
 ```
 
 Frontends consume contracts by relative path:
 `"@vms/contracts": "file:../vms-contracts"` — no submodule, no npm publishing.
+
+### THE THREE FRONTENDS ARE THEIR OWN GIT REPOSITORIES
+
+`vms-dashboard/`, `vms-screen/` and `vms-scanner/` each contain a `.git`
+directory. They are *not* submodules — there is no gitlink in the root tree and
+no `.gitmodules` — so from the root repository they simply look like untracked
+directories and their contents are invisible to it.
+
+This is worth knowing before any push. A `git push` from the root sends the
+backend, the contracts and the desktop app; the three frontends go nowhere, and
+git says nothing about it because as far as the root repo is concerned there was
+never anything there.
+
+Check where a commit will actually land before making it:
+
+```bash
+git rev-parse --show-toplevel        # which repository am I in?
+```
+
+`git -C vms-dashboard log` reads the dashboard's own history, which is where
+every frontend commit lives.
 
 ---
 
@@ -45,6 +67,7 @@ Frontends consume contracts by relative path:
 | Dashboard | TypeScript, Next.js 16 (App Router), Tailwind v4, TanStack Query, `qrcode`, `react-image-crop` |
 | Scanner | TypeScript, React Native, Expo SDK 57, expo-router, expo-camera, expo-sqlite, reanimated |
 | Screen | TypeScript, Next.js 16, Tailwind v4, GSAP |
+| Desktop | Python, **PySide6** (Qt 6), packaged with PyInstaller |
 | Badge PDF | **ReportLab** + qrcode — pure Python, no native libraries |
 | Spreadsheets | openpyxl — the roster and the credential export |
 | Schema | drf-spectacular → openapi.yaml → openapi-typescript |
@@ -711,6 +734,13 @@ package, because `vms-contracts` is generated and nothing hand-written goes in i
 | `vms-dashboard` | `lib/locales/{en,pt,tet}.ts` — 365 keys | `lib/i18n.tsx` | cookie `vms.locale` |
 | `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 29 keys | `lib/i18n.tsx` | cookie `vms.screen.locale` |
 | `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 72 keys | `src/i18n.tsx` | SecureStore `vms.locale` |
+| `vms-desktop` | `locales/{en,pt,tet}.py` — 53 keys | `i18n.py` | `QSettings` (registry) |
+
+The desktop app uses **no `QTranslator` and no gettext**. Qt's own machinery
+wants `.ts` sources compiled to `.qm` by `lrelease` — a build step, a binary
+artefact and a toolchain dependency for 53 strings — and `tr()` keys on the
+English text, so every rewording silently orphans its translations. That is
+precisely what a generated key table exists to prevent.
 
 **No i18n library.** About 120 lines per app, against three packages and an
 install on a machine that is offline by event day. The engine is a typed
@@ -719,7 +749,8 @@ dictionary, a `useT()` hook, and a `translate()` that fills `{name}` placeholder
 **1. The dictionaries are GENERATED, and they are pure ASCII.**
 
 ```bash
-python scripts/generate-locales.py      # in each app
+python scripts/generate-locales.py      # the three frontends
+python scripts/generate_locales.py      # vms-desktop (underscore, it is Python)
 ```
 
 All three languages come from one table in that script, so a missing translation
@@ -792,6 +823,84 @@ spelled the Tetun way (`akreditasaun`, `relatóriu`, `ekrán`) rather than the
 Portuguese way — but Tetun has real regional variation, and the event's own staff
 can check it faster than any dictionary. Corrections are one line in the
 generator plus a re-run.
+
+---
+
+## Desktop control centre (vms-desktop)
+
+A PySide6 window that **starts the other four services and watches them**. It is
+an orchestration layer and nothing else: it holds no visitor data, speaks no
+part of the VMS API beyond one unauthenticated health probe, and could be
+deleted tomorrow without changing how VMS works.
+
+It exists because event-day startup was four terminals in the right order, and
+the person opening the doors is not always the person who built this.
+
+```
+vms-desktop/
+├── main.py                 the window; wires signals and paints, nothing more
+├── config.py               EVERY path, port and command, in one place
+├── network.py              LAN address detection
+├── preflight.py            venv / node / npm / ports / directories
+├── services.py             QProcess lifecycle, one model for all four
+├── launcher.py             Run All sequencing and readiness probes
+├── i18n.py                 the translator; QSettings keeps the choice
+├── locales/{en,pt,tet}.py  GENERATED — see the languages section
+├── scripts/generate_locales.py
+├── widgets/                theme, icons, service card, network card, log viewer
+├── selftest.py             the non-GUI layers
+├── guitest.py              the Qt layers, driven offscreen
+└── VMS Control Center.spec PyInstaller, onedir, windowed
+```
+
+**Three rules it must keep.**
+
+1. **STARTED IS NOT READY, and the two are never conflated.** `services.py`
+   reports `RUNNING` when the OS has a process and nothing more; only a
+   readiness probe over the network may promote that to `READY`, and only
+   `READY` enables the Open button. A uvicorn that dies on a bad database
+   password is `RUNNING` for about two seconds, and opening a browser at it is
+   how somebody meets a connection error and concludes the app is broken.
+
+2. **It never blocks the GUI thread.** `QProcess`, not `subprocess`; `QTimer`,
+   never `time.sleep`. The children run for the length of a conference.
+
+3. **It reads the repository rather than duplicating it.** Commands come from
+   CLAUDE.md and each project's `package.json` — including `--workers 1`, which
+   is here for the reason in the hard constraints. The health probe is the
+   backend's existing `/api/v1/health`. No new endpoint was added for it.
+
+**LAN configuration is passed as process environment, never written to `.env`.**
+The variable names are the ones the repository already uses —
+`VMS_BACKEND_ORIGIN`, `NEXT_PUBLIC_VMS_BACKEND_ORIGIN`, `EXPO_PUBLIC_API_URL` —
+and a variable that lives only as long as the child cannot go stale on disk, which
+is exactly what the `.env` convention below is protecting against.
+
+**The window has to survive being made small**, and that took three passes to get
+right. The panels sit in a splitter over a scroll area; the service cards reflow
+between 4, 2 and 1 columns; the header drops its controls onto a second row and
+then shortens their labels to a code and an icon. Every one of those decisions is
+**measured, not a pixel threshold** — the widths are asked of the widgets, because
+a number tuned on English clips Portuguese, and a number tuned before the buttons
+had icons clips them afterwards.
+
+**Icons are painted, not shipped as files** (`widgets/icons.py`), the same call
+the dashboard made. They take a colour, so a theme switch redraws them; and they
+are drawn at the device pixel ratio, because this machine runs at 1.5 where a
+16px bitmap stretched to 24 physical pixels is visibly soft.
+
+```powershell
+..\.venv\Scripts\python.exe main.py                       # from source
+..\.venv\Scripts\python.exe selftest.py                   # no display needed
+..\.venv\Scripts\python.exe guitest.py                    # offscreen Qt
+..\.venv\Scripts\pyinstaller.exe --noconfirm --clean "VMS Control Center.spec"
+```
+
+`dist/VMS Control Center/VMS Control Center.exe` is ~113MB and **gitignored**. It
+is rebuilt from the `.spec` in one command; the spec is the source.
+
+**PySide6 and PyInstaller are the only two packages this adds**, and they are in
+`vms-desktop/requirements.txt` rather than the backend's.
 
 ---
 
@@ -1053,6 +1162,8 @@ Done since the table was first written, and not in it:
 - Photo cropper with face detection and a print-resolution floor.
 - Scanner launch screen (native splash + animation, gated on the keystore).
 - Reports: XLSX and PDF exports beside the CSV.
+- English / Portuguese / Tetun across all three frontends, and the desktop app.
+- `vms-desktop`, the PySide6 control centre, packaged as a Windows executable.
 
 **Update this table as phases complete.** It is how context carries between sessions.
 
