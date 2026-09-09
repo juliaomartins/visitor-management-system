@@ -484,6 +484,10 @@ export const en = {
     "{people} people have arrived across {scans} scan.",
   "overview.arrivedSummary.manyMany":
     "{people} people have arrived across {scans} scans.",
+
+  // --------------------------------------------------------------- brand --
+  "brand.organisedBy": "Organised by {first} and {second}.",
+  "brand.dates": "D\u00edli, 2\u20133 October 2026",
 } as const;
 
 /** Every message key in the dashboard. */
