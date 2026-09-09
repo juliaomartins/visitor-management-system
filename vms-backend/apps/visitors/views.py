@@ -22,6 +22,7 @@ from .models import Visitor, VisitorCategory
 from .serializers import (
     VisitorDetailSerializer,
     VisitorIssuedSerializer,
+    VisitorPurgedSerializer,
     VisitorSerializer,
 )
 
@@ -193,7 +194,7 @@ class VisitorViewSet(viewsets.ModelViewSet):
             "by hand; this is not."
         ),
         request=None,
-        responses={200: OpenApiTypes.OBJECT},
+        responses={200: VisitorPurgedSerializer},
     )
     @action(detail=True, methods=["delete"], url_path="permanent")
     def permanent(self, request, *args, **kwargs):
