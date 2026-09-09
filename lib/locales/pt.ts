@@ -307,4 +307,75 @@ export const pt: Messages = {
   "card.qrOnCard": "no cart\u00e3o impresso",
   "card.qrDrawing": "a desenhar\u2026",
   "card.qrFailed": "n\u00e3o foi poss\u00edvel desenhar",
+
+  // ------------------------------------------------------------- devices --
+  "time.justNow": "agora mesmo",
+  "device.kind.scanner": "Leitor",
+  "device.kind.screen": "Ecr\u00e3",
+  "device.kindInline.scanner": "leitor",
+  "device.kindInline.screen": "ecr\u00e3",
+  "devices.subtitleQuiet":
+    "Telem\u00f3veis dos seguran\u00e7as e o ecr\u00e3 do \u00e1trio",
+  "devices.silentOne":
+    "{count} dispositivo n\u00e3o comunica h\u00e1 algum tempo",
+  "devices.silentMany":
+    "{count} dispositivos n\u00e3o comunicam h\u00e1 algum tempo",
+  "devices.alertOne": "{count} dispositivo est\u00e1 em sil\u00eancio.",
+  "devices.alertMany": "{count} dispositivos est\u00e3o em sil\u00eancio.",
+  "devices.alertBody":
+    "Uma porta sem leituras h\u00e1 dez minutos ou est\u00e1 parada ou est\u00e1 offline \u2014 v\u00e1 l\u00e1 verificar.",
+  "devices.paired": "Dispositivos emparelhados",
+  "devices.pairedBody":
+    "Atualiza sozinho. \u201cVisto pela \u00faltima vez\u201d \u00e9 o \u00faltimo pedido feito pelo dispositivo, e \u00e9 assim que se distingue uma porta parada de um telem\u00f3vel morto.",
+  "devices.loadFailed": "N\u00e3o foi poss\u00edvel carregar os dispositivos",
+  "devices.none": "Ainda n\u00e3o h\u00e1 dispositivos emparelhados",
+  "devices.noneBody":
+    "Gere um c\u00f3digo acima e introduza-o no telem\u00f3vel do seguran\u00e7a ou no ecr\u00e3 do \u00e1trio.",
+  "devices.col.device": "Dispositivo",
+  "devices.col.kind": "Tipo",
+  "devices.col.lastSeen": "Visto pela \u00faltima vez",
+  "devices.col.state": "Estado",
+  "devices.neverCheckedIn": "Nunca comunicou",
+  "devices.silentCheck": "Em sil\u00eancio \u2014 verifique a porta",
+  "devices.notSeenSincePairing": "Sem sinal desde o emparelhamento",
+  "devices.stateRevoked": "REVOGADO",
+  "devices.stateActive": "ATIVO",
+  "devices.revoke": "Revogar",
+
+  // ------------------------------------------------------------- pairing --
+  "pair.title": "Emparelhar um dispositivo",
+  "pair.body":
+    "Abra a aplica\u00e7\u00e3o no telem\u00f3vel ou no ecr\u00e3 e leia-lhe o c\u00f3digo abaixo. Cada c\u00f3digo funciona uma s\u00f3 vez.",
+  "pair.codeButton": "C\u00f3digo de {kind}",
+  "pair.blurb.scanner": "O telem\u00f3vel de um seguran\u00e7a, a uma porta",
+  "pair.blurb.screen": "O ecr\u00e3 do \u00e1trio",
+  "pair.codeLabel": "C\u00f3digo de emparelhamento de {kind}",
+  "pair.expired":
+    "Este c\u00f3digo expirou. Gere outro \u2014 n\u00e3o foi emparelhado nada com ele.",
+  "pair.expiresIn": "Expira em",
+  "pair.alphabetNote":
+    "Os c\u00f3digos nunca cont\u00eam 0, O, 1 nem I \u2014 esses quatro ficam de fora porque s\u00e3o os que as pessoas ouvem e escrevem mal. O dispositivo aparece na lista abaixo assim que emparelha.",
+
+  // ------------------------------------------------ revoke device dialog --
+  "revokeDevice.title": "Revogar {name}?",
+  "revokeDevice.body":
+    "Este {kind} deixa de funcionar {strong}. Se for um telem\u00f3vel de porta, essa porta n\u00e3o consegue registar chegadas at\u00e9 algu\u00e9m o emparelhar de novo.",
+  "revokeDevice.bodyStrong": "de imediato",
+  "revokeDevice.point1":
+    "{strong} \u2014 em segundos, sem ningu\u00e9m ter de l\u00e1 ir. Tenha um novo c\u00f3digo de emparelhamento pronto se quiser traz\u00ea-lo logo de volta.",
+  "revokeDevice.point1Strong": "Volta sozinho ao ecr\u00e3 de emparelhamento",
+  "revokeDevice.point2":
+    "O seu token morreu. N\u00e3o h\u00e1 forma de anular \u2014 recuper\u00e1-lo implica um novo c\u00f3digo de emparelhamento.",
+  "revokeDevice.point3":
+    "As leituras que j\u00e1 registou s\u00e3o mantidas, e as que guardou offline ainda sincronizam quando voltar a emparelhar.",
+  "revokeDevice.point4":
+    "Permanece nesta lista, marcado como revogado, para o registo de auditoria se manter.",
+  "revokeDevice.cancel": "Manter ativo",
+  "revokeDevice.pending": "A revogar\u2026",
+  "revokeDevice.confirm": "Revogar dispositivo",
+  "error.deviceLoad":
+    "N\u00e3o foi poss\u00edvel carregar a lista de dispositivos.",
+  "error.pairingCode":
+    "N\u00e3o foi poss\u00edvel gerar um c\u00f3digo de emparelhamento.",
+  "error.deviceRevoke": "N\u00e3o foi poss\u00edvel revogar o dispositivo.",
 };
