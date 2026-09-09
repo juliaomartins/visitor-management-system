@@ -173,4 +173,57 @@ export const pt: Messages = {
   "scan.duplicate": "Duplicado",
   "scan.revoked": "Revogado",
   "scan.invalid": "Inv\u00e1lido",
+
+  // --------------------------------------------------- registration form --
+  "register.title": "Registar um visitante",
+  "register.subtitle":
+    "Um crach\u00e1, impresso com anteced\u00eancia, v\u00e1lido para todo o evento",
+  "register.issuedTitle": "Crach\u00e1 emitido",
+  "register.issuedSubtitle":
+    "Imprima o cart\u00e3o agora, ou mais tarde a partir da p\u00e1gina do visitante",
+  "form.photoRequired":
+    "Um crach\u00e1 precisa de uma fotografia. Adicione uma antes de registar.",
+  "form.fullName": "Nome completo",
+  "form.fullNameHint": "Como deve aparecer no crach\u00e1.",
+  "form.country": "Pa\u00eds",
+  "form.organisation": "Organiza\u00e7\u00e3o",
+  "form.optional": "Opcional.",
+  "form.category": "Categoria",
+  "form.cat.normal": "Normal",
+  "form.cat.normalNote": "Crach\u00e1 normal",
+  "form.cat.vip": "VIP",
+  "form.cat.vipNote": "Cart\u00e3o distinto e boas-vindas no \u00e1trio",
+  "form.registering": "A registar\u2026",
+  "form.saving": "A guardar\u2026",
+  "form.register": "Registar e emitir crach\u00e1",
+  "form.save": "Guardar altera\u00e7\u00f5es",
+  "form.noteCreate":
+    "O n\u00famero \u00e9 atribu\u00eddo no momento do registo. O QR \u00e9 gerado nesse mesmo instante e nunca muda depois.",
+  "form.noteEdit":
+    "Editar os dados n\u00e3o reemite o crach\u00e1. O n\u00famero e o c\u00f3digo QR ficam exatamente como foram impressos.",
+
+  // ------------------------------------------------------- badge receipt --
+  "receipt.badgeIssued": "Crach\u00e1 emitido",
+  "receipt.registered": "{name} est\u00e1 registado",
+  "receipt.permanent":
+    "Este QR \u00e9 permanente. Foi gerado quando {name} foi registado e n\u00e3o muda \u2014 imprima-o agora, ou mais tarde a partir da p\u00e1gina do visitante, as vezes que precisar. S\u00f3 deixa de funcionar se desativar ou eliminar o visitante.",
+  "receipt.qrAlt": "C\u00f3digo QR do crach\u00e1 {serial}",
+  "receipt.badgeToken": "Token do crach\u00e1",
+  "receipt.rendering": "A gerar\u2026",
+  "receipt.downloadPdf": "Transferir PDF do crach\u00e1",
+  "receipt.printBrowser": "Imprimir pelo navegador",
+  "receipt.copied": "Copiado",
+  "receipt.copyToken": "Copiar token",
+  "receipt.qrFailed":
+    "N\u00e3o foi poss\u00edvel desenhar o c\u00f3digo QR. Copie o token e imprima o crach\u00e1 noutra m\u00e1quina, em vez de emitir um cart\u00e3o sem c\u00f3digo.",
+  "receipt.copiedAnnounce":
+    "Token do crach\u00e1 copiado para a \u00e1rea de transfer\u00eancia.",
+  "receipt.badgeSerial": "N\u00famero do crach\u00e1",
+  "receipt.registerAnother": "Registar outro visitante",
+  "receipt.open": "Abrir {name}",
+  "receipt.renderFailed": "N\u00e3o foi poss\u00edvel gerar o crach\u00e1.",
+
+  // ---------------------------------------------------------------- edit --
+  "edit.title": "Editar {name}",
+  "edit.fallbackTitle": "Editar visitante",
 };
