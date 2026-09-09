@@ -10,6 +10,7 @@
  * as a viewfinder the QR must fill exactly, which makes people fuss over
  * alignment. Corner brackets read as "somewhere in here", which is the truth.
  */
+import { useT } from "@/i18n";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { QueueIndicator } from "@/components/QueueIndicator";
@@ -34,6 +35,7 @@ export function CameraOverlay({
   pending: number;
   syncing: boolean;
 }) {
+  const t = useT();
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <View style={styles.top} pointerEvents="none">
@@ -58,7 +60,9 @@ export function CameraOverlay({
           onPress={onToggleTorch}
           accessibilityRole="switch"
           accessibilityState={{ checked: torchOn }}
-          accessibilityLabel={torchOn ? "Turn the torch off" : "Turn the torch on"}
+          accessibilityLabel={t(
+            torchOn ? "camera.turnTorchOff" : "camera.turnTorchOn",
+          )}
           hitSlop={12}
           style={({ pressed }) => [
             styles.torch,
@@ -67,7 +71,7 @@ export function CameraOverlay({
           ]}
         >
           <Text style={[styles.torchLabel, torchOn && styles.torchLabelOn]}>
-            {torchOn ? "Torch on" : "Torch"}
+            {t(torchOn ? "camera.torchOn" : "camera.torch")}
           </Text>
         </Pressable>
       </View>
