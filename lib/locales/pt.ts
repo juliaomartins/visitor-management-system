@@ -263,4 +263,48 @@ export const pt: Messages = {
   "crop.applying": "A aplicar\u2026",
   "crop.use": "Usar esta fotografia",
   "crop.changeImage": "Mudar de imagem",
+
+  // -------------------------------------------------------------- badges --
+  "badges.title": "Impress\u00e3o de crach\u00e1s",
+  "badges.subtitle": "Nove por folha A4, com marcas de corte",
+  "badges.loadFailed":
+    "N\u00e3o foi poss\u00edvel carregar a lista de visitantes.",
+  "badges.safeTitle": "Imprimir de novo \u00e9 seguro",
+  "badges.safeBody":
+    "Cada folha leva o QR j\u00e1 existente de cada visitante, por isso um cart\u00e3o pode ser reimpresso as vezes que precisar e os j\u00e1 entregues continuam a funcionar. Para travar um cart\u00e3o perdido, desative esse visitante na p\u00e1gina dele \u2014 o QR nunca muda, por isso ativ\u00e1-lo de novo p\u00f5e o mesmo cart\u00e3o a funcionar.",
+  "badges.searchPlaceholder":
+    "Nome, organiza\u00e7\u00e3o, pa\u00eds ou n\u00famero",
+  "badges.clearSelection": "Limpar sele\u00e7\u00e3o",
+  "badges.selectAll": "Selecionar todos ({count})",
+  "badges.print": "Imprimir",
+  "badges.printCount": "Imprimir {count}",
+  "badges.sheetFailed": "N\u00e3o foi poss\u00edvel produzir a folha.",
+  "badges.export": "Exportar .xlsx",
+  "badges.fileFailed": "N\u00e3o foi poss\u00edvel produzir o ficheiro.",
+  "badges.selectedOne": "{count} selecionado \u00b7 {sheets} folha A4",
+  "badges.selectedMany": "{count} selecionados \u00b7 {sheets} folhas A4",
+  "badges.noMatch": "Nenhum visitante corresponde a essa pesquisa.",
+  "badges.onSheet": "Na folha",
+  "badges.notPrinting": "Fora da folha",
+
+  // ------------------------------------------------------- export dialog --
+  "export.titleOne":
+    "Exportar c\u00f3digos de crach\u00e1 de {count} visitante?",
+  "export.titleMany":
+    "Exportar c\u00f3digos de crach\u00e1 de {count} visitantes?",
+  "export.body":
+    "Este ficheiro cont\u00e9m um {strong} para cada visitante nele. Exportar n\u00e3o altera nada \u2014 os c\u00f3digos s\u00e3o os que j\u00e1 est\u00e3o nos cart\u00f5es \u2014 mas quem tiver o ficheiro consegue produzir um crach\u00e1 que \u00e9 lido.",
+  "export.bodyStrong": "c\u00f3digo QR funcional",
+  "export.point1":
+    "Envie-o como enviaria os cart\u00f5es impressos, n\u00e3o como enviaria uma lista de convidados.",
+  "export.point2":
+    "Exportar de novo mais tarde produz um ficheiro id\u00eantico. Perder este s\u00f3 custa o tempo de o exportar outra vez.",
+  "export.point3":
+    "Para travar um crach\u00e1 espec\u00edfico, desative esse visitante na p\u00e1gina dele. Apagar o ficheiro n\u00e3o trava nada.",
+  "export.building": "A preparar\u2026",
+  "export.confirm": "Exportar e transferir",
+  "card.deactivated": "Desativado",
+  "card.qrOnCard": "no cart\u00e3o impresso",
+  "card.qrDrawing": "a desenhar\u2026",
+  "card.qrFailed": "n\u00e3o foi poss\u00edvel desenhar",
 };
