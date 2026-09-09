@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BadgeCard } from "@/components/badge-card";
 import { useSetPageMeta } from "@/components/page-meta";
-import { RevokeDialog } from "@/components/visitors/RevokeDialog";
+import { DeactivateDialog } from "@/components/visitors/DeactivateDialog";
+import { PurgeDialog } from "@/components/visitors/PurgeDialog";
 import {
   ApiError,
-  useRevokeVisitor,
+  useActivateVisitor,
+  useDeactivateVisitor,
+  usePurgeVisitor,
   useVisitor,
   type ScanEvent,
   type ScanResult,
@@ -25,9 +28,13 @@ const RESULT_STYLES: Record<ScanResult, { label: string; className: string }> =
 
 export default function VisitorDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { data: visitor, isPending, isError, error } = useVisitor(id);
-  const revoke = useRevokeVisitor(id);
+  const deactivate = useDeactivateVisitor(id);
+  const activate = useActivateVisitor(id);
+  const purge = usePurgeVisitor(id);
   const [confirming, setConfirming] = useState(false);
+  const [purging, setPurging] = useState(false);
 
   /*
     THE QR IS ISSUED ONCE, AT REGISTRATION, AND NOTHING HERE CHANGES IT.
@@ -68,7 +75,7 @@ export default function VisitorDetailPage() {
     );
   }
 
-  const revoked = !visitor.is_active;
+  const inactive = !visitor.is_active;
 
   // Read once, defaulted once. A cache entry written by a mutation whose response
   // does not carry the scan history would otherwise crash this page rather than
@@ -118,17 +125,19 @@ export default function VisitorDetailPage() {
         <div className="min-w-0">
           <p
             className={`mono text-[11px] font-bold tracking-[0.22em] uppercase ${
-              revoked ? "text-revoked" : "text-valid"
+              inactive ? "text-revoked" : "text-valid"
             }`}
           >
-            {revoked ? "Revoked" : "Active"}
+            {inactive ? "Deactivated" : "Active"}
           </p>
           <h2 className="display mt-1.5 text-3xl text-ink">
-            {revoked ? "This badge is dead" : "This badge opens the door"}
+            {inactive
+              ? "This badge is switched off"
+              : "This badge opens the door"}
           </h2>
           <p className="mt-2 text-sm text-ink-3">
-            {revoked
-              ? "The next scan of it shows red. The QR does not change, so reprinting will not bring it back."
+            {inactive
+              ? "The next scan of it shows red. Activating puts the same card back to work — nothing needs reprinting."
               : "Any paired scanner will accept it and the lobby screen will welcome them."}
           </p>
 
@@ -166,22 +175,48 @@ export default function VisitorDetailPage() {
               this page. A lost card is handled by revoking it, below.
             */}
 
-            {revoked ? null : (
+            {inactive ? (
+              <button
+                type="button"
+                onClick={() => activate.mutate()}
+                disabled={activate.isPending}
+                className="btn btn-ghost text-valid hover:text-valid disabled:opacity-60"
+              >
+                {activate.isPending ? "Activating…" : "Activate visitor"}
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => setConfirming(true)}
                 className="btn btn-ghost text-revoked hover:text-revoked"
               >
-                Revoke badge
+                Deactivate visitor
               </button>
             )}
+
+            {/*
+              Set apart from the pair above, because it is not their third
+              sibling. Those two toggle a boolean; this one destroys a row and a
+              photograph. The divider and the position are the only cue a
+              registrar gets before the dialog, so they earn their place.
+            */}
+            <span aria-hidden className="h-5 w-px bg-line" />
+
+            <button
+              type="button"
+              onClick={() => setPurging(true)}
+              className="btn btn-ghost text-ink-3 hover:text-revoked"
+            >
+              Delete permanently
+            </button>
           </div>
 
           <p className="mt-3 max-w-lg text-xs leading-relaxed text-ink-3">
             This QR was generated when the visitor was registered and never
             changes. Reprint the card as often as you need &mdash; it scans the
-            same every time. Revoking is the only thing that stops it, and it
-            cannot be undone from here.
+            same every time. Deactivating stops it and activating starts it
+            again, both without touching the code on the card. Deleting
+            permanently is the only thing here that cannot be undone.
           </p>
         </div>
       </div>
@@ -220,24 +255,50 @@ export default function VisitorDetailPage() {
         </div>
       </section>
 
-      <RevokeDialog
+      <DeactivateDialog
         open={confirming}
         visitorName={visitor.full_name}
         badgeSerial={visitor.badge_serial}
-        pending={revoke.isPending}
+        pending={deactivate.isPending}
         error={
-          revoke.error instanceof ApiError ? revoke.error.message : undefined
+          deactivate.error instanceof ApiError
+            ? deactivate.error.message
+            : undefined
         }
         onConfirm={() =>
-          revoke.mutate(undefined, { onSuccess: () => setConfirming(false) })
+          deactivate.mutate(undefined, {
+            onSuccess: () => setConfirming(false),
+          })
         }
         onCancel={() => {
-          if (!revoke.isPending) {
+          if (!deactivate.isPending) {
             setConfirming(false);
-            revoke.reset();
+            deactivate.reset();
           }
         }}
       />
+
+      <PurgeDialog
+        open={purging}
+        visitorName={visitor.full_name}
+        badgeSerial={visitor.badge_serial}
+        scanCount={scans.length}
+        pending={purge.isPending}
+        error={purge.error instanceof ApiError ? purge.error.message : undefined}
+        onConfirm={() =>
+          purge.mutate(undefined, {
+            // This page is about to 404 on its own id, so leave before it can.
+            onSuccess: () => router.replace("/visitors"),
+          })
+        }
+        onCancel={() => {
+          if (!purge.isPending) {
+            setPurging(false);
+            purge.reset();
+          }
+        }}
+      />
+
     </div>
   );
 }
