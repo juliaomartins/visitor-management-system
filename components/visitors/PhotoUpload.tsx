@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { PhotoCropper } from "@/components/visitors/PhotoCropper";
 import { PHOTO_ASPECT } from "@/lib/badge-geometry";
+import { useT } from "@/lib/i18n";
 
 /**
  * Choose a visitor photo, and crop it in the same breath.
@@ -35,6 +36,7 @@ export function PhotoUpload({
   existingUrl?: string;
   error?: string;
 }) {
+  const t = useT();
   const [source, setSource] = useState<Source | null>(null);
   const [cropping, setCropping] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -65,11 +67,11 @@ export function PhotoUpload({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setProblem("That is not an image. Choose a JPEG or PNG.");
+      setProblem(t("photo.notImage"));
       return;
     }
     if (file.size > MAX_SOURCE_BYTES) {
-      setProblem("That image is over 20 MB. Choose a smaller one.");
+      setProblem(t("photo.tooLarge"));
       return;
     }
 
@@ -78,7 +80,7 @@ export function PhotoUpload({
       return { url: URL.createObjectURL(file), name: file.name };
     });
     setCropping(true);
-  }, []);
+  }, [t]);
 
   const applied = useCallback(
     (file: File) => {
@@ -106,9 +108,11 @@ export function PhotoUpload({
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="text-xs font-medium text-ink-2">Photo</span>
+        <span className="text-xs font-medium text-ink-2">
+          {t("photo.label")}
+        </span>
         <span className="mono text-[10px] tracking-wider text-ink-3">
-          3:4 PORTRAIT · 600 × 800
+          {t("photo.spec")}
         </span>
       </div>
 
@@ -117,15 +121,15 @@ export function PhotoUpload({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={shown}
-            alt="The visitor's badge photo"
+            alt={t("photo.alt")}
             className="w-28 shrink-0 rounded-xl object-cover ring-1 ring-line"
             style={{ aspectRatio: PHOTO_ASPECT }}
           />
           <div className="min-w-0 space-y-2">
             <p className="text-sm text-ink-2">
               {preview
-                ? "Cropped and ready."
-                : "The photo already on file. It stays unless you replace it."}
+                ? t("photo.ready")
+                : t("photo.onFile")}
             </p>
             <div className="flex flex-wrap gap-2">
               {source ? (
@@ -134,7 +138,7 @@ export function PhotoUpload({
                   onClick={() => setCropping(true)}
                   className="btn btn-ghost px-3 py-1.5 text-xs"
                 >
-                  Adjust crop
+                  {t("photo.adjustCrop")}
                 </button>
               ) : null}
               <button
@@ -142,7 +146,7 @@ export function PhotoUpload({
                 onClick={() => inputRef.current?.click()}
                 className="btn btn-ghost px-3 py-1.5 text-xs"
               >
-                Choose a different photo
+                {t("photo.chooseDifferent")}
               </button>
             </div>
           </div>
@@ -179,9 +183,11 @@ export function PhotoUpload({
           >
             <path d="M3 16.5V18a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-1.5M12 3v13.5M7.5 7.5 12 3l4.5 4.5" />
           </svg>
-          <span className="mt-3 text-sm font-medium text-ink">Add a photo</span>
+          <span className="mt-3 text-sm font-medium text-ink">
+            {t("photo.add")}
+          </span>
           <span className="mt-1 text-xs text-ink-3">
-            Drop one here, or click to choose. You crop it next.
+            {t("photo.dropHint")}
           </span>
         </button>
       )}
@@ -208,7 +214,7 @@ export function PhotoUpload({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Crop the visitor photo"
+          aria-label={t("photo.dialogLabel")}
           className="fixed inset-0 z-50 flex items-center justify-center bg-graphite-950/70 p-4 backdrop-blur-sm"
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) setCropping(false);
@@ -224,7 +230,7 @@ export function PhotoUpload({
             <header className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-5 py-3.5">
               <div className="min-w-0">
                 <h2 className="display text-[0.95rem] leading-tight text-ink">
-                  Frame the face
+                  {t("photo.frameFace")}
                 </h2>
                 <p className="mt-0.5 truncate text-[11px] text-ink-3">
                   {source.name}
@@ -233,7 +239,7 @@ export function PhotoUpload({
               <button
                 type="button"
                 onClick={() => setCropping(false)}
-                aria-label="Close without saving"
+                aria-label={t("photo.closeWithoutSaving")}
                 className="-mt-0.5 -mr-1 shrink-0 rounded-lg p-1.5 text-ink-3 transition-colors hover:bg-card-2 hover:text-ink"
               >
                 <svg
