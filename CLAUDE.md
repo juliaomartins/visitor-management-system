@@ -2,6 +2,12 @@
 
 Event badge system for ~250 visitors, running on a closed LAN behind one router.
 
+**The event:** Díli Regional Cooperative Conference and Ministerial Dialogue 2026,
+Díli, 2–3 October 2026. Two organisers (RDTL and SECoop) plus the event mark; all
+three appear on the dashboard, the lobby screen and the scanner splash. That is why
+the palette and the plume motif are sampled from the supplied logos rather than
+chosen — see `lib/theme.ts` in the screen and `app/globals.css` in the dashboard.
+
 **Flow:** admin registers visitor → prints ID card with QR → guard scans with phone →
 lobby screen shows welcome with photo, name, country.
 
@@ -36,11 +42,21 @@ Frontends consume contracts by relative path:
 | Backend | Django, DRF, djangorestframework-simplejwt, **Django Channels**, PostgreSQL |
 | Channel layer | `InMemoryChannelLayer` — **no Redis** |
 | Background jobs | none — **no Celery** |
-| Dashboard | TypeScript, Next.js (App Router), TailwindCSS, TanStack Query |
-| Scanner | TypeScript, React Native, Expo, expo-router, expo-camera, expo-sqlite |
-| Screen | TypeScript, Next.js, TailwindCSS |
+| Dashboard | TypeScript, Next.js 16 (App Router), Tailwind v4, TanStack Query, `qrcode`, `react-image-crop` |
+| Scanner | TypeScript, React Native, Expo SDK 57, expo-router, expo-camera, expo-sqlite, reanimated |
+| Screen | TypeScript, Next.js 16, Tailwind v4, GSAP |
 | Badge PDF | **ReportLab** + qrcode — pure Python, no native libraries |
+| Spreadsheets | openpyxl — the roster and the credential export |
 | Schema | drf-spectacular → openapi.yaml → openapi-typescript |
+
+Pinned versions live in `vms-backend/requirements.txt` and each frontend's
+`package.json`. Django is 6.1 and Next is 16.3.2 at the time of writing; read the
+files rather than trusting this line.
+
+**Dashboard type is Plus Jakarta Sans (display), Inter (body) and JetBrains Mono.**
+All three are self-hosted by `next/font`, which matters on a machine with no
+internet. The printed card uses ReportLab's built-in Helvetica and Courier, so the
+card is close to the preview but not identical — see the badge section.
 
 ---
 
@@ -63,17 +79,44 @@ Deliberate for a 250-visitor LAN event on one machine. Postgres runs as a native
 service on the server; there is no `docker-compose.yml` and there should not be one.
 Do not introduce any of these without being asked.
 
-**3. The QR contains an opaque random token — never an ID.**
+**3. The QR contains an opaque DERIVED token — never a bare ID.**
 
 ```python
-raw = secrets.token_urlsafe(32)                        # printed in the QR
-visitor.token_hash = sha256(raw.encode()).hexdigest()  # only this is stored
+raw = hmac_sha256(BADGE_TOKEN_SECRET, f"{visitor.id}:{visitor.token_version}")
+visitor.token_hash = sha256(raw.encode()).hexdigest()   # what the scan looks up
 ```
 
-If the QR held `{"id": 42}`, anyone could photograph a badge, edit it to 43, print it,
-and enter as another guest. The raw token exists only on the printed card — **generate
-the PDF at creation time**, it cannot be recovered afterwards. Reprinting a lost card
-means issuing a new token and revoking the old one.
+If the QR held the visitor id, anyone who saw a badge — or a dashboard URL, which
+already contains that id — would hold a working credential forever. The HMAC keeps
+the QR unguessable while making it **reproducible**, which is the point: the same
+card can be reprinted and shown on screen for the life of the event.
+
+This replaced a random `secrets.token_urlsafe(32)` that was stored only as a digest.
+That was safe but irrecoverable, so a card could never be reprinted and printing a
+second sheet silently revoked the first — indistinguishable, at the desk, from the
+QR expiring.
+
+`BADGE_TOKEN_SECRET` is now a crown jewel: leaking it makes every badge mintable,
+and changing it invalidates every printed card at once. It is deliberately separate
+from `SECRET_KEY` so that rotating Django's key does not void 250 badges.
+
+**The QR is issued once, at registration, and nothing in the dashboard changes it.**
+
+`rotate_badge_token()` is still the only function that can — it bumps
+`token_version` — and `POST /api/v1/badges/reissue` still calls it. But no client
+calls that endpoint any more: the wrapper was removed from `vms-dashboard/lib/badges.ts`
+and the "Replace badge" button with it, because a control that silently re-mints a
+credential does not belong next to one that prints it. Printing, exporting and
+editing all leave the token alone.
+
+A badge therefore stays valid from registration until the visitor is **deactivated**
+or **deleted**, and both of those are reversible in the sense that matters: the token
+is never touched, so activating a visitor puts the card already in their hand back to
+work with nothing to reprint. `classify()` in `apps/scans/services.py` reads
+`is_active` at scan time rather than anything baked into the code.
+
+If you ever need rotation back in the UI, put it behind its own confirmation and say
+plainly that every card already printed for that visitor stops scanning.
 
 **4. The scanner app has no login — but the API is not open.**
 
@@ -263,7 +306,7 @@ def log_valid_scan(visitor, device, scanned_at):
     return scan
 ```
 
-### vms-screen/src/hooks/useArrivalFeed.ts
+### vms-screen/hooks/useArrivalFeed.ts
 
 ```typescript
 const connect = () => {
@@ -301,10 +344,13 @@ class Visitor(BaseModel):
     category      = CharField(choices=[("normal","Normal"), ("vip","VIP")])
     badge_serial  = CharField(max_length=20, unique=True)   # human-readable, printed
     token_hash    = CharField(max_length=64, unique=True, db_index=True)
-    is_active     = BooleanField(default=True)              # revoke lost cards
+    token_version = PositiveIntegerField(default=1)         # only rotation bumps it
+    is_active     = BooleanField(default=True)              # deactivate / activate
+    deleted_at    = DateTimeField(null=True, db_index=True) # soft delete
 
-class ScanEvent(BaseModel):
+class ScanEvent(TimeStampedModel):
     id          = BigAutoField(primary_key=True)            # this is your event_id
+    client_uuid = UUIDField(null=True, unique=True)         # the scanner's idempotency key
     visitor     = ForeignKey(Visitor, null=True, on_delete=PROTECT)
     device      = ForeignKey("devices.Device", on_delete=PROTECT)
     scanned_at  = DateTimeField(db_index=True)
@@ -330,6 +376,24 @@ class User(AbstractUser):    # admins only
 `ScanEvent` logs invalid attempts too, with `visitor` null. One table gives you both the
 entrance report and the security audit.
 
+`client_uuid` is generated on the phone before the row leaves it, so the offline queue
+can retry a scan without producing two arrivals when the first attempt actually landed
+and only the response was lost.
+
+**`visitor` is nullable for a second reason now.** A permanent delete detaches the
+visitor's scans (`visitor = None`) rather than deleting them, so the entrance log keeps
+its totals and timestamps while losing the identity. Deleting the rows instead would
+quietly shrink the security log — see `purge_visitor` in `apps/visitors/services.py`.
+
+Three states, and they are not the same thing:
+
+| State | Set by | Badge scans? | On the visitor list? | Reversible |
+|---|---|---|---|---|
+| active | registration | yes | yes | — |
+| deactivated | `POST /visitors/{id}/deactivate` | no, logs `revoked` | yes, marked | yes, `/activate` |
+| soft-deleted | `DELETE /visitors/{id}` | no, logs `revoked` | no | by hand only |
+| purged | `DELETE /visitors/{id}/permanent` | row is gone | no | **never** |
+
 ---
 
 ## API surface
@@ -339,14 +403,24 @@ POST   /api/v1/auth/token                    admin login           → JWT pair
 POST   /api/v1/auth/token/refresh
 POST   /api/v1/auth/token/blacklist
 
+GET    /api/v1/health                        LAN address + liveness
+
 GET    /api/v1/visitors                      list/filter/search    [admin]
+       ?category= &is_active= &country= &search= &ordering=
+       ?with_tokens=true                     adds `badge_token` to every row
 POST   /api/v1/visitors                      register              [admin]
-GET    /api/v1/visitors/{id}                 detail + scan history [admin]
+GET    /api/v1/visitors/{id}                 detail + scans + token[admin]
 PATCH  /api/v1/visitors/{id}                 edit                  [admin]
 DELETE /api/v1/visitors/{id}                 soft delete           [admin]
-POST   /api/v1/visitors/{id}/revoke          kill a lost badge     [admin]
-GET    /api/v1/visitors/{id}/badge           single card PDF       [admin]
-POST   /api/v1/badges/bulk                   A4 sheet PDF          [admin]
+POST   /api/v1/visitors/{id}/deactivate      badge stops scanning  [admin]
+POST   /api/v1/visitors/{id}/activate        badge scans again     [admin]
+DELETE /api/v1/visitors/{id}/permanent       erase for good        [admin]
+
+POST   /api/v1/badges/card                   one card PDF, from a raw token
+POST   /api/v1/badges/reissue-sheet          A4 sheet PDF. Non-destructive.
+GET    /api/v1/badges/roster.xlsx            the roster, no credentials
+POST   /api/v1/badges/export                 .xlsx WITH working QR codes
+POST   /api/v1/badges/reissue                ROTATES TOKENS. No client calls it.
 
 POST   /api/v1/devices/pairing-code          generate setup code   [admin]
 GET    /api/v1/devices                       list paired devices   [admin]
@@ -360,10 +434,32 @@ WS     /ws/screen/?token=<device_token>      live push             [screen devic
 
 GET    /api/v1/reports/entries?from=&to=     entrance log          [admin]
 GET    /api/v1/reports/entries.csv           export                [admin]
+GET    /api/v1/reports/entries.xlsx          export                [admin]
+GET    /api/v1/reports/entries.pdf           export                [admin]
 ```
 
-`/scans` returns `200` with a `result` field for bad badges, not `4xx`. A revoked badge
-is a business outcome, not an HTTP error — it keeps the app's error handling clean.
+**Route names drifted from this document once already.** `POST /visitors/{id}/revoke`,
+`GET /visitors/{id}/badge` and `POST /badges/bulk` were all documented here and none of
+them existed. If you are unsure, ask the URLconf rather than this list:
+
+```powershell
+..\.venv\Scripts\python.exe manage.py spectacular --file openapi.yaml
+```
+
+and read the paths, or `curl http://<server>:8000/api/v1/schema/` against the running
+process — which also tells you whether it has your latest code loaded.
+
+`/scans` returns `200` with a `result` field for bad badges, not `4xx`. A deactivated
+badge is a business outcome, not an HTTP error — it keeps the app's error handling clean.
+The `result` value is still `revoked`; the enum is what the scanner and the reports are
+built on, and renaming it would be a schema change for a word.
+
+**`with_tokens` is opt-in and every other list call goes without it.** A badge token is
+a working credential, so the flag turns one request into a set of usable badges. The
+print queue asks for it because it draws the real QR on every card and a frame saying
+"on the printed card" verifies nothing. The `.xlsx` export already hands the same admin
+the same codes, so the boundary it crosses is convenience, not secrecy — but do not
+sprinkle it onto other callers for tidiness.
 
 Only `/devices/pair` is reachable without a token.
 
@@ -393,11 +489,11 @@ vms-backend/
 │   ├── urls.py
 │   ├── asgi.py                 THE entry point
 │   ├── wsgi.py                 kept for manage.py only
-│   └── settings/{base,dev,prod,test}.py
+│   └── settings/{base,dev}.py  NO prod.py, NO test.py — see Tests
 └── apps/
     ├── common/     BaseModel, permissions, throttling, hash_token(), storage
     ├── accounts/   User + simplejwt views. Admins only.
-    ├── visitors/   Visitor CRUD, issue_badge_token(), revoke_badge()
+    ├── visitors/   Visitor CRUD, issue_badge_token(), activate/deactivate, purge
     ├── badges/     ReportLab PDF. NO MODELS, no templates — it draws.
     ├── devices/    Device, PairingCode, authentication.py (HTTP), middleware.py (WS)
     ├── scans/      ScanEvent, consumers.py, routing.py, services.py, views.py
@@ -444,37 +540,92 @@ preview and the PDF cannot drift apart.
 
 ## Dashboard (vms-dashboard)
 
-Login, visitor CRUD (normal + VIP), photo upload, badge print queue, device pairing
-codes, entrance reports.
+Login, visitor CRUD (normal + VIP), photo upload with crop, badge print queue, device
+pairing codes, entrance reports, and an overview page.
+
+```
+app/(auth)/login
+app/(dashboard)/dashboard          overview: arrivals curve, outcome split, recent
+app/(dashboard)/visitors           list — right-click a row for actions
+app/(dashboard)/visitors/new       register + badge receipt
+app/(dashboard)/visitors/[id]      detail: live QR, scan history, lifecycle buttons
+app/(dashboard)/visitors/[id]/edit
+app/(dashboard)/badges             print queue, nine to a sheet, real QR on every card
+app/(dashboard)/devices            pairing codes + paired device list
+app/(dashboard)/reports            entrance log + CSV/XLSX/PDF export
+```
 
 - Route groups: `(auth)/login`, `(dashboard)/*` behind the guard.
 - All API types from `@vms/contracts`. Never hand-write a type mirroring a serializer.
 - TanStack Query for server state. No global store for API data.
 
-**Visitor photos are 3:4 portrait, 600 × 800 — NOT the card aspect.**
+**Dark mode is class-based, not `prefers-color-scheme`.** `@custom-variant dark
+(&:where(.dark, .dark *))` in `globals.css`, toggled by `components/theme-toggle.tsx`.
+The registration desk chooses; the lobby's ambient light is not the OS's business. A
+small inline bootstrap script in `app/layout.tsx` sets the class before first paint, so
+`<html>` carries `suppressHydrationWarning` — without it React reports a mismatch on
+every load.
 
-The CR80 card is 85.6 × 54 mm landscape, but the photo is a portrait region inside
-it, the way a passport photo sits on an ID card. These two get confused constantly.
-`PHOTO_ASPECT` in `components/visitors/PhotoUpload.tsx` is the single source of
-truth; the crop happens in the browser so the server stores one canonical image.
+**Right-click a visitor row for Edit / Deactivate (or Activate) / Delete permanently.**
+`components/visitors/RowContextMenu.tsx`. It replaces the browser's own menu on those
+rows, so "open in new tab" is gone there — a deliberate trade, because the alternative
+is a navigation to the visitor and back for every small change. The Menu key and
+Shift+F10 open it too, since the row's link is focusable; those report no pointer
+position, so they anchor to the row's box instead of the window corner.
+
+**Visitor photos are 3:4 portrait, 600 × 800 — and the printed photo is a CIRCLE.**
+
+`lib/badge-geometry.ts` is the single source of truth and it derives everything from
+the same millimetres `apps/badges/services.py` prints with. `PHOTO_ASPECT` moved there
+from `PhotoUpload.tsx`; do not reintroduce a second copy.
+
+The trap is that these are three different shapes and they get confused constantly:
+
+| Thing | Shape | Where |
+|---|---|---|
+| the CR80 card | 54 × 85.6 mm portrait | `CARD_W, CARD_H` |
+| the stored photo | 3:4 portrait, 600 × 800 | `PHOTO_ASPECT`, `OUTPUT_WIDTH` |
+| the printed photo | a 19 mm **circle** | `clip.circle(...)` in services.py |
+
+The card and the lobby screen both clip the stored 3:4 image to a circle, so a crop
+that looks right as a rectangle can still lose a chin. `PhotoCropper.tsx` draws the
+circle over the crop for that reason, and warns below `MIN_OUTPUT_WIDTH` — 225px, which
+is 19 mm at 300dpi — rather than silently upscaling.
+
+The crop happens in the browser so the server stores one canonical image. **Image data
+stays in memory and object URLs. Never localStorage** — a shared registration laptop
+must not keep visitors' photographs after the event.
 
 **Registration does not redirect on success.**
 
-`POST /visitors` returns the raw badge token once. Only its digest is stored, so
-navigating away destroys the one copy and the badge can never be printed — the
-visitor would have to be registered again. Success therefore replaces the form with
-the token receipt, and the registrar leaves deliberately. Do not "fix" this by
-routing to the detail page. Phase 5 makes it moot: the PDF will carry the token
-straight into a QR and no human will ever see it.
+`POST /visitors` returns the badge token, and success replaces the form with the
+token receipt rather than navigating away — so the registrar prints the card while
+the visitor is still standing there, and the next registration starts from a clean
+form rather than from somebody's detail page.
+
+THE ORIGINAL REASON IS GONE and the behaviour is kept for the workflow alone.
+Tokens used to be irrecoverable, so leaving this page destroyed the only copy and
+the badge could never be printed. Tokens are derived now: `GET /visitors/{id}`
+returns `badge_token`, and the card can be reprinted at any time from the
+visitor's page. Losing the receipt costs nothing.
 
 **The dashboard proxies `/api` and `/media` to the backend** via rewrites in
-`next.config.ts`, so every browser request is same-origin.
+`next.config.ts`, so every browser request is same-origin: no preflight on the
+`Authorization` header, the refresh cookie is first-party, and DRF's absolute photo
+URLs (built from the `Host` header) resolve. Set `VMS_BACKEND_ORIGIN` to the server's
+LAN address.
 
-`django-cors-headers` is deliberately not installed. The proxy removes the need for
-it: no preflight on the `Authorization` header, the refresh cookie is first-party,
-and DRF's absolute photo URLs (built from the `Host` header) resolve. Set
-`VMS_BACKEND_ORIGIN` to the server's LAN address. Note `CORS_ALLOW_ALL_ORIGINS` in
-`settings/dev.py` is inert while the package is absent.
+**`django-cors-headers` IS installed, and this document said the opposite for a long
+time.** It is in `requirements.txt`, in `INSTALLED_APPS`, and first in `MIDDLEWARE`,
+with `CORS_ALLOW_ALL_ORIGINS = True` set in **`settings/base.py`** — not just dev. So
+the backend answers every origin with `Access-Control-Allow-Origin: *`.
+
+`CORS_ALLOW_CREDENTIALS` is unset, so the refresh cookie cannot be read cross-origin and
+the practical exposure on a closed LAN is small. It is still wider than intended: the
+proxy exists precisely so no origin but the dashboard needs to reach the API, and a
+leaked access token is readable from any web page rather than none. **Decide
+deliberately** — either drop the package and the settings, or narrow it to
+`CORS_ALLOWED_ORIGINS` — and correct this paragraph when you do.
 
 **The route guard reads a `vms_session` hint cookie, not the refresh token.**
 
@@ -492,6 +643,17 @@ backend rejecting any request without a valid bearer token.
 ever sees), `settings.tsx`. If this app grows past that, the feature belongs in the
 dashboard.
 
+`src/app/index.tsx` is a fourth route file and is not a fourth screen: it is a single
+`<Redirect>` to `/scanner` or `/pair` depending on the keystore, so that decision is
+made in one place instead of racing between screens.
+
+`components/LaunchScreen.tsx` holds the branded launch animation — reanimated, sequence
+ending at 520ms with a 770ms fallback release, and every value starts at its resting
+state under reduced-motion. The root layout holds until **both** the animation has
+finished and the keystore has answered — never one or the other, or the app flashes the
+pairing screen at a phone that is already paired. The native splash in `app.json` is
+transparent in every theme so the two do not fight.
+
 - No login screen, ever. Pair once, store the device token in expo-secure-store, then
   open straight to the camera.
 - **Offline SQLite queue is required in v1.** Every scan writes locally first, then syncs
@@ -506,8 +668,11 @@ dashboard.
 
 ## Screen (vms-screen)
 
-Deliberately the smallest app. Two pages: the display, and one-time pairing. No router
-beyond that, no state library, no auth UI.
+Deliberately the smallest app. Two pages: the display (`app/page.tsx`) and one-time
+pairing (`app/pair/page.tsx`). No router beyond that, no state library, no auth UI.
+
+**There is no `src/` here.** `app/`, `components/`, `hooks/` and `lib/` sit at the
+package root — the opposite of `vms-scanner`, where everything is under `src/`.
 
 - WebSocket + backfill as described above.
 - **`/api/*` is a route handler, not a `rewrites()` entry.** A rewrite destination
@@ -524,6 +689,12 @@ beyond that, no state library, no auth UI.
 - VIP category gets a distinct visual treatment.
 - `ConnectionDot` in a corner so staff can see the feed is alive.
 - Runs in kiosk mode over `http://`.
+- `EventSplash` shows the event mark and both organiser seals while the hall is quiet;
+  `IdleScreen` takes over between arrival waves. GSAP drives them — `useGSAP`, SplitText
+  and Physics2D, all free tier.
+- `FitText` auto-fits names and organisations. It exists because a 40-character name at
+  a fixed 72px overflows a 1366×768 screen, and the lobby display is the one surface
+  nobody can fix during the event.
 
 ---
 
@@ -615,10 +786,32 @@ you get `websockets` and `httptools` without it.
 
 ### Tests
 
-There is no pytest suite yet, and `pytest` is not installed. Do not paste `pytest` into a
-terminal expecting it to prove anything. Verification today is `manage.py check`,
-`makemigrations --check --dry-run`, and exercising the API against a throwaway SQLite
-database. If a suite is added, it belongs behind `settings/test.py`.
+There is no pytest suite yet, `pytest` is not installed, and there is no
+`config/settings/test.py`. Do not paste `pytest` into a terminal expecting it to prove
+anything. Verification today is `manage.py check`, `makemigrations --check --dry-run`,
+and exercising the API against a throwaway SQLite database.
+
+**Point `DJANGO_SETTINGS_MODULE` at a separate settings module. Never swap
+`connections.databases` at runtime.** The runtime swap does not take effect once Django
+has read its configuration, and a probe written that way silently wrote three visitors,
+fourteen scan events and a device into the live event database. A throwaway module is
+four lines, and it belongs outside the repo:
+
+```python
+from config.settings.dev import *          # noqa: F403
+DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3",
+                         "NAME": "<scratch>/probe.sqlite3"}}
+MEDIA_ROOT = "<scratch>/media"
+```
+
+Then assert it took, before touching anything:
+
+```python
+db = settings.DATABASES["default"]
+assert db["ENGINE"].endswith("sqlite3"), f"REFUSING: engine is {db['ENGINE']}"
+```
+
+If a real suite is added it belongs behind `settings/test.py`, which would need writing.
 
 ### Contracts
 
@@ -741,18 +934,34 @@ Router 192.168.1.1
 
 | Phase | Work | Status |
 |---|---|---|
-| 0 | Models, serializers, openapi.yaml, contracts codegen | NOT STARTED |
-| 1a | Auth (JWT + refresh cookie), visitor CRUD + filters, token issue/revoke | DONE |
+| 0 | Models, serializers, openapi.yaml, contracts codegen | DONE |
+| 1a | Auth (JWT + refresh cookie), visitor CRUD + filters, token issue | DONE |
 | 1b | `/scans`, `/screen/feed`, device pairing + device auth, throttling | DONE |
 | 2 | Channels: asgi.py, consumer, routing, WS device middleware | DONE |
-| 3a | Dashboard: login, visitor CRUD, photo upload | NOT STARTED |
-| 3b | Scanner: pairing, camera, offline queue | NOT STARTED |
-| 4 | Lobby screen: WS hook + backfill + welcome card | NOT STARTED |
-| 5 | Badge PDF templates + bulk A4 print | NOT STARTED |
-| 6 | Reports + CSV export | NOT STARTED |
-| 7 | LAN dress rehearsal — real phones, real printed cards | NOT STARTED |
+| 3a | Dashboard: login, visitor CRUD, photo upload | DONE |
+| 3b | Scanner: pairing, camera, offline queue | DONE |
+| 4 | Lobby screen: WS hook + backfill + welcome card | DONE |
+| 5 | Badge PDF templates + bulk A4 print | DONE |
+| 6 | Reports + CSV export (also XLSX and PDF) | DONE |
+| 7 | **LAN dress rehearsal — real phones, real printed cards** | **NOT STARTED** |
+
+Done since the table was first written, and not in it:
+
+- Branding across all three frontends — event mark plus the two organiser seals,
+  palette sampled from the supplied logos, dark mode with a toggle on dashboard
+  and screen.
+- Derived badge tokens replacing random ones, so a card can be reprinted; the
+  permanent-QR rule that follows from it.
+- Visitor lifecycle: deactivate, activate, permanent delete.
+- Photo cropper with face detection and a print-resolution floor.
+- Scanner launch screen (native splash + animation, gated on the keystore).
+- Reports: XLSX and PDF exports beside the CSV.
 
 **Update this table as phases complete.** It is how context carries between sessions.
+
+**Phase 7 is the only thing left, and it is the one that matters.** The event is
+2–3 October 2026. Nothing in this system has yet been run on the real router, with
+real phones, against cards off a real printer.
 
 Ordering rationale, so it isn't rearranged:
 
@@ -764,3 +973,24 @@ Ordering rationale, so it isn't rearranged:
 - **The offline queue belongs in 3b**, not later.
 - **Phase 7 is not optional.** Print 20 real cards, use two real phones, run the real
   router. Every problem you'll have on the day surfaces there.
+
+---
+
+## Things this document got wrong before
+
+Kept as a list because each one cost time, and because a confident wrong line in here
+is worse than no line at all.
+
+- `POST /visitors/{id}/revoke`, `GET /visitors/{id}/badge` and `POST /badges/bulk`
+  were documented and never existed.
+- `django-cors-headers` was described as "deliberately not installed". It is
+  installed and active.
+- `PHOTO_ASPECT` was said to live in `PhotoUpload.tsx`. It lives in
+  `lib/badge-geometry.ts`.
+- The dashboard's fonts were given as Archivo and IBM Plex Mono. They are Plus
+  Jakarta Sans, Inter and JetBrains Mono.
+- `vms-screen/src/hooks/...` — the screen has no `src/`.
+- `config/settings/{base,dev,prod,test}.py` — only `base.py` and `dev.py` exist.
+
+**When you change a route, a serializer or a filename, change this file in the same
+commit.** Everything above was true once.
