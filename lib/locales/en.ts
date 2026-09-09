@@ -60,6 +60,7 @@ export const en = {
   "login.submit": "Sign in",
   "login.submitting": "Signing in\u2026",
   "login.badCredentials": "That username and password did not match.",
+  "login.failedStatus": "Sign-in failed (HTTP {status}).",
   "login.unreachable":
     "Could not reach the server. Check that the backend is running.",
   "login.servingFrom": "Serving from",
