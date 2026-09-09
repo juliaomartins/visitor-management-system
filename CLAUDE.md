@@ -48,6 +48,7 @@ Frontends consume contracts by relative path:
 | Badge PDF | **ReportLab** + qrcode — pure Python, no native libraries |
 | Spreadsheets | openpyxl — the roster and the credential export |
 | Schema | drf-spectacular → openapi.yaml → openapi-typescript |
+| Languages | English, Portuguese, Tetun — hand-rolled, generated dictionaries, no i18n library |
 
 Pinned versions live in `vms-backend/requirements.txt` and each frontend's
 `package.json`. Django is 6.1 and Next is 16.3.2 at the time of writing; read the
@@ -695,6 +696,102 @@ package root — the opposite of `vms-scanner`, where everything is under `src/`
 - `FitText` auto-fits names and organisations. It exists because a 40-character name at
   a fixed 72px overflows a 1366×768 screen, and the lobby display is the one surface
   nobody can fix during the event.
+
+---
+
+## Languages (all three frontends)
+
+**English, Portuguese and Tetun.** Portuguese and Tetun are Timor-Leste's
+official languages; English is the conference's working language. Every frontend
+carries all three, and each one owns its own dictionary — there is no shared i18n
+package, because `vms-contracts` is generated and nothing hand-written goes in it.
+
+| App | Dictionaries | Engine | Persisted in |
+|---|---|---|---|
+| `vms-dashboard` | `lib/locales/{en,pt,tet}.ts` — 365 keys | `lib/i18n.tsx` | cookie `vms.locale` |
+| `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 29 keys | `lib/i18n.tsx` | cookie `vms.screen.locale` |
+| `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 72 keys | `src/i18n.tsx` | SecureStore `vms.locale` |
+
+**No i18n library.** About 120 lines per app, against three packages and an
+install on a machine that is offline by event day. The engine is a typed
+dictionary, a `useT()` hook, and a `translate()` that fills `{name}` placeholders.
+
+**1. The dictionaries are GENERATED, and they are pure ASCII.**
+
+```bash
+python scripts/generate-locales.py      # in each app
+```
+
+All three languages come from one table in that script, so a missing translation
+cannot be introduced by hand — and `Messages = Record<MessageKey, string>` makes
+one a compile error. Non-ASCII is emitted as `\uXXXX` escapes.
+
+**That escaping is not fussiness.** The first version of these files was written
+through a shell heredoc on the Windows dev machine and came back with the accents
+mojibaked — `Secções` as `Sec??es`. It typechecked, it rendered, and it was only
+visible by decoding the bytes. **Do not hand-edit the `.ts` files**; edit the
+generator and re-run it.
+
+**2. The two web apps read the locale on the SERVER. This is the load-bearing
+decision.**
+
+The theme is a CSS class: the server can guess wrong and a pre-paint script
+corrects it. A language is the markup itself. If the server rendered English and
+the browser wanted Tetun, React would hydrate over the whole page and swap every
+word — a mismatch, and on the lobby wall a room-sized flicker. So the locale
+lives in a cookie, the root layout (`async`, `cookies()`) reads it, and the first
+byte is already right. `<html lang>` is set from it, which is what a screen
+reader consults to choose a voice.
+
+The scanner has no server render and no cookie, so it reads SecureStore
+asynchronously and the launch screen holds until that lands — the same gate the
+device token already uses.
+
+**3. Tetum has no CLDR data in any browser.** `Intl.DateTimeFormat("tet")`
+silently falls back to the host locale, which on a kiosk is whatever Windows was
+installed as. Tetum borrows `pt-PT` for formatting only, and every date format is
+numeric so no Portuguese month name lands in a Tetun screen. That also gives
+dd/mm/yyyy and a 24-hour clock throughout, which is how Timor-Leste writes a date.
+
+**4. Grammar is not assembled from fragments.** Plurals are one message per form
+(Portuguese conjugates, Tetun does not inflect the noun); English ordinals come
+from `Intl.PluralRules` while Portuguese writes `2.º`; elapsed time is
+`Intl.RelativeTimeFormat`, not a hand-rolled ladder. Where a sentence wraps a
+value in markup, `useRichT` splits the TRANSLATED string on its placeholders so
+the value lands wherever that language puts it — never a "before" and "after"
+half glued around it, which can only ever produce English word order wearing a
+translation.
+
+### What is deliberately NOT translated
+
+- **The printed badge.** `apps/badges/services.py` draws the card in English, so
+  `components/badge-card.tsx` keeps "Registered", "Country" and "VIP GUEST" in
+  English too. The preview exists to show what comes out of the printer, and
+  translating it would make it lie about the card — a registrar would check a
+  Tetun preview and hand over an English badge. Only the deactivated overlay and
+  the empty QR frame, which never reach paper, follow the interface.
+- **The report narrative.** `apps/reports/services.py` composes those sentences
+  so the PDF and the dashboard panel say the same words. There is no key to look
+  up, only prose. Making the report multilingual is a change to that service and
+  the PDF it writes.
+- **Backend error messages.** DRF's `detail` strings arrive in English and are
+  shown as sent. Errors the frontends write themselves carry a `MessageKey`
+  instead, resolved at the point of display — see `useErrorText`.
+- **Device names and the conference title.** `SCREEN_NAME` is data the backend
+  stores and the dashboard lists; translating it would give one wall three names
+  depending on which language it happened to be in when somebody paired it. The
+  event's official title is not ours to translate either.
+
+**Where the switcher lives:** the dashboard topbar *and* its sign-in page (the
+one screen reachable without a session); the lobby screen's bottom-left corner
+beside the theme toggle; the scanner's pairing screen (its first screen) and its
+settings.
+
+**The Tetun wants a native read.** It is careful — INL orthography, loanwords
+spelled the Tetun way (`akreditasaun`, `relatóriu`, `ekrán`) rather than the
+Portuguese way — but Tetun has real regional variation, and the event's own staff
+can check it faster than any dictionary. Corrections are one line in the
+generator plus a re-run.
 
 ---
 
