@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from PySide6.QtCore import Qt, QTimer  # noqa: E402
-from PySide6.QtGui import QIcon  # noqa: E402
+from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
     QGridLayout,
@@ -58,7 +58,6 @@ class ControlCenter(QMainWindow):
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.setStyleSheet(WINDOW_QSS)
-        self.resize(1180, 860)
 
         icon = Path(__file__).resolve().parent / "assets" / "vms.ico"
         if icon.is_file():
@@ -74,11 +73,25 @@ class ControlCenter(QMainWindow):
         self._build_ui()
         self._connect()
 
+        # Apply geometry only after the card grid exists. Windows may deliver a
+        # resize event synchronously from resize()/setMinimumSize(), and the
+        # handler needs the layout objects created by _build_ui().
+        available = QGuiApplication.primaryScreen().availableGeometry()
+        self.resize(
+            min(1180, int(available.width() * 0.94)),
+            min(880, int(available.height() * 0.94)),
+        )
+        self.setMinimumSize(760, 520)
+
         self._network.set_address(self._lan_ip)
         self._logs.app(f"{APP_NAME} ready. LAN address {self._lan_ip}.")
         self._logs.app(
             "Run All checks the environment first, then starts the backend and "
             "waits for it before starting anything else."
+        )
+        self._logs.app(
+            "LAN access needs Windows Firewall to permit ports 8000, 3000 and "
+            "3001. No firewall rule is changed automatically."
         )
 
     # ------------------------------------------------------------------ ui --
@@ -88,20 +101,20 @@ class ControlCenter(QMainWindow):
         self.setCentralWidget(central)
 
         root = QVBoxLayout(central)
-        root.setContentsMargins(18, 16, 18, 16)
-        root.setSpacing(14)
+        root.setContentsMargins(16, 12, 16, 12)
+        root.setSpacing(10)
 
         root.addLayout(self._build_header())
         self._network = NetworkCard()
         root.addWidget(self._network)
 
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(12)
+        self._grid = QGridLayout()
+        self._grid.setHorizontalSpacing(12)
+        self._grid.setVerticalSpacing(12)
         self._cards: dict[str, ServiceCard] = {}
 
-        for index, spec in enumerate(self._specs.values()):
-            card = ServiceCard(
+        for spec in self._specs.values():
+            self._cards[spec.key] = ServiceCard(
                 spec.key,
                 spec.name,
                 spec.technology,
@@ -109,14 +122,41 @@ class ControlCenter(QMainWindow):
                 can_open=spec.opens_in_browser,
                 optional=spec.optional,
             )
-            self._cards[spec.key] = card
-            grid.addWidget(card, index // 2, index % 2)
-        root.addLayout(grid)
+        self._columns = 0
+        self._relayout_cards(4)
+        root.addLayout(self._grid)
 
         self._logs = LogViewer(
             list(self._specs), {k: s.name for k, s in self._specs.items()}
         )
+        # A floor, not a preference. Without it the cards and the network card
+        # take their natural heights first and the log is squeezed to nothing
+        # on a short screen -- and the log is most of the point.
+        self._logs.setMinimumHeight(170)
         root.addWidget(self._logs, stretch=1)
+
+    def _relayout_cards(self, columns: int) -> None:
+        """Arrange the four cards in 1, 2 or 4 columns.
+
+        NOT COSMETIC. Two rows of cards cost about 155px of height, and on a
+        1280x720 laptop -- which is what this was measured on -- that pushes the
+        log viewer off the bottom of the screen entirely. The log is most of the
+        point of a control centre, so on a wide window the cards go in one row
+        and give the height back.
+        """
+        if columns == self._columns:
+            return
+        self._columns = columns
+
+        for card in self._cards.values():
+            self._grid.removeWidget(card)
+        for index, card in enumerate(self._cards.values()):
+            self._grid.addWidget(card, index // columns, index % columns)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802  (Qt naming)
+        super().resizeEvent(event)
+        width = event.size().width()
+        self._relayout_cards(4 if width >= 1150 else 2 if width >= 720 else 1)
 
     def _build_header(self) -> QHBoxLayout:
         header = QHBoxLayout()
