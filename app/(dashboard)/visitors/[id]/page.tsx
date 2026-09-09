@@ -8,8 +8,9 @@ import { BadgeCard } from "@/components/badge-card";
 import { useSetPageMeta } from "@/components/page-meta";
 import { DeactivateDialog } from "@/components/visitors/DeactivateDialog";
 import { PurgeDialog } from "@/components/visitors/PurgeDialog";
+import { useErrorText, useFormat, useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
 import {
-  ApiError,
   useActivateVisitor,
   useDeactivateVisitor,
   usePurgeVisitor,
@@ -18,17 +19,36 @@ import {
   type ScanResult,
 } from "@/lib/visitors";
 
-const RESULT_STYLES: Record<ScanResult, { label: string; className: string }> =
-  {
-    valid: { label: "Valid", className: "bg-valid-soft text-valid" },
-    duplicate: { label: "Duplicate", className: "bg-line text-ink-2" },
-    revoked: { label: "Revoked", className: "bg-graphite-950 text-white" },
-    invalid: { label: "Invalid", className: "bg-revoked-soft text-revoked" },
-  };
+/*
+  Keys, not words -- a module constant again.
+
+  `revoked` keeps its own message rather than borrowing the "deactivated" one.
+  It is a backend enum that CLAUDE.md deliberately did not rename when the UI
+  moved from "revoke" to "deactivate", and quietly relabelling it here would
+  make this table disagree with the reports about what the same row is called.
+*/
+const RESULT_STYLES: Record<
+  ScanResult,
+  { labelKey: MessageKey; className: string }
+> = {
+  valid: { labelKey: "scan.valid", className: "bg-valid-soft text-valid" },
+  duplicate: { labelKey: "scan.duplicate", className: "bg-line text-ink-2" },
+  revoked: {
+    labelKey: "scan.revoked",
+    className: "bg-graphite-950 text-white",
+  },
+  invalid: {
+    labelKey: "scan.invalid",
+    className: "bg-revoked-soft text-revoked",
+  },
+};
 
 export default function VisitorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const t = useT();
+  const format = useFormat();
+  const errorText = useErrorText();
   const { data: visitor, isPending, isError, error } = useVisitor(id);
   const deactivate = useDeactivateVisitor(id);
   const activate = useActivateVisitor(id);
@@ -46,30 +66,28 @@ export default function VisitorDetailPage() {
   */
 
   useSetPageMeta({
-    title: visitor?.full_name ?? "Visitor",
+    title: visitor?.full_name ?? t("visitor.fallbackTitle"),
     subtitle: visitor ? visitor.badge_serial : undefined,
   });
 
   if (isPending) {
-    return <p className="mono text-xs text-ink-3">Loading…</p>;
+    return <p className="mono text-xs text-ink-3">{t("common.loading")}</p>;
   }
 
   if (isError || !visitor) {
     return (
       <div className="card px-6 py-16 text-center">
         <p className="display text-lg text-revoked">
-          Could not load this visitor
+          {t("visitor.notFound")}
         </p>
         <p className="mx-auto mt-2 max-w-sm text-sm text-ink-3">
-          {error instanceof ApiError
-            ? error.message
-            : "They may have been deleted. Check the visitor list."}
+          {errorText(error, "visitor.notFoundBody")}
         </p>
         <Link
           href="/visitors"
           className="mt-5 inline-block text-sm text-ink underline underline-offset-4"
         >
-          Back to all visitors
+          {t("visitor.backToAll")}
         </Link>
       </div>
     );
@@ -128,32 +146,46 @@ export default function VisitorDetailPage() {
               inactive ? "text-revoked" : "text-valid"
             }`}
           >
-            {inactive ? "Deactivated" : "Active"}
+            {t(
+              inactive
+                ? "visitors.status.deactivated"
+                : "visitor.status.active",
+            )}
           </p>
           <h2 className="display mt-1.5 text-3xl text-ink">
             {inactive
-              ? "This badge is switched off"
-              : "This badge opens the door"}
+              ? t("visitor.headingOff")
+              : t("visitor.headingActive")}
           </h2>
           <p className="mt-2 text-sm text-ink-3">
             {inactive
-              ? "The next scan of it shows red. Activating puts the same card back to work — nothing needs reprinting."
-              : "Any paired scanner will accept it and the lobby screen will welcome them."}
+              ? t("visitor.subOff")
+              : t("visitor.subActive")}
           </p>
 
           {/* Only what the card does not already say. Name, country, organisation
               and serial are printed on it, an arm's length to the left. */}
           <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
             <Detail
-              label="Registered"
-              value={formatDateTime(visitor.created_at)}
+              label={t("visitor.registered")}
+              value={format.dateTime(visitor.created_at)}
             />
-            <Detail label="Arrivals" value={String(arrivals.length)} mono />
             <Detail
-              label="Last arrival"
-              value={lastArrival ? formatDateTime(lastArrival) : "Not yet"}
+              label={t("visitor.arrivals")}
+              value={String(arrivals.length)}
+              mono
             />
-            <Detail label="Scans logged" value={String(scans.length)} mono />
+            <Detail
+              label={t("visitor.lastArrival")}
+              value={
+                lastArrival ? format.dateTime(lastArrival) : t("visitor.notYet")
+              }
+            />
+            <Detail
+              label={t("visitor.scansLogged")}
+              value={String(scans.length)}
+              mono
+            />
           </dl>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -161,7 +193,7 @@ export default function VisitorDetailPage() {
               href={`/visitors/${visitor.id}/edit`}
               className="btn btn-ghost"
             >
-              Edit details
+              {t("visitors.menu.edit")}
             </Link>
 
             {/*
@@ -182,7 +214,9 @@ export default function VisitorDetailPage() {
                 disabled={activate.isPending}
                 className="btn btn-ghost text-valid hover:text-valid disabled:opacity-60"
               >
-                {activate.isPending ? "Activating…" : "Activate visitor"}
+                {activate.isPending
+                  ? t("visitor.activating")
+                  : t("visitors.menu.activate")}
               </button>
             ) : (
               <button
@@ -190,7 +224,7 @@ export default function VisitorDetailPage() {
                 onClick={() => setConfirming(true)}
                 className="btn btn-ghost text-revoked hover:text-revoked"
               >
-                Deactivate visitor
+                {t("visitors.menu.deactivate")}
               </button>
             )}
 
@@ -207,41 +241,38 @@ export default function VisitorDetailPage() {
               onClick={() => setPurging(true)}
               className="btn btn-ghost text-ink-3 hover:text-revoked"
             >
-              Delete permanently
+              {t("visitors.menu.delete")}
             </button>
           </div>
 
           <p className="mt-3 max-w-lg text-xs leading-relaxed text-ink-3">
-            This QR was generated when the visitor was registered and never
-            changes. Reprint the card as often as you need &mdash; it scans the
-            same every time. Deactivating stops it and activating starts it
-            again, both without touching the code on the card. Deleting
-            permanently is the only thing here that cannot be undone.
+            {t("visitor.qrNote")}
           </p>
         </div>
       </div>
 
       <section className="mt-6">
-        <h3 className="display text-lg text-ink">Scan history</h3>
+        <h3 className="display text-lg text-ink">
+          {t("visitor.scanHistory")}
+        </h3>
         <p className="mt-1 text-sm text-ink-3">
-          Every time this badge was presented, including the times it was
-          refused.
+          {t("visitor.scanHistoryBody")}
         </p>
 
         <div className="card mt-4 overflow-hidden">
           {scans.length === 0 ? (
             <p className="px-6 py-16 text-center text-sm text-ink-3">
-              This badge has not been scanned yet.
+              {t("visitor.noScans")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line text-left">
-                    <Th>Event</Th>
-                    <Th>Scanned at</Th>
-                    <Th>Result</Th>
-                    <Th>Device</Th>
+                    <Th>{t("visitor.col.event")}</Th>
+                    <Th>{t("visitor.col.scannedAt")}</Th>
+                    <Th>{t("visitor.col.result")}</Th>
+                    <Th>{t("visitor.col.device")}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -261,8 +292,8 @@ export default function VisitorDetailPage() {
         badgeSerial={visitor.badge_serial}
         pending={deactivate.isPending}
         error={
-          deactivate.error instanceof ApiError
-            ? deactivate.error.message
+          deactivate.error
+            ? errorText(deactivate.error, "error.visitorDeactivate")
             : undefined
         }
         onConfirm={() =>
@@ -284,7 +315,9 @@ export default function VisitorDetailPage() {
         badgeSerial={visitor.badge_serial}
         scanCount={scans.length}
         pending={purge.isPending}
-        error={purge.error instanceof ApiError ? purge.error.message : undefined}
+        error={
+          purge.error ? errorText(purge.error, "error.visitorDelete") : undefined
+        }
         onConfirm={() =>
           purge.mutate(undefined, {
             // This page is about to 404 on its own id, so leave before it can.
@@ -304,16 +337,20 @@ export default function VisitorDetailPage() {
 }
 
 function ScanRow({ scan }: { scan: ScanEvent }) {
+  const t = useT();
+  const format = useFormat();
   const style = RESULT_STYLES[scan.result];
 
   return (
     <tr className="border-b border-line last:border-0">
       <td className="mono px-4 py-3 text-xs text-ink-3">#{scan.id}</td>
       <td className="px-4 py-3 whitespace-nowrap text-ink">
-        {formatDateTime(scan.scanned_at)}
+        {format.dateTime(scan.scanned_at)}
       </td>
       <td className="px-4 py-3">
-        <span className={`pill-status ${style.className}`}>{style.label}</span>
+        <span className={`pill-status ${style.className}`}>
+          {t(style.labelKey)}
+        </span>
       </td>
       <td className="px-4 py-3 text-ink-2">{scan.device_name}</td>
     </tr>
@@ -343,11 +380,4 @@ function Detail({
       </dd>
     </div>
   );
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
