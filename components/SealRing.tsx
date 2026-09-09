@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { useId, useRef } from "react";
 
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
@@ -42,10 +43,13 @@ export function SealRing({
   country: string;
   vip?: boolean;
 }) {
+  const t = useT();
   const root = useRef<SVGSVGElement | null>(null);
   const pathId = `seal-${useId().replace(/[:]/g, "")}`;
 
-  const legend = `Admitted · ${country || "Guest"} · `;
+  const legend = `${t("welcome.admitted")} \u00b7 ${
+    country || t("welcome.guest")
+  } \u00b7 `;
   // Rough advance for tracked uppercase at this size, only used to pick a
   // repeat count that keeps `lengthAdjust` from stretching the letters visibly.
   const estimate = legend.length * LEGEND_SIZE * 0.85;
