@@ -59,7 +59,10 @@ class ServiceCard(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 14, 16, 14)
+        # Trimmed for a 1280x720 laptop: four cards, a network panel and a
+        # usable log do not all fit at generous padding, and the log is the
+        # one of the three that must not lose.
+        layout.setContentsMargins(14, 10, 14, 10)
         layout.setSpacing(4)
 
         header = QHBoxLayout()
@@ -83,13 +86,13 @@ class ServiceCard(QFrame):
         where = f"Port {port}" if port is not None else "Expo — port assigned at runtime"
         layout.addWidget(subtle(f"{technology}  ·  {where}"))
 
-        layout.addSpacing(8)
+        layout.addSpacing(6)
 
         self._status = QLabel()
         self._status.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(self._status)
 
-        layout.addSpacing(10)
+        layout.addSpacing(8)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
