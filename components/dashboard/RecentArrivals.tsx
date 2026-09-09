@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
 import Link from "next/link";
 
 import type { Entry, ScanResult } from "@/lib/reports";
@@ -14,31 +16,41 @@ import type { Entry, ScanResult } from "@/lib/reports";
  * Status is a word plus a colour, never a colour — the amber used for a revoked
  * badge sits below 3:1 on white, so the label is doing the real work.
  */
+/* Keys, not words -- a module constant, built before any translator. */
 const RESULTS: Record<
   ScanResult,
-  { label: string; className: string; refused: boolean }
+  { labelKey: MessageKey; className: string; refused: boolean }
 > = {
-  valid: { label: "Valid", className: "bg-valid-soft text-valid", refused: false },
+  valid: {
+    labelKey: "scan.valid",
+    className: "bg-valid-soft text-valid",
+    refused: false,
+  },
   duplicate: {
-    label: "Duplicate",
+    labelKey: "scan.duplicate",
     className: "bg-card-2 text-ink-2",
     refused: false,
   },
-  revoked: { label: "Revoked", className: "bg-vip-soft text-vip", refused: true },
+  revoked: {
+    labelKey: "scan.revoked",
+    className: "bg-vip-soft text-vip",
+    refused: true,
+  },
   invalid: {
-    label: "Invalid",
+    labelKey: "scan.invalid",
     className: "bg-revoked-soft text-revoked",
     refused: true,
   },
 };
 
 export function RecentArrivals({ entries }: { entries: Entry[] }) {
+  const t = useT();
   if (entries.length === 0) {
     return (
       <div className="px-6 py-14 text-center">
         <p className="font-medium text-ink">Nothing scanned yet</p>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
-          Arrivals appear here the moment a guard scans a badge.
+          {t("overview.arrivalsAppear")}
         </p>
       </div>
     );
@@ -50,9 +62,9 @@ export function RecentArrivals({ entries }: { entries: Entry[] }) {
         <thead>
           <tr className="border-y border-line bg-card-2 text-left">
             <Th>Time</Th>
-            <Th>Visitor</Th>
-            <Th>Country</Th>
-            <Th>Result</Th>
+            <Th>{t("overview.colVisitor")}</Th>
+            <Th>{t("form.country")}</Th>
+            <Th>{t("visitor.col.result")}</Th>
             <Th>Door</Th>
           </tr>
         </thead>
@@ -101,7 +113,7 @@ export function RecentArrivals({ entries }: { entries: Entry[] }) {
                 <td className="px-4 py-3">
                   <span className={`pill-status ${result.className}`}>
                     {result.refused ? <span aria-hidden>&#9888;</span> : null}
-                    {result.label}
+                    {t(result.labelKey)}
                   </span>
                 </td>
 
@@ -117,7 +129,7 @@ export function RecentArrivals({ entries }: { entries: Entry[] }) {
           href="/reports"
           className="text-sm font-medium text-accent hover:underline"
         >
-          Open the full entrance log →
+          {t("overview.openLog")}
         </Link>
       </div>
     </div>
