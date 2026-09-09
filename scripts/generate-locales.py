@@ -676,6 +676,163 @@ M = [
     ("card.qrDrawing", "drawing…", "a desenhar…", "dezenha hela…"),
     ("card.qrFailed", "could not draw", "não foi possível desenhar",
      "la bele dezenha"),
+
+    ("//devices", "", "", ""),
+    ("time.justNow", "just now", "agora mesmo", "foin daudaun"),
+    ("device.kind.scanner", "Scanner", "Leitor", "Leitór"),
+    ("device.kind.screen", "Screen", "Ecrã", "Ekrán"),
+    # The same nouns mid-sentence, where English would lowercase them and the
+    # other two would not necessarily agree about how.
+    ("device.kindInline.scanner", "scanner", "leitor", "leitór"),
+    ("device.kindInline.screen", "screen", "ecrã", "ekrán"),
+    ("devices.subtitleQuiet", "Guard phones and the lobby screen",
+     "Telemóveis dos seguranças e o ecrã do átrio",
+     "Seguransa sira-nia telemóvel no ekrán resepsaun"),
+    ("devices.silentOne", "{count} device has not checked in recently",
+     "{count} dispositivo não comunica há algum tempo",
+     "Aparellu {count} seidauk komunika"),
+    ("devices.silentMany", "{count} devices have not checked in recently",
+     "{count} dispositivos não comunicam há algum tempo",
+     "Aparellu {count} seidauk komunika"),
+    ("devices.alertOne", "{count} device is silent.",
+     "{count} dispositivo está em silêncio.",
+     "Aparellu {count} nonook."),
+    ("devices.alertMany", "{count} devices are silent.",
+     "{count} dispositivos estão em silêncio.",
+     "Aparellu {count} nonook."),
+    ("devices.alertBody",
+     "A door with no scans in ten minutes is either quiet or offline — walk "
+     "over and check.",
+     "Uma porta sem leituras há dez minutos ou está parada ou está offline — "
+     "vá lá verificar.",
+     "Odamatan ne’ebé laiha leitura durante minutu sanulu karik nonook ka "
+     "offline — bá haree."),
+    ("devices.paired", "Paired devices", "Dispositivos emparelhados",
+     "Aparellu ne’ebé pareia ona"),
+    ("devices.pairedBody",
+     "Refreshes on its own. “Last seen” is the last request a device made, so "
+     "it is how you tell a quiet door from a dead phone.",
+     "Atualiza sozinho. “Visto pela última vez” é o último pedido feito pelo "
+     "dispositivo, e é assim que se distingue uma porta parada de um telemóvel "
+     "morto.",
+     "Atualiza an rasik. “Haree ikus” mak pedidu ikus ne’ebé aparellu halo, no "
+     "ho ne’e mak ita hatene odamatan nonook ka telemóvel mate."),
+    ("devices.loadFailed", "Could not load devices",
+     "Não foi possível carregar os dispositivos", "La bele karga aparellu"),
+    ("devices.none", "No devices paired yet",
+     "Ainda não há dispositivos emparelhados", "Seidauk iha aparellu pareia"),
+    ("devices.noneBody",
+     "Generate a code above, then enter it on the guard’s phone or the lobby "
+     "screen.",
+     "Gere um código acima e introduza-o no telemóvel do segurança ou no ecrã "
+     "do átrio.",
+     "Kria kódigu iha leten, depois tau iha seguransa nia telemóvel ka ekrán "
+     "resepsaun."),
+    ("devices.col.device", "Device", "Dispositivo", "Aparellu"),
+    ("devices.col.kind", "Kind", "Tipo", "Tipu"),
+    ("devices.col.lastSeen", "Last seen", "Visto pela última vez",
+     "Haree ikus"),
+    ("devices.col.state", "State", "Estado", "Estadu"),
+    ("devices.neverCheckedIn", "Never checked in", "Nunca comunicou",
+     "Nunka komunika"),
+    ("devices.silentCheck", "Silent — check the door",
+     "Em silêncio — verifique a porta", "Nonook — haree odamatan"),
+    ("devices.notSeenSincePairing", "Not seen since pairing",
+     "Sem sinal desde o emparelhamento", "Laiha sinál desde pareia"),
+    ("devices.stateRevoked", "REVOKED", "REVOGADO", "REVOGADU"),
+    ("devices.stateActive", "ACTIVE", "ATIVO", "ATIVU"),
+    ("devices.revoke", "Revoke", "Revogar", "Revoga"),
+
+    ("//pairing", "", "", ""),
+    ("pair.title", "Pair a device", "Emparelhar um dispositivo",
+     "Pareia aparellu ida"),
+    ("pair.body",
+     "Open the app on the phone or screen, then read it the code below. Each "
+     "code works once.",
+     "Abra a aplicação no telemóvel ou no ecrã e leia-lhe o código abaixo. "
+     "Cada código funciona uma só vez.",
+     "Loke aplikasaun iha telemóvel ka ekrán, depois lee kódigu iha okos. "
+     "Kódigu ida-idak funsiona dala ida deit."),
+    ("pair.codeButton", "{kind} code", "Código de {kind}", "Kódigu {kind}"),
+    ("pair.blurb.scanner", "A guard’s phone, at a door",
+     "O telemóvel de um segurança, a uma porta",
+     "Seguransa nia telemóvel, iha odamatan"),
+    ("pair.blurb.screen", "The lobby display", "O ecrã do átrio",
+     "Ekrán resepsaun"),
+    ("pair.codeLabel", "{kind} pairing code",
+     "Código de emparelhamento de {kind}", "Kódigu pareia {kind}"),
+    ("pair.expired",
+     "This code has expired. Generate another — nothing was paired with it.",
+     "Este código expirou. Gere outro — não foi emparelhado nada com ele.",
+     "Kódigu ne’e liu ona tempu. Kria seluk — laiha buat ida pareia ho nia."),
+    ("pair.expiresIn", "Expires in", "Expira em", "Liu tempu iha"),
+    ("pair.alphabetNote",
+     "Codes never contain 0, O, 1 or I — those four are left out because they "
+     "are the ones people mishear and mistype. The device appears in the list "
+     "below the moment it pairs.",
+     "Os códigos nunca contêm 0, O, 1 nem I — esses quatro ficam de fora "
+     "porque são os que as pessoas ouvem e escrevem mal. O dispositivo aparece "
+     "na lista abaixo assim que emparelha.",
+     "Kódigu nunka iha 0, O, 1 ka I — haat ne’e la tau tanba sira mak ema rona "
+     "sala no hakerek sala. Aparellu mosu iha lista okos bainhira pareia."),
+
+    ("//revoke device dialog", "", "", ""),
+    ("revokeDevice.title", "Revoke {name}?", "Revogar {name}?",
+     "Revoga {name}?"),
+    ("revokeDevice.body",
+     "This {kind} stops working {strong}. If it is a door phone, that door "
+     "cannot record arrivals until someone re-pairs it.",
+     "Este {kind} deixa de funcionar {strong}. Se for um telemóvel de porta, "
+     "essa porta não consegue registar chegadas até alguém o emparelhar de "
+     "novo.",
+     "{kind} ne’e para funsiona {strong}. Se nia telemóvel odamatan nian, "
+     "odamatan ne’e la bele rejista xegada to’o ema pareia fali."),
+    ("revokeDevice.bodyStrong", "immediately", "de imediato", "kedas"),
+    ("revokeDevice.point1",
+     "{strong} — within seconds, without anyone walking over to it. Have a new "
+     "pairing code ready if you mean to bring it straight back.",
+     "{strong} — em segundos, sem ninguém ter de lá ir. Tenha um novo código "
+     "de emparelhamento pronto se quiser trazê-lo logo de volta.",
+     "{strong} — iha segundu balu, la presiza ema bá. Prepara kódigu pareia "
+     "foun se ita hakarak lori nia fila kedas."),
+    ("revokeDevice.point1Strong",
+     "It drops back to its pairing screen on its own",
+     "Volta sozinho ao ecrã de emparelhamento",
+     "Nia fila mesak ba ekrán pareia"),
+    ("revokeDevice.point2",
+     "Its token is dead. There is no un-revoke — getting it back means a new "
+     "pairing code.",
+     "O seu token morreu. Não há forma de anular — recuperá-lo implica um novo "
+     "código de emparelhamento.",
+     "Nia token mate ona. Laiha dalan atu fila fali — atu hetan nia fali "
+     "presiza kódigu pareia foun."),
+    ("revokeDevice.point3",
+     "Scans it already recorded are kept, and any it saved offline will still "
+     "sync once it is paired again.",
+     "As leituras que já registou são mantidas, e as que guardou offline ainda "
+     "sincronizam quando voltar a emparelhar.",
+     "Leitura ne’ebé nia rejista ona sei rai, no sira ne’ebé nia rai offline "
+     "sei sinkroniza bainhira pareia fali."),
+    ("revokeDevice.point4",
+     "It stays in this list, marked revoked, so the audit trail holds.",
+     "Permanece nesta lista, marcado como revogado, para o registo de "
+     "auditoria se manter.",
+     "Nia sei hela iha lista ne’e, ho marka revogadu, atu rejistu auditoria "
+     "nafatin."),
+    ("revokeDevice.cancel", "Keep it active", "Manter ativo",
+     "Rai ativu nafatin"),
+    ("revokeDevice.pending", "Revoking…", "A revogar…", "Revoga hela…"),
+    ("revokeDevice.confirm", "Revoke device", "Revogar dispositivo",
+     "Revoga aparellu"),
+
+    ("error.deviceLoad", "The device list could not be loaded.",
+     "Não foi possível carregar a lista de dispositivos.",
+     "La bele karga lista aparellu."),
+    ("error.pairingCode", "A pairing code could not be generated.",
+     "Não foi possível gerar um código de emparelhamento.",
+     "La bele kria kódigu pareia."),
+    ("error.deviceRevoke", "The device could not be revoked.",
+     "Não foi possível revogar o dispositivo.", "La bele revoga aparellu."),
 ]
 
 
