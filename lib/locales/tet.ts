@@ -493,4 +493,8 @@ export const tet: Messages = {
     "Ema {people} to\u2019o ho leitura {scans}.",
   "overview.arrivedSummary.manyMany":
     "Ema {people} to\u2019o ho leitura {scans}.",
+
+  // --------------------------------------------------------------- brand --
+  "brand.organisedBy": "Organiza husi {first} no {second}.",
+  "brand.dates": "D\u00edli, 2\u20133 Outubru 2026",
 };
