@@ -226,4 +226,41 @@ export const pt: Messages = {
   // ---------------------------------------------------------------- edit --
   "edit.title": "Editar {name}",
   "edit.fallbackTitle": "Editar visitante",
+
+  // ----------------------------------------------- photo upload and crop --
+  "photo.label": "Fotografia",
+  "photo.spec": "3:4 VERTICAL \u00b7 600 \u00d7 800",
+  "photo.notImage": "Isso n\u00e3o \u00e9 uma imagem. Escolha um JPEG ou PNG.",
+  "photo.tooLarge": "Essa imagem tem mais de 20 MB. Escolha uma mais pequena.",
+  "photo.alt": "A fotografia do crach\u00e1 do visitante",
+  "photo.ready": "Recortada e pronta.",
+  "photo.onFile":
+    "A fotografia j\u00e1 guardada. Mant\u00e9m-se a menos que a substitua.",
+  "photo.adjustCrop": "Ajustar recorte",
+  "photo.chooseDifferent": "Escolher outra fotografia",
+  "photo.add": "Adicionar fotografia",
+  "photo.dropHint":
+    "Largue uma aqui, ou clique para escolher. A seguir recorta-a.",
+  "photo.dialogLabel": "Recortar a fotografia do visitante",
+  "photo.frameFace": "Enquadrar o rosto",
+  "photo.closeWithoutSaving": "Fechar sem guardar",
+  "crop.alt": "A fotografia a ser recortada",
+  "crop.preview": "Imagem recortada",
+  "crop.circleHint":
+    "S\u00f3 o c\u00edrculo \u00e9 impresso e mostrado no ecr\u00e3 do \u00e1trio. Preencha-o com a cabe\u00e7a e os ombros.",
+  "crop.aspect": "Propor\u00e7\u00e3o",
+  "crop.ratio.badge": "Crach\u00e1 (fixo)",
+  "crop.ratio.square": "Quadrado",
+  "crop.ratio.free": "Livre",
+  "crop.width": "Largura",
+  "crop.height": "Altura",
+  "crop.heightLocked": "Altura (fixa)",
+  "crop.tooSmall":
+    "Este recorte tem {width}px de largura. O crach\u00e1 imprime a fotografia a {min}px para 300dpi, por isso ficar\u00e1 desfocada no cart\u00e3o. Recorte menos, ou use uma fotografia maior.",
+  "crop.quality": "Qualidade da imagem",
+  "crop.bestCompression": "Mais compress\u00e3o",
+  "crop.bestQuality": "Mais qualidade",
+  "crop.applying": "A aplicar\u2026",
+  "crop.use": "Usar esta fotografia",
+  "crop.changeImage": "Mudar de imagem",
 };
