@@ -172,22 +172,87 @@ export function useUpdateVisitor(id: string) {
   });
 }
 
-export function useRevokeVisitor(id: string) {
+/**
+ * Switch a visitor off, and back on again.
+ *
+ * NEITHER OF THESE TOUCHES THE BADGE TOKEN, which is the whole reason they are
+ * a pair. The backend reads `is_active` at scan time rather than anything baked
+ * into the QR, so a visitor switched off stops scanning and a visitor switched
+ * back on resumes with the card already in their hand. Nothing is reprinted and
+ * nothing is reissued.
+ *
+ * They are separate mutations rather than one taking a boolean so that each
+ * lands in the server's audit log under its own name.
+ */
+export function useDeactivateVisitor(id: string) {
+  return useVisitorStateChange(id, "deactivate");
+}
+
+export function useActivateVisitor(id: string) {
+  return useVisitorStateChange(id, "activate");
+}
+
+function useVisitorStateChange(id: string, action: "activate" | "deactivate") {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
       await ensureAccessToken();
 
-      const { data, error } = await api.POST("/api/v1/visitors/{id}/revoke", {
+      const path =
+        action === "activate"
+          ? ("/api/v1/visitors/{id}/activate" as const)
+          : ("/api/v1/visitors/{id}/deactivate" as const);
+
+      const { data, error } = await api.POST(path, {
         params: { path: { id } },
       });
 
-      if (error) fail(error, "The badge could not be revoked.");
+      if (error) {
+        fail(
+          error,
+          action === "activate"
+            ? "The visitor could not be activated."
+            : "The visitor could not be deactivated.",
+        );
+      }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.visitor(id) });
+      queryClient.invalidateQueries({ queryKey: ["visitors"] });
+    },
+  });
+}
+
+/**
+ * Erase a registration for good.
+ *
+ * THE ONLY IRREVERSIBLE ACTION IN THE DASHBOARD. It drops the row and the
+ * visitor's photo from the server; scans of that badge survive but stop naming
+ * anybody, and the response says how many were affected so the caller can
+ * report it.
+ *
+ * The visitor's own cache entry is removed rather than invalidated — refetching
+ * an id that no longer exists would only produce a 404 and an error card.
+ */
+export function usePurgeVisitor(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      await ensureAccessToken();
+
+      const { data, error } = await api.DELETE(
+        "/api/v1/visitors/{id}/permanent",
+        { params: { path: { id } } },
+      );
+
+      if (error) fail(error, "The visitor could not be deleted.");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: queryKeys.visitor(id) });
       queryClient.invalidateQueries({ queryKey: ["visitors"] });
     },
   });
