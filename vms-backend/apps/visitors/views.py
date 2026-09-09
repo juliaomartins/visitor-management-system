@@ -42,7 +42,9 @@ FALSE_VALUES = {"0", "false", "no", "off"}
             OpenApiParameter(
                 "is_active",
                 OpenApiTypes.BOOL,
-                description="Filter by badge state. `false` lists revoked badges.",
+                description=(
+                    "Filter by badge state. `false` lists deactivated visitors."
+                ),
             ),
             OpenApiParameter(
                 "country",
@@ -61,7 +63,9 @@ FALSE_VALUES = {"0", "false", "no", "off"}
         ),
     ),
     partial_update=extend_schema(summary="Edit a visitor"),
-    destroy=extend_schema(summary="Soft-delete a visitor (also revokes the badge)"),
+    destroy=extend_schema(
+        summary="Soft-delete a visitor (also deactivates the badge)"
+    ),
 )
 class VisitorViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
@@ -140,16 +144,60 @@ class VisitorViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         services.soft_delete_visitor(instance, actor=self.request.user)
 
+    def _state(self, visitor):
+        return Response(
+            VisitorSerializer(visitor, context=self.get_serializer_context()).data
+        )
+
     @extend_schema(
-        summary="Revoke a lost badge",
+        summary="Deactivate a visitor",
         description=(
-            "The visitor stays on the list and keeps their scan history; the "
-            "badge stops working. Reprinting means issuing a new token."
+            "The visitor stays on the list and keeps their scan history; their "
+            "badge stops scanning and shows `revoked` at the door. **The QR is "
+            "not changed** — `activate` puts the same printed card back to work, "
+            "so a lost badge that turns up again needs no reprint."
         ),
         request=None,
         responses={200: VisitorSerializer},
     )
     @action(detail=True, methods=["post"])
-    def revoke(self, request, *args, **kwargs):
-        visitor = services.revoke_badge(self.get_object(), actor=request.user)
-        return Response(VisitorSerializer(visitor, context=self.get_serializer_context()).data)
+    def deactivate(self, request, *args, **kwargs):
+        return self._state(
+            services.deactivate_visitor(self.get_object(), actor=request.user)
+        )
+
+    @extend_schema(
+        summary="Activate a visitor",
+        description=(
+            "Undo a deactivation. The badge already in the visitor's hand starts "
+            "scanning again — nothing is reissued, because the token never moved."
+        ),
+        request=None,
+        responses={200: VisitorSerializer},
+    )
+    @action(detail=True, methods=["post"])
+    def activate(self, request, *args, **kwargs):
+        return self._state(
+            services.activate_visitor(self.get_object(), actor=request.user)
+        )
+
+    @extend_schema(
+        summary="Delete a visitor permanently",
+        description=(
+            "Irreversible. Drops the registration row and the visitor's photo "
+            "from storage. Scans of this badge are kept and anonymised rather "
+            "than deleted -- `ScanEvent.visitor` is set to null, so the entrance "
+            "log still shows that something was presented at that door at that "
+            "minute, and the response reports how many rows that affected. "
+            "`DELETE /visitors/{id}` is the ordinary removal and is reversible "
+            "by hand; this is not."
+        ),
+        request=None,
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=["delete"], url_path="permanent")
+    def permanent(self, request, *args, **kwargs):
+        visitor = self.get_object()
+        serial = visitor.badge_serial
+        orphaned = services.purge_visitor(visitor, actor=request.user)
+        return Response({"badge_serial": serial, "scans_orphaned": orphaned})
