@@ -31,7 +31,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from PySide6.QtCore import QEventLoop, QTimer  # noqa: E402
+from PySide6.QtCore import QEventLoop, Qt, QTimer  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from config import ServiceSpec, VENV_PYTHON  # noqa: E402
@@ -80,6 +80,7 @@ def service(
         ServiceSpec(
             key=key,
             name=key.title(),
+            name_key="svc.backend",  # any real key; these fakes are never shown
             technology="test",
             directory=directory or here,
             program=program or python,
@@ -268,10 +269,214 @@ check(
 window._network.set_address("192.168.7.7")
 check("network card shows the address", "192.168.7.7" in window._network._ip.text())
 
+# ============================================== responsive, theme, language ==
+print("\nResizing small")
+
+import i18n  # noqa: E402
+from widgets import theme  # noqa: E402
+from widgets.service_card import MIN_WIDTH, WRAP_BELOW  # noqa: E402
+
+
+def buttons_of(card):
+    return [b for b in (card._start, card._stop, card._open) if b is not None]
+
+
+def none_elided(card):
+    """A button narrower than its own sizeHint is one Qt has had to elide.
+
+    THIS IS THE REPORTED BUG MADE CHECKABLE. At a small window the labels
+    collapsed to "....", three identical dots where Start, Stop and Open were.
+    Comparing rendered width against sizeHint catches that without a screenshot.
+    """
+    bad = [
+        "%r %d<%d" % (b.text(), b.width(), b.sizeHint().width())
+        for b in buttons_of(card)
+        if b.width() < b.sizeHint().width()
+    ]
+    return (not bad, "; ".join(bad))
+
+
+for width, height in ((1180, 860), (900, 700), (700, 560), (520, 480), (440, 440)):
+    window.resize(width, height)
+    pump(260)
+    problems = []
+    for key, card in window._cards.items():
+        ok, detail = none_elided(card)
+        if not ok:
+            problems.append("%s: %s" % (key, detail))
+    check(
+        "%dx%d: no button is elided" % (width, height),
+        not problems,
+        " | ".join(problems),
+    )
+    check(
+        "%dx%d: cards keep their minimum width" % (width, height),
+        all(c.width() >= MIN_WIDTH for c in window._cards.values()),
+        str({k: c.width() for k, c in window._cards.items()}),
+    )
+
+    # THE HEADER WAS THE GAP THESE TESTS ORIGINALLY MISSED. The card buttons
+    # were checked and passed while the title elided to "VMS CON" and Run All
+    # left the window entirely -- caught by a screenshot, not by this file.
+    head = [
+        window._language,
+        window._theme,
+        window._run_all,
+        window._stop_all,
+    ]
+    clipped = [
+        "%r %d<%d" % (b.text(), b.width(), b.sizeHint().width())
+        for b in head
+        if b.width() < b.sizeHint().width()
+    ]
+    check(
+        "%dx%d: no header control is clipped" % (width, height),
+        not clipped,
+        " | ".join(clipped),
+    )
+    check(
+        "%dx%d: every header control is inside the window" % (width, height),
+        all(
+            b.mapTo(window, b.rect().topRight()).x() <= window.width()
+            for b in head
+        ),
+        str([b.mapTo(window, b.rect().topRight()).x() for b in head])
+        + " win=%d" % window.width(),
+    )
+    check(
+        "%dx%d: the LAN address is never elided" % (width, height),
+        all(
+            value.width() >= value.sizeHint().width()
+            for _n, value in window._network._url_labels
+        ),
+        str([(v.text(), v.width(), v.sizeHint().width())
+             for _n, v in window._network._url_labels
+             if v.width() < v.sizeHint().width()]),
+    )
+
+window.resize(460, 460)
+pump(260)
+check(
+    "cards drop to one column when narrow",
+    window._columns == 1,
+    "columns=%d" % window._columns,
+)
+narrow = window._cards["dashboard"]
+check(
+    "buttons wrap to a second row on a narrow card",
+    narrow.width() >= WRAP_BELOW or narrow._wrapped is True,
+    "width=%d wrapped=%s" % (narrow.width(), narrow._wrapped),
+)
+check(
+    "the panels scroll rather than being crushed",
+    window._scroll.widgetResizable()
+    and window._scroll.verticalScrollBarPolicy()
+    != Qt.ScrollBarPolicy.ScrollBarAlwaysOff,
+)
+check("the log keeps a floor", window._logs.minimumHeight() >= 100)
+
+window.resize(1180, 860)
+pump(260)
+
+print("\nTheme")
+first = theme.current().name
+window._toggle_theme()
+second = theme.current().name
+check("toggling changes the palette", first != second, "%s -> %s" % (first, second))
+check("both palettes are real", {first, second} == {"dark", "light"})
+check(
+    "the window stylesheet followed the palette",
+    theme.current().background in window.styleSheet(),
+)
+check(
+    "a card followed too",
+    theme.current().surface in window._cards["backend"].styleSheet(),
+)
+check(
+    "the log pane followed too",
+    theme.current().background in window._logs._panes["app"].styleSheet(),
+)
+window._toggle_theme()
+check("toggling back restores the first palette", theme.current().name == first)
+
+print("\nLanguage")
+window._set_language("en")
+english = window._cards["screen"]._title.text()
+window._set_language("pt")
+portuguese = window._cards["screen"]._title.text()
+window._set_language("tet")
+tetun = window._cards["screen"]._title.text()
+check(
+    "three languages give three different names",
+    len({english, portuguese, tetun}) == 3,
+    "%s / %s / %s" % (english, portuguese, tetun),
+)
+check(
+    "the change reached the buttons",
+    window._cards["screen"]._start.text() != "Start",
+    window._cards["screen"]._start.text(),
+)
+check(
+    "and the log tabs",
+    window._logs._tabs.tabText(0) != "Application",
+    window._logs._tabs.tabText(0),
+)
+window._set_language("en")
+check(
+    "switching back restores English",
+    window._cards["screen"]._start.text() == "Start",
+)
+check(
+    "an unknown language falls back rather than raising",
+    i18n.set_locale("xx") == "en",
+)
+i18n.set_locale("en")
+
+print("")
+print("Every language at every size")
+for code in ("en", "pt", "tet"):
+    window._set_language(code)
+    for width, height in ((1180, 860), (900, 700), (700, 560), (520, 480), (440, 440)):
+        window.resize(width, height)
+        pump(200)
+        head = [window._language, window._theme, window._run_all, window._stop_all]
+        bad = [
+            "%r %d<%d" % (b.text(), b.width(), b.sizeHint().width())
+            for b in head
+            if b.width() < b.sizeHint().width()
+        ]
+        check(
+            "%s at %dx%d: header fits" % (code, width, height),
+            not bad,
+            " | ".join(bad),
+        )
+window._set_language("en")
+window.resize(1180, 860)
+pump(200)
+
+print("\nProgress feedback")
+card = window._cards["backend"]
+card.set_state(State.STOPPED)
+check("no progress bar while stopped", not card._progress.isVisibleTo(card))
+card.set_state(State.STARTING)
+check("a progress bar appears while starting", card._progress.isVisibleTo(card))
+check("it is indeterminate", card._progress.maximum() == 0)
+check(
+    "the button says what is happening",
+    "\u2026" in card._start.text(),
+    card._start.text(),
+)
+check("and is disabled meanwhile", not card._start.isEnabled())
+card.set_state(State.READY)
+check("the bar goes when ready", not card._progress.isVisibleTo(card))
+check("the button reads Start again", card._start.text() == "Start")
+check("Open becomes available", window._cards["dashboard"]._open is not None)
+card.set_state(State.STOPPED)
+
 print("\n" + "=" * 62)
 if failures:
-    print(f"{len(failures)} FAILED\n")
+    print("%d FAILED\n" % len(failures))
     for line in failures:
-        print(f"  - {line}")
+        print("  - " + line)
     sys.exit(1)
 print("All GUI-layer tests passed.")
