@@ -454,4 +454,43 @@ export const tet: Messages = {
   "entry.col.name": "Naran",
   "chart.noScans":
     "Laiha leitura iha per\u00edodu ne\u2019e, tan ne\u2019e laiha buat atu hatudu.",
+
+  // ------------------------------------------------------------ overview --
+  "overview.subtitleQuiet": "Ohin nia xegada iha odamatan hotu",
+  "overview.silentOne":
+    "Odamatan {count} nonook ona \u2014 haree Aparellu sira",
+  "overview.silentMany":
+    "Odamatan {count} nonook ona \u2014 haree Aparellu sira",
+  "overview.registered": "Rejista",
+  "overview.vipCount": "{count} VIP",
+  "overview.arrivedToday": "To\u2019o ohin",
+  "overview.arrivedNote": "{percent}% husi sira ne\u2019eb\u00e9 rejista",
+  "overview.refusedAtDoor": "Rejeita iha odamatan",
+  "overview.duplicateOne": "Leitura duplikadu {count} la konta",
+  "overview.duplicateMany": "Leitura duplikadu {count} la konta",
+  "overview.doorsReporting": "Odamatan ne\u2019eb\u00e9 komunika",
+  "overview.silentCount": "{count} nonook",
+  "overview.allCheckedIn": "Hotu komunika foin lalais",
+  "overview.arrivalsByHour": "Xegada tuir oras",
+  "overview.arrivalsByHourNote":
+    "Kartaun hotu ne\u2019eb\u00e9 aprezenta ohin, marka iha oras ne\u2019eb\u00e9 akontese",
+  "overview.scanCountOne": "leitura {count}",
+  "overview.scanCountMany": "leitura {count}",
+  "overview.outcomeSplit": "Divizaun rezultadu",
+  "overview.outcomeSplitNote": "Oins\u00e1 ohin nia leitura fahe",
+  "overview.recentScans": "Leitura foun sira",
+  "overview.recentScansNote": "Foun liu uluk, inklui rejeisaun",
+  "overview.nothingToday": "Ohin seidauk lee buat ida.",
+  "overview.arrivalsAppear":
+    "Xegada mosu iha ne\u2019e bainhira seguransa lee kartaun.",
+  "overview.colVisitor": "Vizitante",
+  "overview.openLog": "Loke rejistu tama kompletu \u2192",
+  "overview.arrivedSummary.oneOne":
+    "Ema {people} to\u2019o ho leitura {scans}.",
+  "overview.arrivedSummary.oneMany":
+    "Ema {people} to\u2019o ho leitura {scans}.",
+  "overview.arrivedSummary.manyOne":
+    "Ema {people} to\u2019o ho leitura {scans}.",
+  "overview.arrivedSummary.manyMany":
+    "Ema {people} to\u2019o ho leitura {scans}.",
 };
