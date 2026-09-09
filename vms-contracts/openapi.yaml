@@ -691,7 +691,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Visitor'
+                  $ref: '#/components/schemas/VisitorList'
           description: ''
     post:
       operationId: visitors_create
@@ -2027,6 +2027,63 @@ components:
       - country
       - full_name
       - photo
+    VisitorList:
+      type: object
+      description: |-
+        Documents `GET /visitors`, where the token is conditional.
+
+        SCHEMA ONLY -- nothing serialises through this. The view picks
+        `VisitorSerializer` or `VisitorWithTokenSerializer` per request depending on
+        `?with_tokens=`, and OpenAPI has no way to say "this response shape depends
+        on that query parameter". Declaring the union honestly, with `badge_token`
+        optional, is closer to the truth than either half alone: a client is told the
+        field may be absent and has to check, which is exactly the situation.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 200
+        country:
+          type: string
+          maxLength: 100
+        organization:
+          type: string
+          maxLength: 200
+        photo:
+          type: string
+          format: uri
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        badge_serial:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        badge_token:
+          type: string
+          description: Present only when the request asked for `with_tokens=true`.
+            The raw badge token for the QR code, stable for the life of the badge.
+      required:
+      - badge_serial
+      - country
+      - created_at
+      - full_name
+      - id
+      - is_active
+      - photo
+      - updated_at
     VisitorPurged:
       type: object
       description: |-

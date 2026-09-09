@@ -1026,6 +1026,34 @@ export interface components {
             category?: components["schemas"]["CategoryEnum"];
         };
         /**
+         * @description Documents `GET /visitors`, where the token is conditional.
+         *
+         *     SCHEMA ONLY -- nothing serialises through this. The view picks
+         *     `VisitorSerializer` or `VisitorWithTokenSerializer` per request depending on
+         *     `?with_tokens=`, and OpenAPI has no way to say "this response shape depends
+         *     on that query parameter". Declaring the union honestly, with `badge_token`
+         *     optional, is closer to the truth than either half alone: a client is told the
+         *     field may be absent and has to check, which is exactly the situation.
+         */
+        VisitorList: {
+            /** Format: uuid */
+            readonly id: string;
+            full_name: string;
+            country: string;
+            organization?: string;
+            /** Format: uri */
+            photo: string;
+            category?: components["schemas"]["CategoryEnum"];
+            readonly badge_serial: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Present only when the request asked for `with_tokens=true`. The raw badge token for the QR code, stable for the life of the badge. */
+            badge_token?: string;
+        };
+        /**
          * @description What a permanent delete reports back.
          *
          *     Not a ModelSerializer: by the time this is rendered the row is gone. It
@@ -1558,7 +1586,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Visitor"][];
+                    "application/json": components["schemas"]["VisitorList"][];
                 };
             };
         };
