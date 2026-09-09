@@ -231,7 +231,7 @@ export default function VisitorsPage() {
 
 function VisitorRow({ visitor }: { visitor: Visitor }) {
   const vip = visitor.category === "vip";
-  const revoked = !visitor.is_active;
+  const inactive = !visitor.is_active;
 
   return (
     <li>
@@ -245,7 +245,7 @@ function VisitorRow({ visitor }: { visitor: Visitor }) {
         <div className="flex shrink-0 overflow-hidden rounded-md">
           <div
             className={`w-1 ${vip ? "bg-vip" : "bg-graphite-950"} ${
-              revoked ? "opacity-40" : ""
+              inactive ? "opacity-40" : ""
             }`}
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -255,14 +255,14 @@ function VisitorRow({ visitor }: { visitor: Visitor }) {
             width={42}
             height={56}
             className={`h-14 w-[42px] bg-line object-cover ${
-              revoked ? "opacity-40 grayscale" : ""
+              inactive ? "opacity-40 grayscale" : ""
             }`}
           />
         </div>
 
         <div className="min-w-0 flex-1">
           <p
-            className={`truncate font-medium ${revoked ? "text-ink-3" : "text-ink"}`}
+            className={`truncate font-medium ${inactive ? "text-ink-3" : "text-ink"}`}
           >
             {visitor.full_name}
           </p>
@@ -275,7 +275,7 @@ function VisitorRow({ visitor }: { visitor: Visitor }) {
 
         <p
           className={`mono hidden shrink-0 text-xs sm:block ${
-            revoked ? "text-ink-3 line-through" : "text-ink-2"
+            inactive ? "text-ink-3 line-through" : "text-ink-2"
           }`}
         >
           {visitor.badge_serial}
@@ -285,9 +285,9 @@ function VisitorRow({ visitor }: { visitor: Visitor }) {
           {vip ? (
             <span className="pill-status bg-vip-soft text-vip">VIP</span>
           ) : null}
-          {revoked ? (
+          {inactive ? (
             <span className="pill-status bg-revoked-soft text-revoked">
-              Revoked
+              Deactivated
             </span>
           ) : null}
         </div>
