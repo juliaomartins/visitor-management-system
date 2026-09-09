@@ -40,8 +40,8 @@ class NetworkCard(QFrame):
         self.setStyleSheet(CARD_QSS)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(16, 14, 16, 14)
-        outer.setSpacing(6)
+        outer.setContentsMargins(16, 10, 16, 12)
+        outer.setSpacing(4)
 
         header = QHBoxLayout()
         header.addWidget(title("Network"))
@@ -65,20 +65,21 @@ class NetworkCard(QFrame):
         self._warning.setWordWrap(True)
         outer.addWidget(self._warning)
 
-        outer.addSpacing(6)
-
         self._grid = QGridLayout()
         self._grid.setHorizontalSpacing(14)
         self._grid.setVerticalSpacing(3)
+        # The label column keeps its natural width; the URL column takes
+        # whatever is left. Without this the grid divides the width evenly and
+        # a long URL is clipped on a narrow screen while the labels sit in
+        # space they do not need.
+        self._grid.setColumnStretch(0, 0)
+        self._grid.setColumnStretch(1, 1)
         outer.addLayout(self._grid)
 
-        outer.addSpacing(8)
-        firewall = subtle(
-            "LAN access needs Windows Firewall to permit ports 8000, 3000 and "
-            "3001. No firewall rule is changed automatically."
-        )
-        firewall.setWordWrap(True)
-        outer.addWidget(firewall)
+        # THE FIREWALL NOTE IS ADVICE, NOT STATE, so it is written to the
+        # application log once at startup rather than given forty permanent
+        # pixels here. On a 1280x720 laptop those pixels are the difference
+        # between seeing the log viewer and not.
 
     def set_address(self, lan_ip: str) -> None:
         self._ip.setText(
