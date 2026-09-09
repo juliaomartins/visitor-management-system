@@ -1079,6 +1079,20 @@ M = [
      "{people} people have arrived across {scans} scans.",
      "{people} pessoas chegaram em {scans} leituras.",
      "Ema {people} to’o ho leitura {scans}."),
+
+    ("//brand", "", "", ""),
+    # No article before the placeholders. English wants "the", Portuguese wants
+    # "pelo" or "pela" depending on the organiser's gender, and the organisers
+    # are configuration rather than message keys -- so the sentence is written
+    # to need neither.
+    ("brand.organisedBy", "Organised by {first} and {second}.",
+     "Organizado por {first} e {second}.",
+     "Organiza husi {first} no {second}."),
+    # The event's own name is NOT here: it is the conference's official title
+    # and inventing translations of it is not this file's business. Only the
+    # month, which is a date rather than a name.
+    ("brand.dates", "Díli, 2–3 October 2026",
+     "Díli, 2–3 de outubro de 2026", "Díli, 2–3 Outubru 2026"),
 ]
 
 
