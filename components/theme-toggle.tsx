@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 
 /**
@@ -13,21 +14,29 @@ import { setTheme, useTheme } from "@/lib/theme";
  */
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const theme = useTheme();
+  const t = useT();
   const next = theme === "dark" ? "light" : "dark";
+  // The label names the DESTINATION, so the key does too: switching to dark is
+  // one message, not "Switch to" glued to the word "dark". Gluing works in
+  // English and falls apart in Portuguese, where the adjective agrees with a
+  // noun that is not in the fragment.
+  const label = t(next === "dark" ? "theme.toDark" : "theme.toLight");
 
   return (
     <button
       type="button"
       onClick={() => setTheme(next)}
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
+      aria-label={label}
+      title={label}
       className={`inline-flex items-center gap-2 rounded-lg border border-line text-ink-2 transition-colors hover:border-line-strong hover:text-ink focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
         compact ? "h-9 w-9 justify-center" : "h-9 px-3"
       }`}
     >
       <Glyph dark={theme === "dark"} />
       {compact ? null : (
-        <span className="text-xs font-medium capitalize">{next}</span>
+        <span className="text-xs font-medium">
+          {t(next === "dark" ? "theme.dark" : "theme.light")}
+        </span>
       )}
     </button>
   );
