@@ -463,4 +463,43 @@ export const pt: Messages = {
   "entry.col.name": "Nome",
   "chart.noScans":
     "Sem leituras neste intervalo, por isso n\u00e3o h\u00e1 nada para representar.",
+
+  // ------------------------------------------------------------ overview --
+  "overview.subtitleQuiet": "As chegadas de hoje em todas as portas",
+  "overview.silentOne":
+    "{count} porta ficou em sil\u00eancio \u2014 verifique Dispositivos",
+  "overview.silentMany":
+    "{count} portas ficaram em sil\u00eancio \u2014 verifique Dispositivos",
+  "overview.registered": "Registados",
+  "overview.vipCount": "{count} VIP",
+  "overview.arrivedToday": "Chegaram hoje",
+  "overview.arrivedNote": "{percent}% dos registados",
+  "overview.refusedAtDoor": "Recusados \u00e0 porta",
+  "overview.duplicateOne": "{count} leitura duplicada n\u00e3o contada",
+  "overview.duplicateMany": "{count} leituras duplicadas n\u00e3o contadas",
+  "overview.doorsReporting": "Portas a comunicar",
+  "overview.silentCount": "{count} em sil\u00eancio",
+  "overview.allCheckedIn": "Todas comunicaram recentemente",
+  "overview.arrivalsByHour": "Chegadas por hora",
+  "overview.arrivalsByHourNote":
+    "Todos os crach\u00e1s apresentados hoje, marcados na hora em que aconteceu",
+  "overview.scanCountOne": "{count} leitura",
+  "overview.scanCountMany": "{count} leituras",
+  "overview.outcomeSplit": "Divis\u00e3o dos resultados",
+  "overview.outcomeSplitNote": "Como se dividiram as leituras de hoje",
+  "overview.recentScans": "Leituras recentes",
+  "overview.recentScansNote": "Mais recentes primeiro, recusas inclu\u00eddas",
+  "overview.nothingToday": "Ainda n\u00e3o foi lido nada hoje.",
+  "overview.arrivalsAppear":
+    "As chegadas aparecem aqui assim que um seguran\u00e7a l\u00ea um crach\u00e1.",
+  "overview.colVisitor": "Visitante",
+  "overview.openLog": "Abrir o registo de entradas completo \u2192",
+  "overview.arrivedSummary.oneOne":
+    "{people} pessoa chegou em {scans} leitura.",
+  "overview.arrivedSummary.oneMany":
+    "{people} pessoa chegou em {scans} leituras.",
+  "overview.arrivedSummary.manyOne":
+    "{people} pessoas chegaram em {scans} leitura.",
+  "overview.arrivedSummary.manyMany":
+    "{people} pessoas chegaram em {scans} leituras.",
 };
