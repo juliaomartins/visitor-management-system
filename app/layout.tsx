@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { cookies } from "next/headers";
 
 import { Providers } from "./providers";
+import { LOCALE_COOKIE, localeMeta, normaliseLocale } from "@/lib/locales";
 import { THEME_BOOTSTRAP } from "@/lib/theme";
 import "./globals.css";
 
@@ -41,10 +43,35 @@ export const metadata: Metadata = {
   description: "Event badge registration and arrivals, on the local network.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/**
+ * Async because the language is read here, on the server, before anything
+ * renders.
+ *
+ * The theme can be corrected after the fact by a script in the head; the
+ * language cannot. Text that arrives in English and turns into Tetum during
+ * hydration is a React mismatch and a visible flicker on every navigation, so
+ * the cookie is read up front and the very first byte is already in the right
+ * language. `lib/locales/index.ts` explains why it is a cookie and not
+ * localStorage.
+ */
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = normaliseLocale((await cookies()).get(LOCALE_COOKIE)?.value);
+
   return (
     <html
-      lang="en"
+      lang={localeMeta(locale).html}
+      /*
+        THE THEME SCRIPT BELOW EDITS THIS ELEMENT'S CLASS BEFORE REACT HYDRATES,
+        which is the whole point of it -- it has to beat the first paint or a
+        dark-mode user gets a white flash. The consequence is that the client's
+        `className` legitimately differs from the server's, and React reports it
+        as a hydration mismatch on every page load.
+
+        `suppressHydrationWarning` applies to this element only, one level deep,
+        so a genuine mismatch anywhere inside the app is still reported. Removing
+        it does not fix anything; it just brings the warning back.
+      */
+      suppressHydrationWarning
       className={`${inter.variable} ${jakarta.variable} ${jetbrains.variable} h-full antialiased`}
     >
       <head>
@@ -57,7 +84,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body className="min-h-full">
-        <Providers>{children}</Providers>
+        <Providers locale={locale}>{children}</Providers>
       </body>
     </html>
   );
