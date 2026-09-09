@@ -227,4 +227,41 @@ export const tet: Messages = {
   // ---------------------------------------------------------------- edit --
   "edit.title": "Edita {name}",
   "edit.fallbackTitle": "Edita vizitante",
+
+  // ----------------------------------------------- photo upload and crop --
+  "photo.label": "Foto",
+  "photo.spec": "3:4 VERTIK\u00c1L \u00b7 600 \u00d7 800",
+  "photo.notImage": "Ne\u2019e la\u2019\u00f3s imajen. Hili JPEG ka PNG.",
+  "photo.tooLarge": "Imajen ne\u2019e liu 20 MB. Hili ida ki\u2019ik liu.",
+  "photo.alt": "Vizitante nia foto kartaun",
+  "photo.ready": "Korta ona no prontu.",
+  "photo.onFile":
+    "Foto ne\u2019eb\u00e9 rai ona. Nia sei hela to\u2019o ita troka.",
+  "photo.adjustCrop": "Ajusta korta",
+  "photo.chooseDifferent": "Hili foto seluk",
+  "photo.add": "Tau foto",
+  "photo.dropHint":
+    "Tau ida iha ne\u2019e, ka klik atu hili. Tuirmai korta nia.",
+  "photo.dialogLabel": "Korta vizitante nia foto",
+  "photo.frameFace": "Tau oin iha kuadru",
+  "photo.closeWithoutSaving": "Taka la rai",
+  "crop.alt": "Foto ne\u2019eb\u00e9 korta hela",
+  "crop.preview": "Imajen korta",
+  "crop.circleHint":
+    "S\u00edrkulu deit mak imprime no hatudu iha ekr\u00e1n resepsaun. Tau ulun ho kabaas iha laran.",
+  "crop.aspect": "Proporsaun",
+  "crop.ratio.badge": "Kartaun (fiksu)",
+  "crop.ratio.square": "Kuadradu",
+  "crop.ratio.free": "Livre",
+  "crop.width": "Luan",
+  "crop.height": "Aas",
+  "crop.heightLocked": "Aas (fiksu)",
+  "crop.tooSmall":
+    "Korta ne\u2019e nia luan {width}px. Kartaun imprime foto ho {min}px ba 300dpi, tan ne\u2019e sei mosu la klaru iha kartaun. Korta uitoan deit, ka uza foto boot liu.",
+  "crop.quality": "Kualidade imajen",
+  "crop.bestCompression": "Kompresaun di\u2019ak liu",
+  "crop.bestQuality": "Kualidade di\u2019ak liu",
+  "crop.applying": "Aplika hela\u2026",
+  "crop.use": "Uza foto ne\u2019e",
+  "crop.changeImage": "Troka imajen",
 };
