@@ -43,7 +43,11 @@ from reportlab.pdfgen import canvas as pdf_canvas
 from django.utils import timezone
 
 from apps.visitors.models import Visitor, VisitorCategory
-from apps.visitors.services import issue_badge_token, log_visitor_action
+from apps.visitors.services import (
+    issue_badge_token,
+    log_visitor_action,
+    rotate_badge_token,
+)
 
 audit = logging.getLogger("vms.audit")
 
@@ -608,23 +612,41 @@ def render_a4_sheet_pdf(issued: list[tuple[Visitor, str]]) -> bytes:
     return buffer.getvalue()
 
 
-def reissue_badges(visitors, *, actor=None) -> list[tuple[Visitor, str]]:
-    """Mint a fresh token for each visitor and hand back the raw values.
+def collect_badge_tokens(visitors, *, actor=None) -> list[tuple[Visitor, str]]:
+    """Return (visitor, RAW token) for each visitor. Printing is now harmless.
 
-    Printing in bulk necessarily reissues. The raw token exists only at creation,
-    so there is no way to reprint a card issued earlier — the only thing the server
-    can do is mint a new one, which is what this does.
+    THIS USED TO BE `reissue_badges`, AND IT USED TO BE DESTRUCTIVE. Tokens were
+    random and unrecoverable, so the only way to put a QR on a sheet was to mint
+    a new one -- which silently killed every card previously printed for those
+    visitors. Reprinting a badge was impossible and printing a second sheet was a
+    quiet revocation of the first.
 
-    Note what it does NOT do: it never calls `revoke_badge()`. That sets
-    `is_active = False`, which would kill the badge this sheet is about to print as
-    well as the old one. Overwriting `token_hash` is already the revocation — the
-    previous QR stops matching the moment a new token is issued.
+    Tokens are derived now, so this recomputes what is already on the card. Print
+    the same visitor ten times and every sheet carries the same working QR.
+
+    Rotating a badge is `rotate_badge_tokens` below, and it has to be asked for.
     """
     issued: list[tuple[Visitor, str]] = []
 
     for visitor in visitors:
-        raw_token = issue_badge_token(visitor)
-        issued.append((visitor, raw_token))
-        log_visitor_action(actor, "badge_reissued", visitor)
+        issued.append((visitor, issue_badge_token(visitor)))
+
+    return issued
+
+
+def rotate_badge_tokens(visitors, *, actor=None) -> list[tuple[Visitor, str]]:
+    """Give each visitor a NEW QR and stop their old card. Genuinely destructive.
+
+    For a badge that has been lost or copied. Every card previously printed for
+    these visitors stops scanning as `valid` from the next scan onward; nobody
+    else's badge is affected.
+
+    It does NOT set `is_active = False`. That would kill the replacement card
+    along with the lost one.
+    """
+    issued: list[tuple[Visitor, str]] = []
+
+    for visitor in visitors:
+        issued.append((visitor, rotate_badge_token(visitor, actor=actor)))
 
     return issued
