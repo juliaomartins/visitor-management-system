@@ -25,6 +25,12 @@
  * redirect without a round trip. The real boundary is the backend rejecting a
  * request that arrives without a valid bearer token.
  */
+import {
+  DEFAULT_LOCALE,
+  translate,
+  type MessageKey,
+} from "@/lib/locales";
+
 const SESSION_HINT = "vms_session";
 
 let accessToken: string | null = null;
@@ -59,7 +65,21 @@ async function postAuth(path: string, body: unknown): Promise<Response> {
   });
 }
 
-export class LoginError extends Error {}
+export class LoginError extends Error {
+  constructor(
+    message: string,
+    /**
+     * Set when the sentence is ours; absent when the backend supplied it.
+     *
+     * This is thrown from a plain async function with no React around it, so it
+     * cannot translate itself. `useErrorText` resolves the key where it is
+     * displayed, which is the only place that knows the current language.
+     */
+    readonly key?: MessageKey,
+  ) {
+    super(message);
+  }
+}
 
 export async function login(username: string, password: string): Promise<void> {
   const response = await postAuth("token", { username, password });
@@ -71,11 +91,19 @@ export async function login(username: string, password: string): Promise<void> {
       .then((body) => body?.detail as string | undefined)
       .catch(() => undefined);
 
+    // The backend's own wording wins when it sent one: it distinguishes a wrong
+    // password from a non-admin account, and that detail is worth more than a
+    // translated generality.
+    if (detail) throw new LoginError(detail);
+
+    const key: MessageKey =
+      response.status === 401 ? "login.badCredentials" : "login.failedStatus";
+
+    // `message` stays English for logs and stack traces; `key` is what the
+    // screen actually renders.
     throw new LoginError(
-      detail ??
-        (response.status === 401
-          ? "That username and password did not match."
-          : `Sign-in failed (HTTP ${response.status}).`),
+      translate(DEFAULT_LOCALE, key, { status: response.status }),
+      key,
     );
   }
 
