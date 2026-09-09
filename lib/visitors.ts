@@ -6,6 +6,11 @@
  * sent — so a write asks for a live token up front rather than failing after the
  * registrar has already filled in the form.
  */
+import {
+  DEFAULT_LOCALE,
+  translate,
+  type MessageKey,
+} from "@/lib/locales";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
@@ -36,6 +41,16 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly fields: FieldErrors = {},
+    /**
+     * Set when the sentence is ours; absent when the backend supplied it.
+     *
+     * These are thrown from query and mutation functions, outside any component,
+     * so they cannot translate themselves. `useErrorText` resolves the key at
+     * the point of display. A backend `detail` arrives with no key and is shown
+     * as it came - Django is not translated, and inventing a Tetun sentence for
+     * a server error we did not write would be a guess about what went wrong.
+     */
+    readonly key?: MessageKey,
   ) {
     super(message);
   }
@@ -63,7 +78,7 @@ const MULTIPART = {
   headers: { "Content-Type": null },
 } as const;
 
-function fail(error: unknown, fallback: string): never {
+function fail(error: unknown, fallback: MessageKey): never {
   if (error && typeof error === "object") {
     const body = error as Record<string, unknown>;
 
@@ -75,11 +90,15 @@ function fail(error: unknown, fallback: string): never {
       else if (typeof value === "string") fields[key] = [value];
     }
     if (Object.keys(fields).length > 0) {
-      throw new ApiError("Some fields need attention.", fields);
+      throw new ApiError(
+        translate(DEFAULT_LOCALE, "error.fields"),
+        fields,
+        "error.fields",
+      );
     }
   }
 
-  throw new ApiError(fallback);
+  throw new ApiError(translate(DEFAULT_LOCALE, fallback), {}, fallback);
 }
 
 export function useVisitor(id: string) {
@@ -90,7 +109,7 @@ export function useVisitor(id: string) {
         params: { path: { id } },
         signal,
       });
-      if (error) fail(error, "That visitor could not be loaded.");
+      if (error) fail(error, "error.visitorLoad");
       return data;
     },
   });
@@ -115,7 +134,7 @@ export function useRegisterVisitor() {
         },
       });
 
-      if (error) fail(error, "The visitor could not be registered.");
+      if (error) fail(error, "error.visitorRegister");
       return data;
     },
     onSuccess: () => {
@@ -146,7 +165,7 @@ export function useUpdateVisitor(id: string) {
         body: body as never,
       });
 
-      if (error) fail(error, "The changes could not be saved.");
+      if (error) fail(error, "error.visitorSave");
       return data;
     },
     onSuccess: (updated) => {
@@ -212,8 +231,8 @@ function useVisitorStateChange(id: string, action: "activate" | "deactivate") {
         fail(
           error,
           action === "activate"
-            ? "The visitor could not be activated."
-            : "The visitor could not be deactivated.",
+            ? "error.visitorActivate"
+            : "error.visitorDeactivate",
         );
       }
       return data;
@@ -248,7 +267,7 @@ export function usePurgeVisitor(id: string) {
         { params: { path: { id } } },
       );
 
-      if (error) fail(error, "The visitor could not be deleted.");
+      if (error) fail(error, "error.visitorDelete");
       return data;
     },
     onSuccess: () => {
