@@ -177,7 +177,7 @@ class BadgeReissueSheetView(APIView):
         # cannot be undone because the new raw tokens die with the request. The
         # transaction puts the old digests back.
         with transaction.atomic():
-            issued = services.reissue_badges(ordered, actor=request.user)
+            issued = services.collect_badge_tokens(ordered, actor=request.user)
             pdf = _render(lambda: services.render_a4_sheet_pdf(issued))
 
         # One visitor comes back as a single card page, so name the file for what
@@ -294,7 +294,7 @@ class BadgeCredentialExportView(APIView):
         # this request, so a failure after minting would leave every visitor with
         # a dead card and no file to print a new one from.
         with transaction.atomic():
-            issued = services.reissue_badges(ordered, actor=request.user)
+            issued = services.collect_badge_tokens(ordered, actor=request.user)
             workbook = _render(lambda: exports.build_credential_workbook(issued))
 
         return _xlsx(workbook, f"vms-credentials-{len(issued)}.xlsx")
@@ -350,7 +350,7 @@ class BadgeReissueView(APIView):
         ordered = [found[str(pk)] for pk in requested]
 
         with transaction.atomic():
-            issued = services.reissue_badges(ordered, actor=request.user)
+            issued = services.rotate_badge_tokens(ordered, actor=request.user)
 
         payload = ReissueResponseSerializer(
             {
