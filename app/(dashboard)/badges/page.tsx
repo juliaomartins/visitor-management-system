@@ -29,6 +29,10 @@ const PER_SHEET = 9;
  * sheet and every export carries the code already on the printed card. A visitor
  * can be reprinted on the morning and again at the door and the result is
  * identical, which makes this an event-day tool rather than a setup-only one.
+ *
+ * Deactivating a visitor does not change what prints here either -- the sheet
+ * always carries their real QR. What stops at the door is the scan, not the
+ * code.
  */
 export default function BadgesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -114,8 +118,9 @@ export default function BadgesPage() {
           <p className="mt-1 text-sm text-ink-2">
             Every sheet carries each visitor&apos;s existing QR, so a card can be
             reprinted as often as you need and the ones already handed out keep
-            working. To stop a lost card, revoke it from that visitor&apos;s own
-            page &mdash; the QR itself never changes.
+            working. To stop a lost card, deactivate that visitor on their own
+            page &mdash; the QR itself never changes, so activating them again
+            puts the same card back to work.
           </p>
         </div>
       </div>
@@ -191,7 +196,7 @@ export default function BadgesPage() {
             looking at somebody's QR would have replaced their badge and killed
             the card in their hand. The dashboard no longer calls that endpoint
             from anywhere; a badge is issued once and stays valid until the
-            visitor is revoked or deleted.
+            visitor is deactivated or deleted.
 
             Nothing is lost. Each visitor's live QR is on their own page, and
             both the sheet and the .xlsx carry the real code.
