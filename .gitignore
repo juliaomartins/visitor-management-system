@@ -22,3 +22,48 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Build artefacts that are large, regenerable, or both.
+#
+# Nothing here is source. Every one of these is produced by a command that is
+# documented in CLAUDE.md, so a clone plus that command gets you back to the
+# same place -- and none of it belongs in a repository somebody has to fetch
+# over a conference wifi.
+
+# PyInstaller (vms-desktop). `dist/` is ~113MB of bundled Qt; `build/` is its
+# scratch. The .spec IS source and stays tracked.
+build/
+*.manifest
+
+# Expo / React Native. A built .apk is 60MB+ and is rebuilt by EAS on demand.
+.expo/
+.expo-shared/
+*.apk
+*.aab
+*.ipa
+*.keystore
+*.jks
+
+# Next.js / tooling caches
+.turbo/
+*.tsbuildinfo
+.eslintcache
+
+# Python packaging and caches
+*.egg
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Git bundles, archives and database dumps -- backups belong outside the repo
+*.bundle
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.dump
+*.sql
+
+# Screenshots and scratch output from verification runs
+/scratch/
