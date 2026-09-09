@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "react-image-crop/dist/ReactCrop.css";
 
 /* Class-based, not `prefers-color-scheme`: the registration desk chooses,
    and the choice has to survive a laptop whose OS theme flips at sunset. */
@@ -51,6 +52,17 @@
     colour already clears it, it is used untouched -- red, green and blue in light
     mode, gold in dark mode.
   */
+  /*
+    Guides drawn ON TOP OF a photograph, not on an app surface.
+
+    Every other colour here flips with the theme because it sits on `ground` or
+    `card`. This one sits on whatever the visitor's photo happens to be, so a
+    token that goes dark in dark mode would make the crop guides vanish against
+    a dark suit. It is a var so the component holds no hex, and it is the same
+    value in both themes on purpose.
+  */
+  --color-overlay-guide: #ffffff;
+
   --color-brand-red: #cc0000;
   --color-brand-gold: #fcb400;
   --color-brand-green: #006c30;
@@ -482,4 +494,74 @@ body {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
+}
+
+
+/*
+  react-image-crop, themed.
+
+  The package ships a stylesheet with its colours hardcoded -- `#ffffffb3` for
+  borders, `#08f` for focus, `#0003` for handles, and an SVG mask filled `black`
+  from JavaScript. None of that survives a dark console, so every one of them is
+  re-pointed at a token here. The library exposes four of the five as CSS custom
+  properties, which is why this is short.
+*/
+.vms-crop {
+  --rc-drag-handle-size: 12px;
+  --rc-drag-handle-mobile-size: 24px;
+  --rc-drag-handle-bg-colour: var(--color-card);
+  --rc-border-color: var(--color-overlay-guide);
+  --rc-focus-color: var(--color-accent);
+}
+
+/* The dimming outside the crop. Drawn as an SVG with `fill="black"` set as a
+   presentation attribute, which a CSS rule outranks. */
+.vms-crop .ReactCrop__crop-mask * {
+  fill: var(--color-graphite-950);
+}
+
+/*
+  The selection outline.
+
+  The default is an animated "marching ants" gradient built from #fff and #444.
+  Replacing it with a flat token outline drops the last two hardcoded colours AND
+  removes an infinite animation that would otherwise run the whole time the
+  dialog is open -- which is the wrong thing to put in front of somebody with a
+  queue, and the wrong thing to ignore `prefers-reduced-motion` about.
+*/
+.vms-crop .ReactCrop__crop-selection {
+  background-image: none;
+  animation: none;
+  outline: 2px solid var(--color-overlay-guide);
+  outline-offset: -1px;
+}
+
+.vms-crop .ReactCrop__rule-of-thirds-vt::before,
+.vms-crop .ReactCrop__rule-of-thirds-vt::after,
+.vms-crop .ReactCrop__rule-of-thirds-hz::before,
+.vms-crop .ReactCrop__rule-of-thirds-hz::after {
+  background-color: color-mix(in srgb, var(--color-overlay-guide) 45%, transparent);
+}
+
+.vms-crop .ReactCrop__drag-handle {
+  border-radius: 2px;
+  border-color: var(--color-overlay-guide);
+}
+
+/*
+  A 44px touch target behind a 12px handle.
+
+  The visible square stays small because a large one hides the very edge it is
+  positioning. The pseudo-element carries the hit area instead, so a finger gets
+  the 44px the platform guidelines ask for without the corner of the crop box
+  disappearing under it.
+*/
+.vms-crop .ReactCrop__drag-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
