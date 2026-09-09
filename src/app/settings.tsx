@@ -12,6 +12,8 @@
  * looks accepted and fails at the next badge is worse than an honest error here
  * -- the guard has already walked away from the desk by then.
  */
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useRichT, useT } from "@/i18n";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -47,6 +49,8 @@ function splitOrigin(origin: string): { host: string; port: string } {
 }
 
 export default function SettingsScreen() {
+  const t = useT();
+  const rich = useRichT();
   const [host, setHost] = useState("");
   const [port, setPort] = useState(DEFAULT_PORT);
   const [saved, setSaved] = useState<string | null>(null);
@@ -123,14 +127,15 @@ export default function SettingsScreen() {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Server address</Text>
+          <Text style={styles.title}>{t("server.address")}</Text>
           <Text style={styles.body}>
-            Point this phone at the server. Ask whoever set up the laptop for its
-            IP address, or run <Text style={styles.mono}>ipconfig</Text> on it.
+            {rich("settings.hint", {
+              cmd: <Text style={styles.mono}>ipconfig</Text>,
+            })}
           </Text>
 
           <View style={styles.field}>
-            <Text style={styles.label}>IP address or hostname</Text>
+            <Text style={styles.label}>{t("server.ipLabel")}</Text>
             <TextInput
               value={host}
               onChangeText={editHost}
@@ -140,12 +145,12 @@ export default function SettingsScreen() {
               autoCorrect={false}
               keyboardType="url"
               style={styles.input}
-              accessibilityLabel="Server IP address or hostname"
+              accessibilityLabel={t("server.ipA11y")}
             />
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Port</Text>
+            <Text style={styles.label}>{t("server.portLabel")}</Text>
             <TextInput
               value={port}
               onChangeText={editPort}
@@ -154,7 +159,7 @@ export default function SettingsScreen() {
               keyboardType="number-pad"
               maxLength={5}
               style={[styles.input, styles.portInput]}
-              accessibilityLabel="Server port"
+              accessibilityLabel={t("server.portA11y")}
             />
           </View>
 
@@ -173,7 +178,7 @@ export default function SettingsScreen() {
             {testing ? (
               <ActivityIndicator color={colors.text} />
             ) : (
-              <Text style={styles.secondaryLabel}>Test connection</Text>
+              <Text style={styles.secondaryLabel}>{t("server.test")}</Text>
             )}
           </Pressable>
 
@@ -187,23 +192,26 @@ export default function SettingsScreen() {
               pressed && passed && styles.pressed,
             ]}
           >
-            <Text style={styles.primaryLabel}>Save address</Text>
+            <Text style={styles.primaryLabel}>{t("server.save")}</Text>
           </Pressable>
 
           {!passed ? (
-            <Text style={styles.hint}>
-              Test the address before saving it.
-            </Text>
+            <Text style={styles.hint}>{t("settings.testFirst")}</Text>
           ) : null}
 
           {saved ? (
             <Pressable onPress={useDefault} accessibilityRole="button">
-              <Text style={styles.tertiary}>Use the built-in address again</Text>
+              <Text style={styles.tertiary}>{t("server.useBuiltIn")}</Text>
             </Pressable>
           ) : null}
 
+          <View style={styles.languageBlock}>
+            <Text style={styles.label}>{t("language.label")}</Text>
+            <LanguageToggle />
+          </View>
+
           <Pressable onPress={() => router.back()} accessibilityRole="button">
-            <Text style={styles.tertiary}>Cancel</Text>
+            <Text style={styles.tertiary}>{t("server.cancel")}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -213,12 +221,16 @@ export default function SettingsScreen() {
 
 /** The result, in terms of what to do about it. */
 function Outcome({ result }: { result: ReachResult }) {
+  const t = useT();
+
   if (result.ok) {
     return (
       <View style={[styles.outcome, styles.good]}>
         <Text style={styles.goodText}>
-          Connected. This is the VMS server.
-          {result.health.lan_ip ? ` It reports ${result.health.lan_ip}.` : ""}
+          {t("settings.connected")}
+          {result.health.lan_ip
+            ? ` ${t("settings.reports", { ip: result.health.lan_ip })}`
+            : ""}
         </Text>
       </View>
     );
@@ -226,12 +238,12 @@ function Outcome({ result }: { result: ReachResult }) {
 
   const message =
     result.reason === "bad-address"
-      ? "That does not look like an address. Try something like 192.168.0.63."
+      ? t("server.badAddress")
       : result.reason === "timeout"
-        ? "No answer within five seconds. Check that this phone and the server are on the same Wi-Fi."
+        ? t("server.timeout")
         : result.reason === "unreachable"
-          ? "Nothing is listening there. Check the address, and that the server is running."
-          : `Something answered, but it is not the VMS server (HTTP ${result.status ?? "?"}). Check the port.`;
+          ? t("server.refused")
+          : t("server.notVms", { status: result.status ?? "?" });
 
   return (
     <View style={[styles.outcome, styles.bad]}>
@@ -241,6 +253,7 @@ function Outcome({ result }: { result: ReachResult }) {
 }
 
 const styles = StyleSheet.create({
+  languageBlock: { gap: spacing.sm, marginTop: spacing.lg },
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   scroll: {
