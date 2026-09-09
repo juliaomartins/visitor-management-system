@@ -54,30 +54,39 @@ class VisitorIssuedSerializer(VisitorSerializer):
         fields = [*VisitorSerializer.Meta.fields, "badge_token"]
 
 
-class VisitorDetailSerializer(VisitorSerializer):
-    """`GET /visitors/{id}` — the registration, its scans, and its badge token.
+class VisitorWithTokenSerializer(VisitorSerializer):
+    """A visitor plus the working QR code for their badge.
 
-    `badge_token` is here because the token is derived rather than random: the
-    same value is on the printed card and can be recomputed at any time, so the
-    dashboard can show a working QR for a visitor registered last week.
+    `badge_token` is derivable rather than random: the same value is on the
+    printed card and can be recomputed at any time, so the dashboard can draw a
+    live QR for someone registered last week.
 
-    ADMIN-ONLY, AND DETAIL-ONLY. It is a working credential, so it is deliberately
-    absent from the list endpoint — one request should not hand back 250 usable
-    badges.
+    IT IS A WORKING CREDENTIAL. Anyone holding the string can produce a badge
+    that scans, so this serializer is never the default. `GET /visitors/{id}`
+    uses it because one visitor is one badge, and the list endpoint uses it only
+    when `?with_tokens=true` is asked for explicitly — see the view.
     """
 
-    scan_events = ScanEventSerializer(many=True, read_only=True)
     badge_token = serializers.SerializerMethodField(
         help_text="Raw badge token for the QR code. Stable for the life of the badge."
     )
 
     class Meta(VisitorSerializer.Meta):
-        fields = [*VisitorSerializer.Meta.fields, "scan_events", "badge_token"]
+        fields = [*VisitorSerializer.Meta.fields, "badge_token"]
 
     def get_badge_token(self, visitor: Visitor) -> str:
         from .services import badge_token
 
         return badge_token(visitor)
+
+
+class VisitorDetailSerializer(VisitorWithTokenSerializer):
+    """`GET /visitors/{id}` — the registration, its scans, and its badge token."""
+
+    scan_events = ScanEventSerializer(many=True, read_only=True)
+
+    class Meta(VisitorWithTokenSerializer.Meta):
+        fields = [*VisitorWithTokenSerializer.Meta.fields, "scan_events"]
 
 
 class VisitorPurgedSerializer(serializers.Serializer):
