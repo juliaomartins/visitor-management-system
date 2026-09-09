@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -28,6 +28,15 @@ import { createPortal } from "react-dom";
 export type MenuItem = {
   label: string;
   onSelect: () => void;
+  /**
+   * A 24x24 glyph, drawn in `currentColor` so it takes the item's tone.
+   *
+   * Required rather than optional. A menu where some rows have an icon and some
+   * do not has to choose between a ragged label column and a hole, and both look
+   * like a mistake -- so the type refuses the situation instead of the reviewer
+   * having to catch it.
+   */
+  icon: ReactNode;
   /** Styles the item as destructive and sets it apart from the ones above. */
   danger?: boolean;
 };
@@ -161,12 +170,24 @@ export function RowContextMenu({
                 onClose();
                 item.onSelect();
               }}
-              className={`block w-full rounded-md px-3 py-2 text-left text-sm transition-colors focus:outline-none ${
+              className={`group flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors focus:outline-none ${
                 item.danger
                   ? "text-revoked hover:bg-revoked-soft focus-visible:bg-revoked-soft"
                   : "text-ink hover:bg-card-2 focus-visible:bg-card-2"
               }`}
             >
+              {/*
+                Muted by opacity rather than by a grey token, so the glyph keeps
+                the item's hue: the trash is red beside a red label instead of
+                going grey next to it, which reads as a disabled row.
+
+                The icon is decoration and `aria-hidden` on each glyph says so.
+                The label is the accessible name -- a screen reader announcing
+                "pencil Edit details" would be reading the wallpaper aloud.
+              */}
+              <span className="shrink-0 opacity-70 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                {item.icon}
+              </span>
               {item.label}
             </button>
           </div>
@@ -174,5 +195,105 @@ export function RowContextMenu({
       </div>
     </>,
     document.body,
+  );
+}
+
+/*
+  The glyph set for this menu.
+
+  Drawn here rather than pulled from a package: the dashboard ships no icon
+  library, and adding one for four shapes would put a dependency on an offline
+  LAN build for something that is forty lines of SVG. They follow the same
+  conventions as `components/sidebar.tsx` -- a 24x24 box, no fill, 1.6 stroke in
+  `currentColor`, round caps -- so a menu icon and a nav icon look like siblings.
+
+  Deactivate and activate get DIFFERENT glyphs rather than one toggle symbol.
+  Only one of the two is ever on screen, so a single power icon would leave the
+  reader working out which direction it points; a barred circle and a ticked one
+  each say what the row will become.
+*/
+const ICON = "h-4 w-4";
+
+export function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={ICON} aria-hidden>
+      <path
+        d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14.5 6.5 17.5 9.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Deactivate: the badge still exists and stops opening the door. */
+export function BanIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={ICON} aria-hidden>
+      <circle cx="12" cy="12" r="8.2" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M6.2 6.2 17.8 17.8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Activate: the same printed card starts working again. */
+export function CheckCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={ICON} aria-hidden>
+      <circle cx="12" cy="12" r="8.2" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="m8.4 12.2 2.5 2.5 4.7-4.9"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={ICON} aria-hidden>
+      <path
+        d="M4.5 6.5h15"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.5 6.5 7.4 19a1.6 1.6 0 0 0 1.6 1.5h6a1.6 1.6 0 0 0 1.6-1.5l.9-12.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.4 10v6.6M13.6 10v6.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
