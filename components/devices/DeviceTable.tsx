@@ -1,6 +1,7 @@
 "use client";
 
-import { isSilent, kindLabel, useNow, type Device } from "@/lib/devices";
+import { isSilent, kindLabelKey, useNow, type Device } from "@/lib/devices";
+import { useFormat, useT } from "@/lib/i18n";
 
 /**
  * The device list, which during the event is really a health check.
@@ -16,21 +17,15 @@ import { isSilent, kindLabel, useNow, type Device } from "@/lib/devices";
  * an hour later is not.
  */
 
-function relativeTime(iso: string, now: number): string {
-  const elapsed = now - new Date(iso).getTime();
+/*
+  THE HAND-ROLLED ELAPSED-TIME LADDER IS GONE.
 
-  if (elapsed < 0) return "just now";
-  if (elapsed < 45_000) return "just now";
-
-  const minutes = Math.round(elapsed / 60_000);
-  if (minutes < 60) return `${minutes} min ago`;
-
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
-
-  const days = Math.round(hours / 24);
-  return `${days} ${days === 1 ? "day" : "days"} ago`;
-}
+  It built "5 min ago" and "2 hours ago" with its own singular/plural test --
+  three languages' worth of grammar to maintain by hand for something Intl
+  already knows, and certain to be wrong in Tetun on the first morning. It now
+  comes from `useFormat().relative`, which is also where the pt-PT fallback for
+  Tetun lives.
+*/
 
 export function DeviceTable({
   devices,
@@ -39,15 +34,15 @@ export function DeviceTable({
   devices: Device[];
   onRevoke: (device: Device) => void;
 }) {
+  const t = useT();
   const now = useNow();
 
   if (devices.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="display text-lg text-ink">No devices paired yet</p>
+        <p className="display text-lg text-ink">{t("devices.none")}</p>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
-          Generate a code above, then enter it on the guard&rsquo;s phone or the
-          lobby screen.
+          {t("devices.noneBody")}
         </p>
       </div>
     );
@@ -58,10 +53,10 @@ export function DeviceTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left">
-            <Th>Device</Th>
-            <Th>Kind</Th>
-            <Th>Last seen</Th>
-            <Th>State</Th>
+            <Th>{t("devices.col.device")}</Th>
+            <Th>{t("devices.col.kind")}</Th>
+            <Th>{t("devices.col.lastSeen")}</Th>
+            <Th>{t("devices.col.state")}</Th>
             <th className="px-4 py-2.5" />
           </tr>
         </thead>
@@ -89,6 +84,8 @@ function DeviceRow({
   now: number;
   onRevoke: () => void;
 }) {
+  const t = useT();
+  const format = useFormat();
   const revoked = device.is_active === false;
   const lastSeen = device.last_seen_at;
   const stale = isSilent(device, now);
@@ -101,24 +98,30 @@ function DeviceRow({
         </p>
       </td>
 
-      <td className="px-4 py-3 text-ink-2">{kindLabel(device.kind)}</td>
+      <td className="px-4 py-3 text-ink-2">
+        {t(kindLabelKey(device.kind))}
+      </td>
 
       <td className="px-4 py-3 whitespace-nowrap">
         {lastSeen ? (
           <span
-            title={new Date(lastSeen).toLocaleString()}
+            title={format.dateTime(lastSeen)}
             className={stale ? "font-medium text-vip" : "text-ink"}
           >
-            {relativeTime(lastSeen, now)}
+            {format.relative(lastSeen, now)}
           </span>
         ) : (
           <span className={revoked ? "text-ink-3" : "font-medium text-vip"}>
-            Never checked in
+            {t("devices.neverCheckedIn")}
           </span>
         )}
         {stale ? (
           <span className="mt-0.5 block text-[11px] text-vip">
-            {lastSeen ? "Silent — check the door" : "Not seen since pairing"}
+            {t(
+              lastSeen
+                ? "devices.silentCheck"
+                : "devices.notSeenSincePairing",
+            )}
           </span>
         ) : null}
       </td>
@@ -126,11 +129,11 @@ function DeviceRow({
       <td className="px-4 py-3">
         {revoked ? (
           <span className="pill-status bg-revoked-soft text-revoked">
-            REVOKED
+            {t("devices.stateRevoked")}
           </span>
         ) : (
           <span className="pill-status bg-valid-soft text-valid">
-            ACTIVE
+            {t("devices.stateActive")}
           </span>
         )}
       </td>
@@ -142,7 +145,7 @@ function DeviceRow({
             onClick={onRevoke}
             className="btn btn-ghost px-3 py-1.5 text-revoked hover:text-revoked"
           >
-            Revoke
+            {t("devices.revoke")}
           </button>
         )}
       </td>
