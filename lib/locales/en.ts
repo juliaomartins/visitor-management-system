@@ -173,6 +173,57 @@ export const en = {
   "scan.duplicate": "Duplicate",
   "scan.revoked": "Revoked",
   "scan.invalid": "Invalid",
+
+  // --------------------------------------------------- registration form --
+  "register.title": "Register a visitor",
+  "register.subtitle":
+    "One badge, printed in advance, valid for the whole event",
+  "register.issuedTitle": "Badge issued",
+  "register.issuedSubtitle":
+    "Print the card now, or from the visitor\u2019s page later",
+  "form.photoRequired": "A badge needs a photo. Add one before registering.",
+  "form.fullName": "Full name",
+  "form.fullNameHint": "As it should read on the badge.",
+  "form.country": "Country",
+  "form.organisation": "Organisation",
+  "form.optional": "Optional.",
+  "form.category": "Category",
+  "form.cat.normal": "Normal",
+  "form.cat.normalNote": "Standard badge",
+  "form.cat.vip": "VIP",
+  "form.cat.vipNote": "Distinct card and lobby welcome",
+  "form.registering": "Registering\u2026",
+  "form.saving": "Saving\u2026",
+  "form.register": "Register and issue badge",
+  "form.save": "Save changes",
+  "form.noteCreate":
+    "The serial is assigned when you register. The QR is generated at the same moment and never changes afterwards.",
+  "form.noteEdit":
+    "Editing details does not reissue the badge. The serial and the QR code stay exactly as printed.",
+
+  // ------------------------------------------------------- badge receipt --
+  "receipt.badgeIssued": "Badge issued",
+  "receipt.registered": "{name} is registered",
+  "receipt.permanent":
+    "This QR is permanent. It was generated when {name} was registered and will not change \u2014 print it now, or from their page later, as many times as you need. It only stops working if you deactivate or delete the visitor.",
+  "receipt.qrAlt": "QR code for badge {serial}",
+  "receipt.badgeToken": "Badge token",
+  "receipt.rendering": "Rendering\u2026",
+  "receipt.downloadPdf": "Download badge PDF",
+  "receipt.printBrowser": "Print from browser",
+  "receipt.copied": "Copied",
+  "receipt.copyToken": "Copy token",
+  "receipt.qrFailed":
+    "The QR code could not be drawn. Copy the token and print the badge from another machine rather than issuing a card without a code.",
+  "receipt.copiedAnnounce": "Badge token copied to the clipboard.",
+  "receipt.badgeSerial": "Badge serial",
+  "receipt.registerAnother": "Register another visitor",
+  "receipt.open": "Open {name}",
+  "receipt.renderFailed": "The badge could not be rendered.",
+
+  // ---------------------------------------------------------------- edit --
+  "edit.title": "Edit {name}",
+  "edit.fallbackTitle": "Edit visitor",
 } as const;
 
 /** Every message key in the dashboard. */
