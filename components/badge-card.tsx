@@ -4,8 +4,21 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 
 import { PHOTO_BOX_CQW } from "@/lib/badge-geometry";
+import { useT } from "@/lib/i18n";
 
 /**
+ * THE PRINTED LABELS HERE ARE NOT TRANSLATED, AND THAT IS THE POINT.
+ *
+ * `apps/badges/services.py` draws the physical card with ReportLab, in English,
+ * in Helvetica: "Registered", "Country", "VIP GUEST", "VISITOR". This component
+ * exists to show what comes out of the printer, so translating those labels
+ * would make the preview lie about the card -- a registrar would check a Tetun
+ * preview and hand over an English badge.
+ *
+ * Only the chrome that never reaches paper follows the interface language: the
+ * deactivated overlay and the empty QR frame. If the printed card should itself
+ * be multilingual, that is a change to services.py first and this one second.
+ *
  * THE BADGE, at true CR80 PORTRAIT proportion — 54 × 85.6 mm.
  *
  * A mirror of what `apps/badges/services.py` draws with ReportLab. It is not
@@ -63,6 +76,7 @@ export function BadgeCard({
    */
   token?: string;
 }) {
+  const t = useT();
   const vip = visitor.category === "vip";
   const inactive = visitor.is_active === false;
   const role = vip ? "VIP GUEST" : visitor.organization || "VISITOR";
@@ -155,7 +169,7 @@ export function BadgeCard({
            a 54mm-wide card at preview size. */
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="cr80-serial mono rounded-full bg-graphite-950 px-[3cqw] py-[1.5cqw] font-bold tracking-[0.12em] text-white uppercase">
-            Deactivated
+            {t("card.deactivated")}
           </span>
         </div>
       ) : null}
@@ -197,6 +211,7 @@ function QrPanel({ token, serial }: { token?: string; serial: string }) {
     setState inside a callback instead of the effect body, which is the pattern
     React asks for and the linter enforces.
   */
+  const t = useT();
   const [drawn, setDrawn] = useState<{
     token: string;
     src: string | null;
@@ -251,7 +266,11 @@ function QrPanel({ token, serial }: { token?: string; serial: string }) {
         QR
       </span>
       <span className="mt-[1cqw] px-[1cqw] text-center text-[2.8cqw] leading-tight text-ink-3">
-        {settled ? "could not draw" : token ? "drawing…" : "on the printed card"}
+        {settled
+          ? t("card.qrFailed")
+          : token
+            ? t("card.qrDrawing")
+            : t("card.qrOnCard")}
       </span>
     </div>
   );
