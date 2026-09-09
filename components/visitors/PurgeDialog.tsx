@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useRichT, useT } from "@/lib/i18n";
+
 /**
  * Confirm before erasing a registration for good.
  *
@@ -46,6 +48,8 @@ export function PurgeDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
+  const rich = useRichT();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [typed, setTyped] = useState("");
 
@@ -83,40 +87,44 @@ export function PurgeDialog({
     >
       <div className="px-6 py-6">
         <p className="mono text-[11px] font-bold tracking-[0.22em] text-revoked uppercase">
-          Cannot be undone
+          {t("purge.warning")}
         </p>
         <h2
           id="purge-title"
           className="mt-1 text-lg font-semibold tracking-tight"
         >
-          Delete {visitorName} permanently?
+          {t("purge.title", { name: visitorName })}
         </h2>
 
-        <p className="mt-2 text-sm text-ink-2">
-          This removes the registration and the visitor&rsquo;s photo from the
-          server. Deactivating is the reversible option; this is not it.
-        </p>
+        <p className="mt-2 text-sm text-ink-2">{t("purge.body")}</p>
 
         <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
           <li>
+            {/*
+              One and many are separate messages rather than a count glued to a
+              conjugated verb. English needs "stays"/"stay"; Portuguese needs
+              "permanece"/"permanecem"; Tetun inflects neither and says the same
+              thing both times, which it can only do if it owns both strings.
+            */}
             {scanCount === undefined
-              ? "Any scans of this badge stay in the entrance log but stop naming anybody."
+              ? t("purge.scansUnknown")
               : scanCount === 0
-                ? "No scans are affected — this badge has never been presented."
-                : `${scanCount} ${scanCount === 1 ? "scan stays" : "scans stay"} in the entrance log but stop naming anybody.`}
+                ? t("purge.scansNone")
+                : t(scanCount === 1 ? "purge.scansOne" : "purge.scansMany", {
+                    count: scanCount,
+                  })}
           </li>
-          <li>Badge {badgeSerial} is retired. The serial is not reused.</li>
-          <li>
-            Registering them again later creates a new visitor, a new serial and
-            a new QR.
-          </li>
+          <li>{t("purge.serialRetired", { serial: badgeSerial })}</li>
+          <li>{t("purge.reRegister")}</li>
         </ul>
 
         <label
           htmlFor="purge-confirm"
           className="mt-5 block text-xs font-medium text-ink-2"
         >
-          Type <span className="mono text-ink">{badgeSerial}</span> to confirm
+          {rich("purge.typeToConfirm", {
+            serial: <span className="mono text-ink">{badgeSerial}</span>,
+          })}
         </label>
         <input
           id="purge-confirm"
@@ -145,7 +153,7 @@ export function PurgeDialog({
             disabled={pending}
             className="btn btn-ghost disabled:opacity-60"
           >
-            Cancel
+            {t("purge.cancel")}
           </button>
           <button
             type="button"
@@ -153,7 +161,7 @@ export function PurgeDialog({
             disabled={pending || !matches}
             className="btn btn-danger disabled:opacity-40"
           >
-            {pending ? "Deleting…" : "Delete permanently"}
+            {pending ? t("purge.pending") : t("purge.confirm")}
           </button>
         </div>
       </div>
