@@ -5,15 +5,30 @@ import { useEffect, useRef, useState } from "react";
 
 import { BadgeCard } from "@/components/badge-card";
 import { PhotoUpload } from "@/components/visitors/PhotoUpload";
+import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
 import type {
   FieldErrors,
   VisitorCategory,
   VisitorFormValues,
 } from "@/lib/visitors";
 
-const CATEGORIES: { value: VisitorCategory; label: string; note: string }[] = [
-  { value: "normal", label: "Normal", note: "Standard badge" },
-  { value: "vip", label: "VIP", note: "Distinct card and lobby welcome" },
+/* Keys, not words -- a module constant, built before any translator. */
+const CATEGORIES: {
+  value: VisitorCategory;
+  labelKey: MessageKey;
+  noteKey: MessageKey;
+}[] = [
+  {
+    value: "normal",
+    labelKey: "form.cat.normal",
+    noteKey: "form.cat.normalNote",
+  },
+  {
+    value: "vip",
+    labelKey: "form.cat.vip",
+    noteKey: "form.cat.vipNote",
+  },
 ];
 
 /** Shown on the preview until the server assigns a real one. */
@@ -93,6 +108,7 @@ export function VisitorForm({
     });
   }
 
+  const t = useT();
   const fieldError = (name: string) => fieldErrors?.[name]?.[0];
 
   return (
@@ -114,7 +130,7 @@ export function VisitorForm({
             existingUrl={existingPhotoUrl}
             error={
               missingPhoto
-                ? "A badge needs a photo. Add one before registering."
+                ? t("form.photoRequired")
                 : fieldError("photo")
             }
           />
@@ -122,18 +138,18 @@ export function VisitorForm({
 
         <Field
           id="full_name"
-          label="Full name"
+          label={t("form.fullName")}
           value={fullName}
           onChange={setFullName}
           error={fieldError("full_name")}
           required
           autoFocus
-          hint="As it should read on the badge."
+          hint={t("form.fullNameHint")}
         />
 
         <Field
           id="country"
-          label="Country"
+          label={t("form.country")}
           value={country}
           onChange={setCountry}
           error={fieldError("country")}
@@ -142,15 +158,17 @@ export function VisitorForm({
 
         <Field
           id="organization"
-          label="Organisation"
+          label={t("form.organisation")}
           value={organization}
           onChange={setOrganization}
           error={fieldError("organization")}
-          hint="Optional."
+          hint={t("form.optional")}
         />
 
         <fieldset>
-          <legend className="text-xs font-medium text-ink-2">Category</legend>
+          <legend className="text-xs font-medium text-ink-2">
+            {t("form.category")}
+          </legend>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {CATEGORIES.map((option) => (
               <label
@@ -175,7 +193,7 @@ export function VisitorForm({
                       category === option.value ? "text-white" : "text-ink"
                     }`}
                   >
-                    {option.label}
+                    {t(option.labelKey)}
                   </span>
                 </span>
                 <span
@@ -183,7 +201,7 @@ export function VisitorForm({
                     category === option.value ? "text-graphite-300" : "text-ink-3"
                   }`}
                 >
-                  {option.note}
+                  {t(option.noteKey)}
                 </span>
               </label>
             ))}
@@ -211,19 +229,15 @@ export function VisitorForm({
             className="btn btn-primary disabled:opacity-70"
           >
             {submitting
-              ? mode === "create"
-                ? "Registering…"
-                : "Saving…"
-              : mode === "create"
-                ? "Register and issue badge"
-                : "Save changes"}
+              ? t(mode === "create" ? "form.registering" : "form.saving")
+              : t(mode === "create" ? "form.register" : "form.save")}
           </button>
 
           <Link
             href={cancelHref}
             className="btn btn-ghost"
           >
-            Cancel
+            {t("purge.cancel")}
           </Link>
         </div>
       </div>
@@ -243,8 +257,8 @@ export function VisitorForm({
         <div className="mt-2">
           <BadgeCard
             visitor={{
-              full_name: fullName || "Full name",
-              country: country || "Country",
+              full_name: fullName || t("form.fullName"),
+              country: country || t("form.country"),
               organization,
               badge_serial: badgeSerial ?? PENDING_SERIAL,
               photo: previewUrl ?? existingPhotoUrl ?? "",
@@ -257,8 +271,8 @@ export function VisitorForm({
         </div>
         <p className="mt-2 text-xs text-ink-3">
           {mode === "create"
-            ? "The serial is assigned when you register. The QR is generated at the same moment and never changes afterwards."
-            : "Editing details does not reissue the badge. The serial and the QR code stay exactly as printed."}
+            ? t("form.noteCreate")
+            : t("form.noteEdit")}
         </p>
       </div>
     </form>
