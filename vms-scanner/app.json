@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "vms-scanner",
+    "slug": "vms-scanner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/brand/drcc-event.png",
+    "scheme": "vmsscanner",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B1016",
+    "ios": {
+      "icon": "./assets/images/brand/drcc-event.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/brand/drcc-event.png",
+        "backgroundImage": "./assets/images/brand/drcc-event.png",
+        "monochromeImage": "./assets/images/brand/drcc-event.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "package": "com.juliao125.vmsscanner"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/brand/drcc-event.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B1016",
+          "image": "./assets/images/brand/drcc-event.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#0B1016",
+            "image": "./assets/images/brand/drcc-event.png"
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "The scanner uses the camera to read visitor badge QR codes at the door.",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-secure-store",
+      "expo-audio",
+      "expo-sqlite",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0050c481-a092-432b-8430-547560bdb1d3"
+      }
+    }
+  }
+}
