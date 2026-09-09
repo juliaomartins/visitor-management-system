@@ -1,0 +1,271 @@
+"use client";
+
+import {
+  createContext,
+  Fragment,
+  useCallback,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+
+import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
+  localeMeta,
+  translate,
+  type Locale,
+  type MessageKey,
+} from "@/lib/locales";
+
+/**
+ * The active language, and the hook every screen reads it through.
+ *
+ * WHY THIS IS NOT SHAPED LIKE `lib/theme.ts`. The theme is a class name: the
+ * server can render light, a pre-paint script can flip it, and nothing about
+ * the markup changes. A language changes the markup itself. If the server
+ * guessed English and the browser wanted Tetum, React would hydrate over a full
+ * page of the wrong words, report a mismatch, and the desk would watch the
+ * interface change language a beat after every navigation.
+ *
+ * So the locale is read from a cookie by the root layout — a server component —
+ * and handed down as `initial`. The first byte the browser receives is already
+ * in the right language. The store below exists only so that CHANGING the
+ * language re-renders without a round trip.
+ */
+const listeners = new Set<() => void>();
+
+/** Null until someone switches. Until then the server's value is the truth. */
+let chosen: Locale | null = null;
+
+function subscribe(notify: () => void): () => void {
+  listeners.add(notify);
+  return () => {
+    listeners.delete(notify);
+  };
+}
+
+/**
+ * Switch language, and remember it.
+ *
+ * The cookie is what makes the next server render agree with this one. Setting
+ * `<html lang>` here matters for more than tidiness: it is what a screen reader
+ * consults to choose a voice, and a Tetum page announced by an English
+ * synthesiser is unusable rather than merely wrong.
+ */
+export function setLocale(next: Locale): void {
+  chosen = next;
+
+  try {
+    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
+  } catch {
+    // A browser refusing cookies still gets the language for this session; it
+    // simply reverts on the next full load. Failing the switch would be worse.
+  }
+
+  document.documentElement.lang = localeMeta(next).html;
+  for (const notify of listeners) notify();
+}
+
+const LocaleContext = createContext<Locale>(DEFAULT_LOCALE);
+
+export function LocaleProvider({
+  initial,
+  children,
+}: {
+  /** Read from the cookie by the server, so the first paint is correct. */
+  initial: Locale;
+  children: ReactNode;
+}) {
+  const locale = useSyncExternalStore(
+    subscribe,
+    () => chosen ?? initial,
+    () => initial,
+  );
+
+  return (
+    <LocaleContext.Provider value={locale}>{children}</LocaleContext.Provider>
+  );
+}
+
+export function useLocale(): Locale {
+  return useContext(LocaleContext);
+}
+
+/** The translator. `t("visitors.title")`, or `t("nav.silentDevices", { count })`. */
+export function useT(): (
+  key: MessageKey,
+  params?: Record<string, string | number>,
+) => string {
+  const locale = useLocale();
+  return useCallback(
+    (key, params) => translate(locale, key, params),
+    [locale],
+  );
+}
+
+/**
+ * A message with React nodes dropped into its placeholders.
+ *
+ * FOR SENTENCES THAT WRAP A VALUE IN MARKUP -- a badge serial set in mono, a
+ * name in bold -- where splitting the sentence into "before" and "after" halves
+ * would be wrong. English puts the serial in the middle; another language may
+ * put it first or last, and two fragments glued around a value can only ever
+ * produce English word order wearing a translation.
+ *
+ * So the whole sentence stays one translatable message with a `{serial}` in it,
+ * and this splits the TRANSLATED string on its placeholders. The value lands
+ * wherever that language put it.
+ *
+ *     rich("purge.typeToConfirm", { serial: <span className="mono">{s}</span> })
+ *
+ * Anything without a node supplied is left as written, so a stray placeholder
+ * shows up as `{whatever}` on screen rather than vanishing silently.
+ */
+export function useRichT(): (
+  key: MessageKey,
+  nodes: Record<string, ReactNode>,
+) => ReactNode {
+  const locale = useLocale();
+
+  return useCallback(
+    (key, nodes) => {
+      const message = translate(locale, key);
+      const parts = message.split(/(\{\w+\})/g);
+
+      return parts.map((part, index) => {
+        const name = /^\{(\w+)\}$/.exec(part)?.[1];
+        if (name && name in nodes) {
+          return <Fragment key={index}>{nodes[name]}</Fragment>;
+        }
+        return <Fragment key={index}>{part}</Fragment>;
+      });
+    },
+    [locale],
+  );
+}
+
+/**
+ * Dates and numbers in the active language.
+ *
+ * EVERY FORMAT IS NUMERIC, in all three languages. That is not laziness about
+ * month names — it is the only way Tetum can be formatted at all. No browser
+ * ships CLDR data for it, so Tetum borrows `pt-PT` (see `lib/locales/index.ts`),
+ * and a written-out month would come back in Portuguese inside an otherwise
+ * Tetum screen. Numeric also matches how Timor-Leste writes a date: 02/10/2026,
+ * and a 24-hour clock, which removes the AM/PM the old `dateStyle: "medium"`
+ * was producing.
+ *
+ * The one date that does NOT come through here is the "Registered" line on the
+ * badge preview. That mirrors what ReportLab prints on the physical card, which
+ * is English and fixed — the preview exists to show the card, so it has to lie
+ * about the language rather than about the print.
+ */
+export function useFormat() {
+  const locale = useLocale();
+
+  return useMemo(() => {
+    const tag = localeMeta(locale).intl;
+
+    const date = new Intl.DateTimeFormat(tag, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    const time = new Intl.DateTimeFormat(tag, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const dateTime = new Intl.DateTimeFormat(tag, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const number = new Intl.NumberFormat(tag);
+
+    /*
+      Elapsed time, from the platform rather than from a hand-rolled ladder.
+
+      The devices table used to build "5 min ago" and "2 hours ago" itself,
+      with its own singular/plural test. That is three languages' worth of
+      grammar to maintain by hand for something Intl already knows, and it was
+      going to be wrong in Tetun on the first day. `numeric: "always"` keeps it
+      literal -- "1 day ago" rather than "yesterday" -- because a door that has
+      been silent since yesterday is a fact, not a figure of speech.
+    */
+    const elapsed = new Intl.RelativeTimeFormat(tag, { numeric: "always" });
+
+    const parse = (value: string | number | Date) =>
+      value instanceof Date ? value : new Date(value);
+
+    return {
+      date: (value: string | number | Date) => date.format(parse(value)),
+      time: (value: string | number | Date) => time.format(parse(value)),
+      dateTime: (value: string | number | Date) => dateTime.format(parse(value)),
+      number: (value: number) => number.format(value),
+
+      /**
+       * "just now", "5 minutes ago", "2 days ago" -- in the reader's language.
+       *
+       * `now` is passed in rather than read here, so every row in a table
+       * measures against the same instant and the shared clock stays the one
+       * source of truth about what time it is.
+       */
+      relative: (value: string | number | Date, now: number) => {
+        const ms = now - parse(value).getTime();
+        if (ms < 45_000) return translate(locale, "time.justNow");
+
+        const minutes = Math.round(ms / 60_000);
+        if (minutes < 60) return elapsed.format(-minutes, "minute");
+
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) return elapsed.format(-hours, "hour");
+
+        return elapsed.format(-Math.round(hours / 24), "day");
+      },
+    };
+  }, [locale]);
+}
+
+/**
+ * Turn a thrown error into something a registrar can read.
+ *
+ * ERRORS ARE THROWN OUTSIDE REACT, so the data layer cannot call `useT`. It
+ * attaches a `key` instead and this resolves it at the point of display, which
+ * is the only place that knows the current language.
+ *
+ * The shape is matched structurally rather than by importing `ApiError`, so the
+ * translation layer does not have to depend on the visitor data module — and so
+ * a second error class elsewhere works here without being taught to.
+ *
+ * A `key` is present only on messages the dashboard wrote. Anything the BACKEND
+ * sent arrives as plain `message` and is shown as it came: Django is not
+ * translated, and inventing a Tetun sentence for a server error we did not
+ * write would be a guess about what went wrong.
+ */
+export function useErrorText(): (
+  error: unknown,
+  fallback?: MessageKey,
+) => string {
+  const t = useT();
+
+  return useCallback(
+    (error, fallback = "error.unexpected") => {
+      if (error && typeof error === "object") {
+        const carrier = error as { key?: MessageKey; message?: unknown };
+        if (carrier.key) return t(carrier.key);
+        if (typeof carrier.message === "string" && carrier.message.trim()) {
+          return carrier.message;
+        }
+      }
+      return t(fallback);
+    },
+    [t],
+  );
+}

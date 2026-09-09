@@ -1,0 +1,567 @@
+@import "tailwindcss";
+@import "react-image-crop/dist/ReactCrop.css";
+
+/* Class-based, not `prefers-color-scheme`: the registration desk chooses,
+   and the choice has to survive a laptop whose OS theme flips at sunset. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * A LIGHT CONSOLE WITH A COLLAPSIBLE RAIL.
+ *
+ * White surfaces on a faint grey ground, hairline borders, 14px corners. The
+ * chrome recedes so the data does not have to compete with it.
+ *
+ * Blue is the product: navigation state, the arrivals curve, the primary action.
+ * It is never a status, so a blue chart and a coloured status pill can share a
+ * screen without arguing.
+ *
+ * STATUS COLOURS ARE VALIDATED, NOT CHOSEN BY EYE. The three chromatic outcomes
+ * were run through the palette validator against this white surface and pass the
+ * lightness band, the chroma floor, adjacent-pair CVD separation and the
+ * normal-vision floor (worst pair ΔE 19.2 normal / 8.3 protan):
+ *
+ *     valid   #059669   duplicate  #94a3b8   revoked #ca8a04   invalid #dc2626
+ *
+ * `#94a3b8` is a DECLARED NEUTRAL, not a fourth identity — a duplicate is
+ * somebody already inside coming back through a door, which is not a verdict.
+ * It sits deliberately below the chroma floor so it reads as absence of colour.
+ *
+ * Amber warns at 2.86:1 against white, which obligates relief: every status in
+ * this app is shown with its word, and the reports page is the table view. Never
+ * ship one of these as colour alone.
+ */
+@theme {
+  /*
+    THE EVENT PALETTE, TAKEN FROM THE ARTWORK RATHER THAN GUESSED.
+
+    Sampled from the event PIN (DRCC-logo.png), which the design brief supplies
+    "for colour reference only, to guide the design and colour selection". These
+    four are the pin's own inks and nothing here is a designer's approximation:
+
+        red #CC0000   gold #FCB400   green #006C30   blue #00309C
+
+    They are print colours, and three of them cannot be used unchanged in both
+    themes -- measured against each ground:
+
+        blue    11.0 on white   1.7 on the dark ground   invisible on dark
+        green    6.6 on white   2.9 on the dark ground   invisible on dark
+        gold     1.8 on white  10.6 on the dark ground   invisible on white
+
+    So each hue keeps its hue and saturation and moves only in lightness, by the
+    smallest step that clears 4.5:1 against the ground it sits on. Where the print
+    colour already clears it, it is used untouched -- red, green and blue in light
+    mode, gold in dark mode.
+  */
+  /*
+    Guides drawn ON TOP OF a photograph, not on an app surface.
+
+    Every other colour here flips with the theme because it sits on `ground` or
+    `card`. This one sits on whatever the visitor's photo happens to be, so a
+    token that goes dark in dark mode would make the crop guides vanish against
+    a dark suit. It is a var so the component holds no hex, and it is the same
+    value in both themes on purpose.
+  */
+  --color-overlay-guide: #ffffff;
+
+  --color-brand-red: #cc0000;
+  --color-brand-gold: #fcb400;
+  --color-brand-green: #006c30;
+  --color-brand-blue: #00309c;
+  --color-brand-ink: #000000;
+
+  --color-ground: #f7f8fa;
+  --color-card: #ffffff;
+  --color-card-2: #f7f8fa;
+  --color-paper: #f7f8fa;
+
+  --color-line: #e6e8ee;
+  --color-line-strong: #d6dae3;
+
+  --color-ink: #0b1016;
+  --color-ink-2: #4a5560;
+  --color-ink-3: #8a94a0;
+
+  /*
+    THE GRAPHITE RAMP IS A PLATE, NOT AN INK RAMP, AND IT NEVER INVERTS.
+
+    Every single use of it in this app is a `bg-` -- thirteen of them: the
+    pairing-code panel, the sidebar tooltip, every confirm dialog, both chart
+    tooltips, the badge preview. Not one uses it as text. It exists to put a
+    dark plate with light type on top of whatever the page is doing.
+
+    That is why it must not flip with the theme. An earlier dark mode inverted
+    it, on the reasonable-sounding logic that a "950" should be the darkest
+    value available -- which turned all thirteen plates white while their text
+    stayed `#fff`, so the pairing code, the nav tooltips and every dialog went
+    invisible at once.
+
+    `graphite-500` is the small print ON that plate and was 4.1:1 here, under
+    the 4.5 floor. Lifted to #707c8b, measured at 4.50:1.
+  */
+  --color-graphite-950: #0b1016;
+  --color-graphite-900: #141b24;
+  --color-graphite-800: #1f2833;
+  --color-graphite-700: #2e3a47;
+  --color-graphite-500: #707c8b;
+  --color-graphite-300: #b6bcc7;
+
+  /*
+    The product hue is now the pin's blue. Navigation state, the arrivals curve,
+    the primary action. It is never a status, so a blue chart and a coloured
+    status pill can share a screen without arguing.
+  */
+  --color-accent: #00309c;
+  --color-accent-2: #0a45c4;
+  --color-accent-soft: #e5eaf5;
+
+  /*
+    STATUS COLOURS ARE STILL VALIDATED, and the brand did not get a free pass.
+    The quartet below was re-run through dichromat simulation in Lab. Worst pair
+    is valid/revoked at dE 12.5 protan and 32.8 deutan, against a floor of 10 --
+    better than the set it replaces, which sat at 17.5 deutan.
+
+    THE ONE TRAP: gold as *text* does not survive that check. Dark gold ink and
+    the brand red land within dE 3.2 under deuteranopia -- indistinguishable. Gold
+    only stays separable as a light FILL, where the lightness gap carries it, and
+    lightness is what dichromacy preserves. Hence two tokens: `vip` is the ink for
+    text, `vip-fill` is the pill. Never put `text-vip` next to `text-revoked` as
+    the only difference between two rows.
+
+    Every status in this app is also shown with its word, and the reports page is
+    the table view. Never ship one of these as colour alone.
+  */
+  --color-valid: #006c30;
+  --color-valid-soft: #e0ede6;
+  --color-vip: #8a6200;
+  --color-vip-fill: #fcb400;
+  --color-vip-soft: #f7eeda;
+  --color-revoked: #cc0000;
+  --color-revoked-soft: #f9e0e0;
+  --color-neutral-mark: #8a94a0;
+
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-card: 0.9rem;
+}
+
+/*
+  DARK MODE IS A TOKEN SWAP, NOT A SECOND STYLESHEET.
+
+  Every utility in this app resolves through `var(--color-*)`, so redefining the
+  variables under `.dark` re-themes the entire console without touching a single
+  component. A `dark:` class on every element would be several hundred edits and
+  a permanent tax on every new component -- and it drifts the moment somebody
+  forgets one.
+
+  The chromatic tokens are not simply inverted. They are the same four brand hues
+  re-solved against the dark ground: the pin's blue and green are unreadable there
+  and lift to #3372ff and #008f3f, while gold finally gets to be the pin's own
+  #fcb400 because on a dark field it reads at 10.6:1.
+*/
+.dark {
+  --color-ground: #0b1016;
+  --color-card: #141b24;
+  --color-card-2: #1a222c;
+  --color-paper: #0f151c;
+
+  --color-line: #26313f;
+  --color-line-strong: #33404f;
+
+  --color-ink: #f4f8fb;
+  --color-ink-2: #a8b6c4;
+  --color-ink-3: #75838f;
+
+  /*
+    Still a dark plate -- just lifted off the dark page so it reads as raised.
+
+    #243043 measures 1.44:1 against the page and 1.30:1 against a card, which is
+    enough to see an edge, while white on it is 13.3:1 and graphite-300 is 7.0:1.
+    graphite-500 needs its own value here: #6b7684 falls to 2.9:1 on this plate,
+    so the small print lifts to #8e98a4 at 4.54:1.
+  */
+  --color-graphite-950: #243043;
+  --color-graphite-900: #2c3a4d;
+  --color-graphite-800: #35455a;
+  --color-graphite-700: #46586f;
+  --color-graphite-500: #8e98a4;
+  --color-graphite-300: #c3ccd8;
+
+  --color-accent: #3372ff;
+  --color-accent-2: #6d9bff;
+  --color-accent-soft: #16233d;
+
+  --color-valid: #008f3f;
+  --color-valid-soft: #0c2a1b;
+  --color-vip: #fcb400;
+  --color-vip-fill: #fcb400;
+  --color-vip-soft: #33290d;
+  --color-revoked: #f24141;
+  --color-revoked-soft: #331416;
+  --color-neutral-mark: #8a94a0;
+}
+
+/* The browser's own widgets -- scrollbars, form controls, the caret -- follow
+   the theme too, or a dark console gets a white scrollbar down its edge. */
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings and the big numbers. Plus Jakarta is a touch warmer than the UI face,
+   which is the whole reason it is here — a figure should feel spoken, not typed. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ---------------------------------------------------------------- shapes -- */
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    opacity 140ms ease;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-ghost {
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-card);
+  color: var(--color-ink-2);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-ink-3);
+  color: var(--color-ink);
+}
+
+.btn-danger {
+  background: var(--color-revoked);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 0.6rem;
+  background: var(--color-card);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.field:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+  outline: none;
+}
+
+.field::placeholder {
+  color: var(--color-ink-3);
+}
+
+/* Every status in this app wears one of these, and every one carries a word. */
+.pill-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------- the rail & tips -- */
+
+/*
+ * Collapsed, the rail is icons only, so each one needs a label on hover.
+ *
+ * POSITION: FIXED, NOT ABSOLUTE. The nav is an `overflow-y: auto` scroll
+ * container, and an absolutely positioned tip anchored past its right edge is
+ * both clipped by it and counted into its scrollable area — so the rail grew a
+ * horizontal scrollbar of its own even while every tip was invisible. Opacity
+ * does not remove anything from layout.
+ *
+ * Fixed elements are laid out against the viewport and are not clipped by, nor
+ * counted into, an ancestor's overflow. Nothing here creates a containing block
+ * that would break that: the rail is `sticky`, and a width transition is not a
+ * transform.
+ *
+ * Only one tip exists at a time and it is placed from the anchor's measured
+ * rectangle, so it cannot be wrong about where the icon is.
+ */
+.nav-tip {
+  position: fixed;
+  z-index: 80;
+  translate: 0 -50%;
+  border-radius: 0.5rem;
+  background: var(--color-graphite-950);
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: tip-in 120ms ease-out;
+}
+
+.nav-tip::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  translate: 0 -50%;
+  border: 5px solid transparent;
+  border-right-color: var(--color-graphite-950);
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    translate: -0.25rem -50%;
+  }
+  to {
+    opacity: 1;
+    translate: 0 -50%;
+  }
+}
+
+/* ------------------------------------------------------------ signature -- */
+
+/*
+ * THE CR80 CARD — PORTRAIT, 54 × 85.6 mm.
+ *
+ * Everything this system does produces or checks this rectangle, so it is a
+ * primary object in the interface rather than a motif sprinkled on top. Portrait
+ * because that is how a badge hangs: a lanyard holds a card by a slot in its
+ * short edge. Same blank as before, stood on its end.
+ *
+ * True aspect, always — a card drawn at the wrong proportion lies about what will
+ * come out of the printer. Internals are sized in cqw, a percentage of the card's
+ * own width, so one component serves a small tile and a large hero from one set
+ * of rules. These figures are the PDF's millimetres over 54 mm.
+ */
+.cr80 {
+  aspect-ratio: 54 / 85.6;
+  container-type: inline-size;
+}
+
+/* 19 mm photo inside a 21.2 mm ring. */
+/* 11 pt ≈ 3.9 mm. */
+.cr80-name {
+  font-size: 7.2cqw;
+  line-height: 1.1;
+}
+
+.cr80-role {
+  font-size: 5cqw;
+}
+
+.cr80-field {
+  font-size: 4.4cqw;
+  line-height: 1.6;
+}
+
+.cr80-serial {
+  font-size: 5.6cqw;
+}
+
+/* 14 mm QR. */
+.cr80-qr {
+  width: 26cqw;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+/*
+ * The interim badge, printed from the browser until the PDF is fetched.
+ *
+ * `#badge-print` is parked off-screen rather than `display: none`, so the browser
+ * actually loads the visitor's photo — a hidden image is often never fetched, and
+ * a badge that prints with a blank photo is worse than no badge.
+ */
+#badge-print {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+}
+
+@media print {
+  @page {
+    size: 54mm 85.6mm;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #badge-print,
+  #badge-print * {
+    visibility: visible;
+  }
+
+  #badge-print {
+    position: fixed;
+    inset: 0;
+    left: 0;
+    /* Keep the VIP band and rules; a printer dropping backgrounds would strip
+       the one thing that distinguishes a VIP card across a room. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+
+/*
+  react-image-crop, themed.
+
+  The package ships a stylesheet with its colours hardcoded -- `#ffffffb3` for
+  borders, `#08f` for focus, `#0003` for handles, and an SVG mask filled `black`
+  from JavaScript. None of that survives a dark console, so every one of them is
+  re-pointed at a token here. The library exposes four of the five as CSS custom
+  properties, which is why this is short.
+*/
+.vms-crop {
+  --rc-drag-handle-size: 12px;
+  --rc-drag-handle-mobile-size: 24px;
+  --rc-drag-handle-bg-colour: var(--color-card);
+  --rc-border-color: var(--color-overlay-guide);
+  --rc-focus-color: var(--color-accent);
+}
+
+/* The dimming outside the crop. Drawn as an SVG with `fill="black"` set as a
+   presentation attribute, which a CSS rule outranks. */
+.vms-crop .ReactCrop__crop-mask * {
+  fill: var(--color-graphite-950);
+}
+
+/*
+  The selection outline.
+
+  The default is an animated "marching ants" gradient built from #fff and #444.
+  Replacing it with a flat token outline drops the last two hardcoded colours AND
+  removes an infinite animation that would otherwise run the whole time the
+  dialog is open -- which is the wrong thing to put in front of somebody with a
+  queue, and the wrong thing to ignore `prefers-reduced-motion` about.
+*/
+.vms-crop .ReactCrop__crop-selection {
+  background-image: none;
+  animation: none;
+  outline: 2px solid var(--color-overlay-guide);
+  outline-offset: -1px;
+}
+
+.vms-crop .ReactCrop__rule-of-thirds-vt::before,
+.vms-crop .ReactCrop__rule-of-thirds-vt::after,
+.vms-crop .ReactCrop__rule-of-thirds-hz::before,
+.vms-crop .ReactCrop__rule-of-thirds-hz::after {
+  background-color: color-mix(in srgb, var(--color-overlay-guide) 45%, transparent);
+}
+
+.vms-crop .ReactCrop__drag-handle {
+  border-radius: 2px;
+  border-color: var(--color-overlay-guide);
+}
+
+/*
+  A 44px touch target behind a 12px handle.
+
+  The visible square stays small because a large one hides the very edge it is
+  positioning. The pseudo-element carries the hit area instead, so a finger gets
+  the 44px the platform guidelines ask for without the corner of the crop box
+  disappearing under it.
+*/
+.vms-crop .ReactCrop__drag-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
