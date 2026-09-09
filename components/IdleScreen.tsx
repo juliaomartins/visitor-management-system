@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { EventMark, Organisers } from "@/components/Brand";
 
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +23,7 @@ import { gsap, particleBudget, prefersReducedMotion, useGSAP } from "@/lib/gsap"
  * the panel burning in: every bright element moves.
  */
 export function IdleScreen({ waiting }: { waiting: boolean }) {
+  const t = useT();
   const [now, setNow] = useState<Date | null>(null);
   const root = useRef<HTMLDivElement | null>(null);
 
@@ -74,7 +76,7 @@ export function IdleScreen({ waiting }: { waiting: boolean }) {
         <SecondsBar seconds={seconds} />
 
         <p className="mt-[3vh] text-center text-[clamp(0.9rem,1.6vw,1.6rem)] font-medium tracking-[0.3em] text-ink-faint uppercase">
-          {waiting ? "Waiting for arrivals" : "Welcome"}
+          {t(waiting ? "idle.waiting" : "welcome.greeting")}
         </p>
 
         {date ? (
