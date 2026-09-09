@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormat, useT } from "@/lib/i18n";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { FitText } from "@/components/FitText";
@@ -91,6 +92,8 @@ function QueueRow({
   position: number;
   name: { max: number; min: number };
 }) {
+  const t = useT();
+  const format = useFormat();
   const vip = event.category === "vip";
 
   return (
@@ -132,7 +135,9 @@ function QueueRow({
           }`}
         >
           {vip ? "VIP · " : ""}
-          {position === 0 ? "Next" : `${position + 1}${ordinal(position + 1)}`}
+          {position === 0
+            ? t("queue.next")
+            : format.ordinal(position + 1)}
         </p>
 
         {/*
@@ -172,7 +177,11 @@ function QueueRow({
   );
 }
 
-function ordinal(n: number): string {
-  if (n % 100 >= 11 && n % 100 <= 13) return "th";
-  return ["th", "st", "nd", "rd"][n % 10] ?? "th";
-}
+/*
+  THE st/nd/rd/th TABLE HAS MOVED AND CHANGED SHAPE.
+
+  It was correct English and wrong everywhere else: Portuguese writes 2.\u00ba,
+  and Tetun does not mark an ordinal on the numeral at all. `ordinal` in
+  lib/locales asks Intl.PluralRules for the English rule and gives the other two
+  their own.
+*/
