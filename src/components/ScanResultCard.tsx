@@ -15,6 +15,8 @@
  * backend's MEDIA_BASE_URL, so it must point at the server's LAN address, not
  * localhost, or the phone will try to load it from itself.
  */
+import { useT } from "@/i18n";
+import type { MessageKey } from "@/locales";
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -23,8 +25,14 @@ import type { CachedVisitor } from "@/storage/queue";
 import { colors, HIT_SIZE, radius, spacing } from "@/theme";
 
 type Verdict = {
-  headline: string;
-  detail: string;
+  /*
+    KEYS, NOT WORDS. VERDICTS is a module constant built before any translator
+    exists, and these three words are the ones a guard reads at arm's length in
+    a doorway -- so they resolve at render, in whatever language the phone is
+    set to, rather than being baked in at module load.
+  */
+  headlineKey: MessageKey;
+  detailKey: MessageKey;
   background: string;
   ink: string;
   /** True when the guard must acknowledge before the camera resumes. */
@@ -33,29 +41,29 @@ type Verdict = {
 
 const VERDICTS: Record<ScanResult, Verdict> = {
   valid: {
-    headline: "Welcome",
-    detail: "Badge is valid",
+    headlineKey: "verdict.valid.headline",
+    detailKey: "verdict.valid.detail",
     background: colors.valid,
     ink: "#04140C",
     blocking: false,
   },
   invalid: {
-    headline: "Not a valid badge",
-    detail: "This QR code is not from this event",
+    headlineKey: "verdict.invalid.headline",
+    detailKey: "verdict.invalid.detail",
     background: colors.invalid,
     ink: "#FFFFFF",
     blocking: true,
   },
   revoked: {
-    headline: "Badge revoked",
-    detail: "Do not admit. Send them to the registration desk",
+    headlineKey: "verdict.revoked.headline",
+    detailKey: "verdict.revoked.detail",
     background: colors.revoked,
     ink: "#1A1000",
     blocking: true,
   },
   duplicate: {
-    headline: "Already scanned",
-    detail: "Same badge within the last minute",
+    headlineKey: "verdict.duplicate.headline",
+    detailKey: "verdict.duplicate.detail",
     background: colors.surfaceRaised,
     ink: colors.text,
     blocking: false,
@@ -81,6 +89,7 @@ export function ScanResultCard({
   response: ScanResponse;
   onDismiss: () => void;
 }) {
+  const t = useT();
   const verdict = VERDICTS[response.result];
   const visitor = response.visitor;
 
@@ -88,14 +97,18 @@ export function ScanResultCard({
     <Pressable
       onPress={onDismiss}
       accessibilityRole="button"
-      accessibilityLabel={`${verdict.headline}. ${visitor?.full_name ?? ""}. Tap to continue.`}
+      accessibilityLabel={`${t(verdict.headlineKey)}. ${
+        visitor?.full_name ?? ""
+      }. ${t("verdict.tapContinue")}`}
       style={[styles.fill, { backgroundColor: verdict.background }]}
     >
       <View style={styles.body}>
         <Text style={[styles.headline, { color: verdict.ink }]}>
-          {verdict.headline}
+          {t(verdict.headlineKey)}
         </Text>
-        <Text style={[styles.detail, { color: verdict.ink }]}>{verdict.detail}</Text>
+        <Text style={[styles.detail, { color: verdict.ink }]}>
+          {t(verdict.detailKey)}
+        </Text>
 
         {visitor ? (
           <View style={styles.visitor}>
@@ -109,7 +122,9 @@ export function ScanResultCard({
                   // congested event router.
                   cachePolicy="memory-disk"
                   transition={120}
-                  accessibilityLabel={`Badge photo of ${visitor.full_name}`}
+                  accessibilityLabel={t("verdict.badgePhoto", {
+                    name: visitor.full_name,
+                  })}
                 />
               ) : (
                 // A photo is required at registration, so this is the defensive
@@ -153,7 +168,9 @@ export function ScanResultCard({
       </View>
 
       <Text style={[styles.dismiss, { color: verdict.ink }]}>
-        {verdict.blocking ? "Tap to continue" : "Tap to scan the next badge"}
+        {t(
+          verdict.blocking ? "verdict.tapContinue" : "verdict.tapNext",
+        )}
       </Text>
     </Pressable>
   );
@@ -182,11 +199,14 @@ export function ScanQueuedCard({
   scannedAt: Date;
   onDismiss: () => void;
 }) {
+  const t = useT();
   return (
     <Pressable
       onPress={onDismiss}
       accessibilityRole="button"
-      accessibilityLabel={`Queued, not verified. ${visitor?.fullName ?? "Unknown badge"}. Tap to continue.`}
+      accessibilityLabel={t("verdict.queued", {
+        name: visitor?.fullName ?? t("verdict.unknownBadge"),
+      })}
       style={[styles.fill, styles.queuedFill]}
     >
       <View style={styles.body}>
@@ -206,7 +226,9 @@ export function ScanQueuedCard({
                     contentFit="cover"
                     cachePolicy="memory-disk"
                     transition={120}
-                    accessibilityLabel={`Badge photo of ${visitor.fullName}`}
+                    accessibilityLabel={t("verdict.badgePhoto", {
+                      name: visitor.fullName,
+                    })}
                   />
                 ) : (
                   <Text style={[styles.initials, { color: colors.text }]}>
