@@ -9,6 +9,8 @@ import { createPortal } from "react-dom";
 import { EventMark } from "@/components/brand";
 import { logout } from "@/lib/auth";
 import { isSilent, useDevices, useNow } from "@/lib/devices";
+import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
 
 /**
  * The rail, grouped by what someone is trying to do.
@@ -128,55 +130,62 @@ function useNavTip(enabled: boolean) {
   return { tip, show, hide };
 }
 
+/*
+  The rail holds MESSAGE KEYS, not words.
+
+  It is a module-level constant, so it is built once, before any component has a
+  translator to call. Storing keys keeps it that way and moves the lookup to the
+  render, which is also the only place that knows the current language.
+*/
 type Item = {
   href: string;
-  label: string;
-  hint: string;
+  labelKey: MessageKey;
+  hintKey: MessageKey;
   icon: (props: { className?: string }) => React.ReactElement;
 };
 
-const GROUPS: { heading: string; items: Item[] }[] = [
+const GROUPS: { headingKey: MessageKey; items: Item[] }[] = [
   {
-    heading: "Overview",
+    headingKey: "nav.group.overview",
     items: [
       {
         href: "/dashboard",
-        label: "Dashboard",
-        hint: "Arrivals and door health",
+        labelKey: "nav.dashboard",
+        hintKey: "nav.dashboard.hint",
         icon: IconGrid,
       },
     ],
   },
   {
-    heading: "Accreditation",
+    headingKey: "nav.group.accreditation",
     items: [
       {
         href: "/visitors",
-        label: "Visitors",
-        hint: "Register and issue badges",
+        labelKey: "nav.visitors",
+        hintKey: "nav.visitors.hint",
         icon: IconPeople,
       },
       {
         href: "/badges",
-        label: "Badges",
-        hint: "Print queue",
+        labelKey: "nav.badges",
+        hintKey: "nav.badges.hint",
         icon: IconCard,
       },
     ],
   },
   {
-    heading: "Operations",
+    headingKey: "nav.group.operations",
     items: [
       {
         href: "/devices",
-        label: "Devices",
-        hint: "Doors and screens",
+        labelKey: "nav.devices",
+        hintKey: "nav.devices.hint",
         icon: IconDevice,
       },
       {
         href: "/reports",
-        label: "Reports",
-        hint: "Entrance log",
+        labelKey: "nav.reports",
+        hintKey: "nav.reports.hint",
         icon: IconChart,
       },
     ],
@@ -186,6 +195,7 @@ const GROUPS: { heading: string; items: Item[] }[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useT();
   const collapsed = useSyncExternalStore(
     subscribe,
     getSnapshot,
@@ -234,14 +244,17 @@ export function Sidebar() {
         <EventMark size={collapsed ? 32 : 34} showText={!collapsed} />
       </div>
 
-      <nav aria-label="Sections" className="flex-1 overflow-y-auto px-2.5 py-4">
+      <nav
+        aria-label={t("nav.sections")}
+        className="flex-1 overflow-y-auto px-2.5 py-4"
+      >
         {GROUPS.map((group) => (
-          <div key={group.heading} className="mb-5 last:mb-0">
+          <div key={group.headingKey} className="mb-5 last:mb-0">
             {collapsed ? (
               <div aria-hidden className="mx-auto mb-2 h-px w-6 bg-line" />
             ) : (
               <p className="mb-1.5 px-2.5 text-[11px] font-medium tracking-wide text-ink-3">
-                {group.heading}
+                {t(group.headingKey)}
               </p>
             )}
 
@@ -250,20 +263,20 @@ export function Sidebar() {
                 const active = pathname.startsWith(item.href);
                 const alert = item.href === "/devices" && silent > 0;
                 const Icon = item.icon;
+                const label = t(item.labelKey);
+                const hint = t(item.hintKey);
 
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       aria-current={active ? "page" : undefined}
-                      title={collapsed ? undefined : item.hint}
+                      title={collapsed ? undefined : hint}
                       onPointerEnter={(event) =>
-                        show(event.currentTarget, item.label, item.hint)
+                        show(event.currentTarget, label, hint)
                       }
                       onPointerLeave={hide}
-                      onFocus={(event) =>
-                        show(event.currentTarget, item.label, item.hint)
-                      }
+                      onFocus={(event) => show(event.currentTarget, label, hint)}
                       onBlur={hide}
                       className={`relative flex items-center gap-2.5 rounded-lg py-2.5 transition-colors ${
                         collapsed ? "justify-center px-0" : "px-2.5"
@@ -290,13 +303,13 @@ export function Sidebar() {
                             : "min-w-0 flex-1 truncate text-[0.875rem] font-medium"
                         }
                       >
-                        {item.label}
+                        {label}
                       </span>
 
                       {alert && !collapsed ? (
                         <span
                           className="animate-pulse-dot h-2 w-2 shrink-0 rounded-full bg-vip"
-                          aria-label={`${silent} device not checked in recently`}
+                          aria-label={t("nav.silentDevices", { count: silent })}
                         />
                       ) : null}
                     </Link>
@@ -313,10 +326,12 @@ export function Sidebar() {
           type="button"
           onClick={toggle}
           aria-pressed={collapsed}
-          aria-label={collapsed ? "Expand menu" : "Collapse menu"}
-          onPointerEnter={(event) => show(event.currentTarget, "Expand menu")}
+          aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
+          onPointerEnter={(event) =>
+            show(event.currentTarget, t("nav.expand"))
+          }
           onPointerLeave={hide}
-          onFocus={(event) => show(event.currentTarget, "Expand menu")}
+          onFocus={(event) => show(event.currentTarget, t("nav.expand"))}
           onBlur={hide}
           className={`relative mb-1 flex w-full items-center gap-2.5 rounded-lg py-2.5 text-ink-2 transition-colors hover:bg-card-2 hover:text-ink ${
             collapsed ? "justify-center px-0" : "px-2.5"
@@ -328,7 +343,9 @@ export function Sidebar() {
             }`}
           />
           {collapsed ? null : (
-            <span className="text-[0.875rem] font-medium">Collapse menu</span>
+            <span className="text-[0.875rem] font-medium">
+              {t("nav.collapse")}
+            </span>
           )}
         </button>
 
@@ -336,10 +353,12 @@ export function Sidebar() {
           type="button"
           onClick={handleSignOut}
           disabled={signingOut}
-          aria-label="Sign out"
-          onPointerEnter={(event) => show(event.currentTarget, "Sign out")}
+          aria-label={t("nav.signOut")}
+          onPointerEnter={(event) =>
+            show(event.currentTarget, t("nav.signOut"))
+          }
           onPointerLeave={hide}
-          onFocus={(event) => show(event.currentTarget, "Sign out")}
+          onFocus={(event) => show(event.currentTarget, t("nav.signOut"))}
           onBlur={hide}
           className={`relative flex w-full items-center gap-2.5 rounded-lg py-2.5 text-ink-2 transition-colors hover:bg-card-2 hover:text-ink disabled:opacity-60 ${
             collapsed ? "justify-center px-0" : "px-2.5"
@@ -348,7 +367,7 @@ export function Sidebar() {
           <IconExit className="h-[1.15rem] w-[1.15rem] shrink-0" />
           {collapsed ? null : (
             <span className="text-[0.875rem] font-medium">
-              {signingOut ? "Signing out…" : "Sign out"}
+              {signingOut ? t("nav.signingOut") : t("nav.signOut")}
             </span>
           )}
         </button>
