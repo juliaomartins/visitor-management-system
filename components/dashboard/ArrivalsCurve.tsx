@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { useMemo, useRef, useState } from "react";
 
 import type { HourBucket } from "@/lib/reports";
@@ -27,6 +28,7 @@ const PAD_R = 40;
 const PAD_L = 8;
 
 export function ArrivalsCurve({ buckets }: { buckets: HourBucket[] }) {
+  const t = useT();
   const [hovered, setHovered] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -56,7 +58,7 @@ export function ArrivalsCurve({ buckets }: { buckets: HourBucket[] }) {
   if (columns.length === 0) {
     return (
       <p className="px-6 py-16 text-center text-sm text-ink-3">
-        No scans in this range, so there is nothing to plot.
+        {t("chart.noScans")}
       </p>
     );
   }
