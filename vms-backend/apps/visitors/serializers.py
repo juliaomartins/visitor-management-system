@@ -8,8 +8,11 @@ from .models import Visitor
 class VisitorSerializer(serializers.ModelSerializer):
     """`token_hash` is deliberately absent — it never leaves the database.
 
-    `is_active` is read-only: a badge is killed through `POST /visitors/{id}/revoke`
-    so the action lands in the audit log as a revocation, not as a field edit.
+    `is_active` is read-only: it is switched through `POST /visitors/{id}/activate`
+    and `/deactivate` so each change lands in the audit log as a named action
+    rather than as an anonymous field edit buried in a PATCH of four other
+    fields. Neither one touches the badge token, so the printed card keeps
+    working across the whole cycle.
     """
 
     class Meta:
@@ -52,9 +55,26 @@ class VisitorIssuedSerializer(VisitorSerializer):
 
 
 class VisitorDetailSerializer(VisitorSerializer):
-    """`GET /visitors/{id}` — the registration plus every scan it produced."""
+    """`GET /visitors/{id}` — the registration, its scans, and its badge token.
+
+    `badge_token` is here because the token is derived rather than random: the
+    same value is on the printed card and can be recomputed at any time, so the
+    dashboard can show a working QR for a visitor registered last week.
+
+    ADMIN-ONLY, AND DETAIL-ONLY. It is a working credential, so it is deliberately
+    absent from the list endpoint — one request should not hand back 250 usable
+    badges.
+    """
 
     scan_events = ScanEventSerializer(many=True, read_only=True)
+    badge_token = serializers.SerializerMethodField(
+        help_text="Raw badge token for the QR code. Stable for the life of the badge."
+    )
 
     class Meta(VisitorSerializer.Meta):
-        fields = [*VisitorSerializer.Meta.fields, "scan_events"]
+        fields = [*VisitorSerializer.Meta.fields, "scan_events", "badge_token"]
+
+    def get_badge_token(self, visitor: Visitor) -> str:
+        from .services import badge_token
+
+        return badge_token(visitor)
