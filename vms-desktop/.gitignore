@@ -1,0 +1,8 @@
+# PyInstaller output. The executable is a build artefact, not source: it is
+# ~200MB of Qt and is rebuilt from the .spec in one command.
+build/
+dist/
+*.manifest
+
+__pycache__/
+*.pyc
