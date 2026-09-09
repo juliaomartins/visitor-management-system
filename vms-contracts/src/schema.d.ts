@@ -443,7 +443,7 @@ export interface paths {
         get: operations["visitors_retrieve"];
         put?: never;
         post?: never;
-        /** Soft-delete a visitor (also revokes the badge) */
+        /** Soft-delete a visitor (also deactivates the badge) */
         delete: operations["visitors_destroy"];
         options?: never;
         head?: never;
@@ -451,7 +451,7 @@ export interface paths {
         patch: operations["visitors_partial_update"];
         trace?: never;
     };
-    "/api/v1/visitors/{id}/revoke": {
+    "/api/v1/visitors/{id}/activate": {
         parameters: {
             query?: never;
             header?: never;
@@ -461,11 +461,51 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Revoke a lost badge
-         * @description The visitor stays on the list and keeps their scan history; the badge stops working. Reprinting means issuing a new token.
+         * Activate a visitor
+         * @description Undo a deactivation. The badge already in the visitor's hand starts scanning again — nothing is reissued, because the token never moved.
          */
-        post: operations["visitors_revoke_create"];
+        post: operations["visitors_activate_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/visitors/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate a visitor
+         * @description The visitor stays on the list and keeps their scan history; their badge stops scanning and shows `revoked` at the door. **The QR is not changed** — `activate` puts the same printed card back to work, so a lost badge that turns up again needs no reprint.
+         */
+        post: operations["visitors_deactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/visitors/{id}/permanent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a visitor permanently
+         * @description Irreversible. Drops the registration row and the visitor's photo from storage. Scans of this badge are kept and anonymised rather than deleted -- `ScanEvent.visitor` is set to null, so the entrance log still shows that something was presented at that door at that minute, and the response reports how many rows that affected. `DELETE /visitors/{id}` is the ordinary removal and is reversible by hand; this is not.
+         */
+        delete: operations["visitors_permanent_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -685,8 +725,11 @@ export interface components {
         /**
          * @description `token_hash` is deliberately absent — it never leaves the database.
          *
-         *     `is_active` is read-only: a badge is killed through `POST /visitors/{id}/revoke`
-         *     so the action lands in the audit log as a revocation, not as a field edit.
+         *     `is_active` is read-only: it is switched through `POST /visitors/{id}/activate`
+         *     and `/deactivate` so each change lands in the audit log as a named action
+         *     rather than as an anonymous field edit buried in a PATCH of four other
+         *     fields. Neither one touches the badge token, so the printed card keeps
+         *     working across the whole cycle.
          */
         PatchedVisitorRequest: {
             full_name?: string;
@@ -902,8 +945,11 @@ export interface components {
         /**
          * @description `token_hash` is deliberately absent — it never leaves the database.
          *
-         *     `is_active` is read-only: a badge is killed through `POST /visitors/{id}/revoke`
-         *     so the action lands in the audit log as a revocation, not as a field edit.
+         *     `is_active` is read-only: it is switched through `POST /visitors/{id}/activate`
+         *     and `/deactivate` so each change lands in the audit log as a named action
+         *     rather than as an anonymous field edit buried in a PATCH of four other
+         *     fields. Neither one touches the badge token, so the printed card keeps
+         *     working across the whole cycle.
          */
         Visitor: {
             /** Format: uuid */
@@ -921,7 +967,17 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
-        /** @description `GET /visitors/{id}` — the registration plus every scan it produced. */
+        /**
+         * @description `GET /visitors/{id}` — the registration, its scans, and its badge token.
+         *
+         *     `badge_token` is here because the token is derived rather than random: the
+         *     same value is on the printed card and can be recomputed at any time, so the
+         *     dashboard can show a working QR for a visitor registered last week.
+         *
+         *     ADMIN-ONLY, AND DETAIL-ONLY. It is a working credential, so it is deliberately
+         *     absent from the list endpoint — one request should not hand back 250 usable
+         *     badges.
+         */
         VisitorDetail: {
             /** Format: uuid */
             readonly id: string;
@@ -938,6 +994,8 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             readonly scan_events: components["schemas"]["ScanEvent"][];
+            /** @description Raw badge token for the QR code. Stable for the life of the badge. */
+            readonly badge_token: string;
         };
         /**
          * @description The response to `POST /visitors` — the one and only sight of the raw token.
@@ -1477,7 +1535,7 @@ export interface operations {
                 category?: "normal" | "vip";
                 /** @description Exact country match, case-insensitive. */
                 country?: string;
-                /** @description Filter by badge state. `false` lists revoked badges. */
+                /** @description Filter by badge state. `false` lists deactivated visitors. */
                 is_active?: boolean;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
@@ -1596,7 +1654,7 @@ export interface operations {
             };
         };
     };
-    visitors_revoke_create: {
+    visitors_activate_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -1614,6 +1672,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Visitor"];
+                };
+            };
+        };
+    };
+    visitors_deactivate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this visitor. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visitor"];
+                };
+            };
+        };
+    };
+    visitors_permanent_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this visitor. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
