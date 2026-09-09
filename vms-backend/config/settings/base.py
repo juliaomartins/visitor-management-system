@@ -26,6 +26,12 @@ env = environ.Env(
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-insecure-change-me")
+
+# Badge QR tokens are an HMAC under this secret, so it decides which printed
+# cards are valid. Deliberately NOT SECRET_KEY: rotating Django's key is routine
+# and must not void 250 printed badges. Changing this value invalidates every
+# badge already in circulation.
+BADGE_TOKEN_SECRET = env("VMS_BADGE_TOKEN_SECRET", default=SECRET_KEY)
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 
