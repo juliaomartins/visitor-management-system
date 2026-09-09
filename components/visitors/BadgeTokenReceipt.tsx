@@ -126,8 +126,8 @@ export function BadgeTokenReceipt({
         <p className="mt-2 text-sm text-ink-2">
           This QR is permanent. It was generated when {visitor.full_name} was
           registered and will not change — print it now, or from their page
-          later, as many times as you need. It only stops working if you revoke
-          or delete the visitor.
+          later, as many times as you need. It only stops working if you
+          deactivate or delete the visitor.
         </p>
 
         <div className="mt-5 flex flex-wrap items-start gap-5">
