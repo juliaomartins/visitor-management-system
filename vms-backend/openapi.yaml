@@ -672,6 +672,14 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: with_tokens
+        schema:
+          type: boolean
+        description: Include `badge_token` on every row. Off by default. Each token
+          is a working credential, so this turns one request into a set of usable
+          badges -- ask for it only where the codes are the point, such as a print
+          queue that draws the real QR. The same codes are already in the .xlsx export.
       tags:
       - visitors
       security:
@@ -1881,16 +1889,8 @@ components:
       - updated_at
     VisitorDetail:
       type: object
-      description: |-
-        `GET /visitors/{id}` — the registration, its scans, and its badge token.
-
-        `badge_token` is here because the token is derived rather than random: the
-        same value is on the printed card and can be recomputed at any time, so the
-        dashboard can show a working QR for a visitor registered last week.
-
-        ADMIN-ONLY, AND DETAIL-ONLY. It is a working credential, so it is deliberately
-        absent from the list endpoint — one request should not hand back 250 usable
-        badges.
+      description: '`GET /visitors/{id}` — the registration, its scans, and its badge
+        token.'
       properties:
         id:
           type: string
@@ -1924,16 +1924,16 @@ components:
           type: string
           format: date-time
           readOnly: true
-        scan_events:
-          type: array
-          items:
-            $ref: '#/components/schemas/ScanEvent'
-          readOnly: true
         badge_token:
           type: string
           readOnly: true
           description: Raw badge token for the QR code. Stable for the life of the
             badge.
+        scan_events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanEvent'
+          readOnly: true
       required:
       - badge_serial
       - badge_token

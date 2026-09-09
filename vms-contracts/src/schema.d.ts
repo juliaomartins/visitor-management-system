@@ -967,17 +967,7 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
-        /**
-         * @description `GET /visitors/{id}` — the registration, its scans, and its badge token.
-         *
-         *     `badge_token` is here because the token is derived rather than random: the
-         *     same value is on the printed card and can be recomputed at any time, so the
-         *     dashboard can show a working QR for a visitor registered last week.
-         *
-         *     ADMIN-ONLY, AND DETAIL-ONLY. It is a working credential, so it is deliberately
-         *     absent from the list endpoint — one request should not hand back 250 usable
-         *     badges.
-         */
+        /** @description `GET /visitors/{id}` — the registration, its scans, and its badge token. */
         VisitorDetail: {
             /** Format: uuid */
             readonly id: string;
@@ -993,9 +983,9 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
-            readonly scan_events: components["schemas"]["ScanEvent"][];
             /** @description Raw badge token for the QR code. Stable for the life of the badge. */
             readonly badge_token: string;
+            readonly scan_events: components["schemas"]["ScanEvent"][];
         };
         /**
          * @description The response to `POST /visitors` — the one and only sight of the raw token.
@@ -1554,6 +1544,8 @@ export interface operations {
                 ordering?: string;
                 /** @description A search term. */
                 search?: string;
+                /** @description Include `badge_token` on every row. Off by default. Each token is a working credential, so this turns one request into a set of usable badges -- ask for it only where the codes are the point, such as a print queue that draws the real QR. The same codes are already in the .xlsx export. */
+                with_tokens?: boolean;
             };
             header?: never;
             path?: never;
