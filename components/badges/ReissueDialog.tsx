@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
  * print button asks nothing and simply produces the file.
  *
  * The "replace" case went with it. A badge is issued once at registration and
- * stays valid until the visitor is revoked or deleted, so the dashboard has no
+ * stays valid until the visitor is deactivated or deleted, so the dashboard has
  * control that rotates a token and this dialog no longer warns about one.
  *
  * What is left is custody, not breakage: the export writes working credentials
@@ -78,7 +78,7 @@ export function ReissueDialog({
             costs nothing but the time to export it again.
           </li>
           <li>
-            To stop a specific badge, revoke it from that visitor&apos;s page.
+            To stop a specific badge, deactivate that visitor on their page.
             Deleting the file does not stop anything.
           </li>
         </ul>
