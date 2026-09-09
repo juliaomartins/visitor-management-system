@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import type { EntrySummary } from "@/lib/reports";
 
 /**
@@ -14,18 +15,34 @@ import type { EntrySummary } from "@/lib/reports";
  * and its number, and the reports page is the table view. Never colour alone.
  */
 const ROWS = [
-  { key: "valid", label: "Valid", swatch: "bg-valid", text: "text-valid" },
+  {
+    key: "valid",
+    labelKey: "scan.valid",
+    swatch: "bg-valid",
+    text: "text-valid",
+  },
   {
     key: "duplicate",
-    label: "Duplicate",
+    labelKey: "scan.duplicate",
     swatch: "bg-neutral-mark",
     text: "text-ink-2",
   },
-  { key: "revoked", label: "Revoked", swatch: "bg-vip", text: "text-vip" },
-  { key: "invalid", label: "Invalid", swatch: "bg-revoked", text: "text-revoked" },
+  {
+    key: "revoked",
+    labelKey: "scan.revoked",
+    swatch: "bg-vip",
+    text: "text-vip",
+  },
+  {
+    key: "invalid",
+    labelKey: "scan.invalid",
+    swatch: "bg-revoked",
+    text: "text-revoked",
+  },
 ] as const;
 
 export function OutcomeSplit({ summary }: { summary: EntrySummary }) {
+  const t = useT();
   const total = summary.total || 0;
 
   return (
@@ -58,7 +75,7 @@ export function OutcomeSplit({ summary }: { summary: EntrySummary }) {
                   aria-hidden
                   className={`h-2 w-2 shrink-0 rounded-full ${row.swatch}`}
                 />
-                {row.label}
+                {t(row.labelKey)}
               </dt>
               <dd className="mt-1 flex items-baseline gap-1.5">
                 <span
@@ -74,11 +91,23 @@ export function OutcomeSplit({ summary }: { summary: EntrySummary }) {
       </dl>
 
       <p className="mt-5 border-t border-line pt-4 text-xs leading-relaxed text-ink-3">
+        {/*
+          Two counts in one sentence, so all four combinations are their own
+          message. Portuguese conjugates the verb for the first and agrees the
+          noun with the second; no amount of fragment-gluing produces that.
+        */}
         {total === 0
-          ? "Nothing has been scanned yet today."
-          : `${summary.unique_visitors} ${
-              summary.unique_visitors === 1 ? "person has" : "people have"
-            } arrived across ${total} ${total === 1 ? "scan" : "scans"}.`}
+          ? t("overview.nothingToday")
+          : t(
+              summary.unique_visitors === 1
+                ? total === 1
+                  ? "overview.arrivedSummary.oneOne"
+                  : "overview.arrivedSummary.oneMany"
+                : total === 1
+                  ? "overview.arrivedSummary.manyOne"
+                  : "overview.arrivedSummary.manyMany",
+              { people: summary.unique_visitors, scans: total },
+            )}
       </p>
     </div>
   );
