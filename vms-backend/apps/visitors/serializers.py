@@ -80,6 +80,33 @@ class VisitorWithTokenSerializer(VisitorSerializer):
         return badge_token(visitor)
 
 
+class VisitorListSerializer(VisitorSerializer):
+    """Documents `GET /visitors`, where the token is conditional.
+
+    SCHEMA ONLY -- nothing serialises through this. The view picks
+    `VisitorSerializer` or `VisitorWithTokenSerializer` per request depending on
+    `?with_tokens=`, and OpenAPI has no way to say "this response shape depends
+    on that query parameter". Declaring the union honestly, with `badge_token`
+    optional, is closer to the truth than either half alone: a client is told the
+    field may be absent and has to check, which is exactly the situation.
+    """
+
+    # `required=False` and NOT `read_only`. drf-spectacular puts every read-only
+    # field into a response's `required` list regardless of `required`, which
+    # would tell clients the token is always there -- the opposite of the point.
+    # Nothing serialises through this class, so losing read-only costs nothing.
+    badge_token = serializers.CharField(
+        required=False,
+        help_text=(
+            "Present only when the request asked for `with_tokens=true`. The raw "
+            "badge token for the QR code, stable for the life of the badge."
+        ),
+    )
+
+    class Meta(VisitorSerializer.Meta):
+        fields = [*VisitorSerializer.Meta.fields, "badge_token"]
+
+
 class VisitorDetailSerializer(VisitorWithTokenSerializer):
     """`GET /visitors/{id}` — the registration, its scans, and its badge token."""
 
