@@ -69,11 +69,13 @@ export function BadgeTokenReceipt({
   }, [visitor.badge_token]);
 
   /**
-   * The one moment a badge PDF costs nothing.
+   * Print the card while the visitor is still at the desk.
    *
-   * This screen still holds the raw token, so the server can draw the QR without
-   * issuing a new one. Once this page is gone, every later print is a reissue
-   * that kills the card in the visitor's hand.
+   * Nothing about this print is special any more, and that is the point. The
+   * token is derived, so leaving this page costs nothing: the same QR can be
+   * redrawn from the visitor's own page, from the A4 sheet or from the .xlsx,
+   * for the life of the event. It is here because printing now, in front of the
+   * person it belongs to, is simply the fastest way to work a queue.
    */
   async function savePdf() {
     setSaving(true);
@@ -104,15 +106,28 @@ export function BadgeTokenReceipt({
 
   return (
     <div className="max-w-2xl">
-      <div className="rounded-2xl border border-vip bg-vip-soft px-6 py-6">
-        <p className="mono text-[11px] uppercase text-vip">Print this now</p>
+      {/*
+        THIS PANEL USED TO BE A WARNING AND IS NOW A RECEIPT.
+
+        It said the badge was "the only copy" and that leaving the page would
+        lose it forever. That was true when tokens were random and stored only as
+        a digest. They are derived from the visitor now, so this QR can be
+        redrawn from the visitor's page any time for the life of the event —
+        printing it twice is free and produces the identical code.
+
+        Keeping the old alarm would have trained registrars to fear a navigation
+        that costs nothing, which is worse than saying nothing at all.
+      */}
+      <div className="rounded-2xl border border-valid bg-valid-soft px-6 py-6">
+        <p className="mono text-[11px] uppercase text-valid">Badge issued</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink">
           {visitor.full_name} is registered
         </h2>
         <p className="mt-2 text-sm text-ink-2">
-          The badge below is the only copy. The token behind the QR is stored as a
-          hash, so once you leave this page it cannot be recovered — you would have
-          to register {visitor.full_name} again.
+          This QR is permanent. It was generated when {visitor.full_name} was
+          registered and will not change — print it now, or from their page
+          later, as many times as you need. It only stops working if you revoke
+          or delete the visitor.
         </p>
 
         <div className="mt-5 flex flex-wrap items-start gap-5">
