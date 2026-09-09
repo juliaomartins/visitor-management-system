@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { motion } from "framer-motion";
 import { useRef } from "react";
 
@@ -52,6 +53,7 @@ export function ArrivalStage({
   /** Arrivals waiting behind this one. They get their own column, never an overlay. */
   queued?: ScreenEvent[];
 }) {
+  const t = useT();
   const hasQueue = queued.length > 0;
   const { width, height } = useViewport();
 
@@ -88,7 +90,9 @@ export function ArrivalStage({
 
   const accent = vip ? "var(--color-vip)" : "var(--color-expo)";
   const deep = vip ? "var(--color-vip-deep)" : "var(--color-expo-deep)";
-  const status = vip ? "VIP Visitor" : "Visitor";
+  const status = t(
+    vip ? "welcome.statusVip" : "welcome.statusVisitor",
+  );
 
   return (
     /*
@@ -204,7 +208,7 @@ export function ArrivalStage({
             data-greeting
             className="mt-[clamp(0.6rem,2.4vh,2.2rem)] shrink-0 font-serif text-[clamp(1rem,min(3.2vw,4.4vh),2.75rem)] leading-none text-ink-soft italic"
           >
-            Welcome
+            {t("welcome.greeting")}
           </p>
 
           {/*
