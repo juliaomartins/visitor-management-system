@@ -117,6 +117,9 @@ class ServiceSpec:
 
     key: str
     name: str
+    #: The message key for `name`. The English string above stays for logs and
+    #: for anything that must not move when the interface language does.
+    name_key: str
     technology: str
     directory: Path
     #: Executable plus arguments. Never a shell string: `QProcess` with a
@@ -138,6 +141,7 @@ def backend_spec() -> ServiceSpec:
     return ServiceSpec(
         key="backend",
         name="Backend",
+        name_key="svc.backend",
         technology="Django + Channels (uvicorn)",
         directory=BACKEND_DIR,
         program=str(VENV_UVICORN),
@@ -160,6 +164,7 @@ def dashboard_spec(mode: str) -> ServiceSpec:
     return ServiceSpec(
         key="dashboard",
         name="Dashboard",
+        name_key="svc.dashboard",
         technology="Next.js 16",
         directory=DASHBOARD_DIR,
         program=NPM,
@@ -173,6 +178,7 @@ def screen_spec(mode: str) -> ServiceSpec:
     return ServiceSpec(
         key="screen",
         name="Lobby Screen",
+        name_key="svc.screen",
         technology="Next.js 16",
         directory=SCREEN_DIR,
         program=NPM,
@@ -186,6 +192,7 @@ def scanner_spec() -> ServiceSpec:
     return ServiceSpec(
         key="scanner",
         name="Scanner",
+        name_key="svc.scanner",
         technology="Expo SDK 57",
         directory=SCANNER_DIR,
         program=NPM,
@@ -254,10 +261,15 @@ def service_environment(key: str, lan_ip: str) -> dict[str, str]:
 
 
 def service_urls(lan_ip: str) -> list[tuple[str, str]]:
-    """The addresses to show on the network card, in reading order."""
+    """The addresses to show on the network card, in reading order.
+
+    Returns MESSAGE KEYS rather than words. This is a plain module with no
+    translator imported -- the card looks each one up at paint time, which is
+    also the only moment that knows the current language.
+    """
     return [
-        ("Backend", f"http://{lan_ip}:{BACKEND_PORT}"),
-        ("WebSocket", f"ws://{lan_ip}:{BACKEND_PORT}/ws/screen/"),
-        ("Dashboard", f"http://{lan_ip}:{DASHBOARD_PORT}"),
-        ("Lobby Screen", f"http://{lan_ip}:{SCREEN_PORT}"),
+        ("svc.backend", f"http://{lan_ip}:{BACKEND_PORT}"),
+        ("svc.websocket", f"ws://{lan_ip}:{BACKEND_PORT}/ws/screen/"),
+        ("svc.dashboard", f"http://{lan_ip}:{DASHBOARD_PORT}"),
+        ("svc.screen", f"http://{lan_ip}:{SCREEN_PORT}"),
     ]
