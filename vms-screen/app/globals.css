@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+/*
+ * `wall:` — landscape, and wide enough to run two columns.
+ *
+ * The hero splits from the arrival queue on the shape of the viewport, not on
+ * its width. `lg:` asks only how wide the window is, which gets a rotated
+ * 1080x1920 panel wrong in the worst way: 1080px clears the threshold, so a
+ * portrait wall would put the queue beside a hero that has no width to spare.
+ *
+ * It lives here as a named variant rather than inline in a class, because the
+ * inline form has to be written `[@media(orientation:landscape)_and_(min-width:900px)]:`
+ * — underscores for the spaces CSS requires around `and` — and getting that
+ * wrong fails as a CSS parse error at the bottom of a generated file, nowhere
+ * near the component. Naming it once means writing it once.
+ */
+@custom-variant wall (@media (orientation: landscape) and (min-width: 900px));
+
+/*
+ * A wall display, three to five metres from the reader.
+ *
+ * Everything here is scaled for that distance and for a room whose lights nobody
+ * controls. Dark ground so the screen is not a lamp in a dim lobby; a name that
+ * clears 72px at any window size; one accent for VIP and nothing else competing
+ * with it.
+ *
+ * No light mode. A kiosk has no reader preference to respect, and a display that
+ * changes appearance during an event looks broken.
+ */
+@theme {
+  /*
+    THE EVENT PALETTE, SAMPLED FROM THE ARTWORK.
+
+    Taken from the event PIN, which the design brief supplies "for colour
+    reference only, to guide the design and colour selection":
+
+        red #CC0000   gold #FCB400   green #006C30   blue #00309C
+
+    Those are print inks. On this panel the ground is near-black, and measured
+    against it the pin's blue reads 1.7:1 and its green 2.9:1 -- both invisible at
+    five metres, or at one. Each hue therefore keeps its hue and saturation and
+    moves only in lightness, by the smallest step that clears 4.5:1 on the ground
+    it actually sits on. Gold is the exception and needs no help: on a dark field
+    the pin's own #FCB400 reads 10.6:1, which is why it stays exactly as printed.
+
+    THE SCREEN'S DEFAULT IS DARK and that is not a preference. This runs unattended
+    in a lobby for fourteen hours; a white wall-sized panel is a lamp pointed at
+    the people it is supposed to welcome. Light mode exists for setup and for a
+    bright atrium, and it is a deliberate act.
+  */
+  --color-brand-red: #cc0000;
+  --color-brand-gold: #fcb400;
+  --color-brand-green: #006c30;
+  --color-brand-blue: #00309c;
+
+  --color-stage: #0b1016;
+  --color-stage-raised: #141b24;
+  --color-edge: #26313f;
+
+  --color-ink: #f4f8fb;
+  --color-ink-soft: #a8b6c4;
+  --color-ink-faint: #75838f;
+
+  --color-live: #00b050;
+  --color-down: #f24141;
+
+  /* VIP gold, straight off the pin. The one saturated colour that means one
+     thing, and the only brand ink that needed no adjustment for this ground. */
+  --color-vip: #fcb400;
+  --color-vip-deep: #33290d;
+
+  /*
+   * Conference blue: the accent a NORMAL arrival wears -- the seal ring, the
+   * photo rim, the wave. It is deliberately not gold, because gold is the VIP
+   * signal and a screen where both are gold tells nobody anything.
+   */
+  --color-expo: #3372ff;
+  --color-expo-deep: #101d33;
+
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * One italic serif, used on the single word "Welcome" and nowhere else. It is
+   * the greeting rather than the information, and setting it in the same
+   * grotesque as the name would flatten the two into one block of shouting.
+   */
+  --font-serif: var(--font-instrument), Georgia, "Times New Roman", serif;
+}
+
+/*
+  LIGHT MODE IS A TOKEN SWAP, NOT A SECOND STYLESHEET.
+
+  Every utility on this screen resolves through `var(--color-*)`, so redefining
+  the variables under `.light` re-themes the whole wall without touching a
+  component. The chromatic tokens are not inverted -- they are the same four
+  brand hues re-solved against a white ground, which is where the pin's own blue,
+  green and red are used exactly as printed and gold has to darken to #8a6200 to
+  stay readable.
+*/
+.light {
+  --color-stage: #ffffff;
+  --color-stage-raised: #f4f6fa;
+  --color-edge: #dde2ea;
+
+  --color-ink: #0b1016;
+  --color-ink-soft: #4a5560;
+  --color-ink-faint: #6b7684;
+
+  --color-live: #006c30;
+  --color-down: #cc0000;
+
+  --color-vip: #8a6200;
+  --color-vip-deep: #f7eeda;
+
+  --color-expo: #00309c;
+  --color-expo-deep: #e5eaf5;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--color-stage);
+  color: var(--color-ink);
+  overflow: hidden;
+}
+
+/* Kiosk: nothing here is selectable or draggable, and there is no cursor to see. */
+body {
+  cursor: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * The CSS entry animation is gone: GSAP owns every entry now, so a keyframe here
+ * would fight it for the same transform. The reduced-motion block above still
+ * applies to what is left — and GSAP is told separately, since a tween is not a
+ * CSS animation and that media query cannot reach it.
+ */
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 3.5s ease-in-out infinite;
+}
+
+
+/*
+  THE SPLASH'S NO-JAVASCRIPT ESCAPE HATCH.
+
+  The overlay is fixed and covers the wall. If the bundle fails to load, or
+  JavaScript is off, or GSAP throws, nothing would ever remove it and the lobby
+  screen would sit behind a logo for the entire event -- a far worse failure than
+  no animation at all.
+
+  So retiring is CSS, not script. The keyframes run regardless, and the
+  timeline's first act is to set `animation: none` on this element so that when
+  JavaScript *is* working the two are not animating the same property at once.
+
+  The timings match the GSAP sequence, and `forwards` holds the cleared state.
+  `visibility` rather than `display` so the fade can actually be seen.
+*/
+@keyframes splash-retire {
+  0%,
+  77% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.event-splash {
+  animation: splash-retire 1.75s ease-in forwards;
+}
+
+/* A reader who has asked for less motion still needs the overlay to leave. It
+   simply leaves sooner, and without the fade drawing attention to itself. */
+@media (prefers-reduced-motion: reduce) {
+  .event-splash {
+    animation-duration: 1.25s;
+    animation-timing-function: linear;
+  }
+}
