@@ -6,17 +6,18 @@ import { useState } from "react";
 import { useSetPageMeta } from "@/components/page-meta";
 import { BadgeTokenReceipt } from "@/components/visitors/BadgeTokenReceipt";
 import { VisitorForm } from "@/components/visitors/VisitorForm";
+import { useErrorText, useT } from "@/lib/i18n";
 import { ApiError, useRegisterVisitor, type VisitorIssued } from "@/lib/visitors";
 
 export default function NewVisitorPage() {
+  const t = useT();
+  const errorText = useErrorText();
   const register = useRegisterVisitor();
   const [issued, setIssued] = useState<VisitorIssued | null>(null);
 
   useSetPageMeta({
-    title: issued ? "Badge issued" : "Register a visitor",
-    subtitle: issued
-      ? "Print the card now, or from the visitor's page later"
-      : "One badge, printed in advance, valid for the whole event",
+    title: t(issued ? "register.issuedTitle" : "register.title"),
+    subtitle: t(issued ? "register.issuedSubtitle" : "register.subtitle"),
   });
 
   const error = register.error instanceof ApiError ? register.error : undefined;
@@ -39,7 +40,7 @@ export default function NewVisitorPage() {
         href="/visitors"
         className="text-sm text-ink-3 transition-colors hover:text-ink"
       >
-        ← All visitors
+        ← {t("visitor.allVisitors")}
       </Link>
 
       <div className="mt-5">
@@ -47,7 +48,9 @@ export default function NewVisitorPage() {
           mode="create"
           submitting={register.isPending}
           formError={
-            error && Object.keys(error.fields).length === 0 ? error.message : undefined
+            error && Object.keys(error.fields).length === 0
+              ? errorText(error, "error.visitorRegister")
+              : undefined
           }
           fieldErrors={error?.fields}
           cancelHref="/visitors"
