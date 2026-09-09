@@ -1035,6 +1035,19 @@ export interface components {
             photo: string;
             category?: components["schemas"]["CategoryEnum"];
         };
+        /**
+         * @description What a permanent delete reports back.
+         *
+         *     Not a ModelSerializer: by the time this is rendered the row is gone. It
+         *     exists so the shape is in the schema and the dashboard can read
+         *     `scans_orphaned` from a generated type rather than a hand-written one.
+         */
+        VisitorPurged: {
+            /** @description The serial of the registration that was removed. */
+            badge_serial: string;
+            /** @description Scan events kept but detached from the visitor. They still count towards the entrance log; they no longer say who presented the badge. */
+            scans_orphaned: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -1715,9 +1728,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["VisitorPurged"];
                 };
             };
         };

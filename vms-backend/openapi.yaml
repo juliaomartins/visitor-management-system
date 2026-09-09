@@ -867,8 +867,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/VisitorPurged'
           description: ''
 components:
   schemas:
@@ -2028,6 +2027,25 @@ components:
       - country
       - full_name
       - photo
+    VisitorPurged:
+      type: object
+      description: |-
+        What a permanent delete reports back.
+
+        Not a ModelSerializer: by the time this is rendered the row is gone. It
+        exists so the shape is in the schema and the dashboard can read
+        `scans_orphaned` from a generated type rather than a hand-written one.
+      properties:
+        badge_serial:
+          type: string
+          description: The serial of the registration that was removed.
+        scans_orphaned:
+          type: integer
+          description: Scan events kept but detached from the visitor. They still
+            count towards the entrance log; they no longer say who presented the badge.
+      required:
+      - badge_serial
+      - scans_orphaned
   securitySchemes:
     deviceAuth:
       type: apiKey
