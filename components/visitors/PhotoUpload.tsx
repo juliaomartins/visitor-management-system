@@ -2,32 +2,28 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { PhotoCropper } from "@/components/visitors/PhotoCropper";
+import { PHOTO_ASPECT } from "@/lib/badge-geometry";
+
 /**
- * Crop the visitor photo, in the browser, before anything is uploaded.
+ * Choose a visitor photo, and crop it in the same breath.
  *
- * NOT the card aspect. The CR80 card is 85.6 × 54 mm landscape, but the photo is
- * a PORTRAIT region inside it, the way a passport photo sits on an ID card. The
- * two get confused constantly — hence the name below, and hence this paragraph.
+ * THE CROP IS NOT A SEPARATE STEP THE REGISTRAR CAN SKIP. Picking a file opens
+ * the cropper immediately, because the moment to frame someone's face is while
+ * they are standing at the desk -- not later, from a list, with no idea which
+ * blurry thumbnail was which.
  *
- * 3:4 at 600 × 800 px: tall enough for the lobby screen, which renders arrivals at
- * 400 px tall, and enough pixels for the card without carrying a print-resolution
- * file through every list request.
+ * This file owns the file, the validation and the dialog. The cropping itself
+ * lives in PhotoCropper, which is where the geometry belongs; the two were one
+ * component until the crop grew a second pane and stopped fitting under a header.
+ *
+ * IMAGE DATA STAYS IN MEMORY. Object URLs only, revoked on replace and on
+ * unmount -- nothing is written to localStorage, which would leave a visitor's
+ * photograph sitting on a shared registration laptop after the event.
  */
-export const PHOTO_ASPECT = 3 / 4;
-
-const OUTPUT_WIDTH = 600;
-const OUTPUT_HEIGHT = 800;
-
-/** Display size of the crop stage. The export scales up from here. */
-const STAGE_HEIGHT = 400;
-const STAGE_WIDTH = Math.round(STAGE_HEIGHT * PHOTO_ASPECT);
-
-const MAX_ZOOM = 4;
-const NUDGE_PX = 8;
-const JPEG_QUALITY = 0.9;
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 
-type Frame = { scale: number; x: number; y: number };
+type Source = { url: string; name: string };
 
 export function PhotoUpload({
   onChange,
@@ -39,107 +35,37 @@ export function PhotoUpload({
   existingUrl?: string;
   error?: string;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
-  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
-
-  const [sourceName, setSourceName] = useState<string | null>(null);
-  const [frame, setFrame] = useState<Frame>({ scale: 1, x: 0, y: 0 });
-  const [minScale, setMinScale] = useState(1);
+  const [source, setSource] = useState<Source | null>(null);
+  const [cropping, setCropping] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
 
-  /** Keep the image covering the stage — no empty gutters, ever. */
-  const clamp = useCallback((next: Frame, image: HTMLImageElement): Frame => {
-    const floor = Math.max(
-      STAGE_WIDTH / image.naturalWidth,
-      STAGE_HEIGHT / image.naturalHeight,
-    );
-    const scale = Math.min(Math.max(next.scale, floor), floor * MAX_ZOOM);
-    const width = image.naturalWidth * scale;
-    const height = image.naturalHeight * scale;
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-    return {
-      scale,
-      x: Math.min(0, Math.max(next.x, STAGE_WIDTH - width)),
-      y: Math.min(0, Math.max(next.y, STAGE_HEIGHT - height)),
+  // Read by the unmount cleanup only. A ref rather than the state values
+  // themselves, so that effect can stay `[]` and never re-run mid-session.
+  const liveRef = useRef<{ source: Source | null; preview: string | null }>({
+    source: null,
+    preview: null,
+  });
+  useEffect(() => {
+    liveRef.current = { source, preview };
+  }, [source, preview]);
+
+  useEffect(() => {
+    return () => {
+      if (liveRef.current.source) URL.revokeObjectURL(liveRef.current.source.url);
+      if (liveRef.current.preview) URL.revokeObjectURL(liveRef.current.preview);
     };
   }, []);
 
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    const image = imageRef.current;
-    if (!canvas || !image) return;
-
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = STAGE_WIDTH * ratio;
-    canvas.height = STAGE_HEIGHT * ratio;
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-
-    context.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
-    context.imageSmoothingQuality = "high";
-    context.drawImage(
-      image,
-      frame.x,
-      frame.y,
-      image.naturalWidth * frame.scale,
-      image.naturalHeight * frame.scale,
-    );
-  }, [frame]);
-
-  useEffect(draw, [draw]);
-
-  /** Re-cut the crop and hand the parent a fresh File. */
-  const emit = useCallback(() => {
-    const image = imageRef.current;
-    if (!image) return;
-
-    const output = document.createElement("canvas");
-    output.width = OUTPUT_WIDTH;
-    output.height = OUTPUT_HEIGHT;
-
-    const context = output.getContext("2d");
-    if (!context) return;
-
-    const factor = OUTPUT_WIDTH / STAGE_WIDTH;
-    context.imageSmoothingQuality = "high";
-    context.drawImage(
-      image,
-      frame.x * factor,
-      frame.y * factor,
-      image.naturalWidth * frame.scale * factor,
-      image.naturalHeight * frame.scale * factor,
-    );
-
-    output.toBlob(
-      (blob) => {
-        if (!blob) return;
-        onChange(
-          new File([blob], `${(sourceName ?? "photo").replace(/\.\w+$/, "")}.jpg`, {
-            type: "image/jpeg",
-          }),
-        );
-      },
-      "image/jpeg",
-      JPEG_QUALITY,
-    );
-  }, [frame, onChange, sourceName]);
-
-  // Debounced: a drag fires dozens of frames, and each one would re-encode a
-  // 600 × 800 JPEG for a crop the registrar is still adjusting.
-  useEffect(() => {
-    if (!imageRef.current) return;
-    const timer = setTimeout(emit, 120);
-    return () => clearTimeout(timer);
-  }, [emit]);
-
-  function accept(file: File | undefined) {
+  const accept = useCallback((file: File | undefined | null) => {
+    setProblem(null);
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setProblem("That file is not an image. Choose a JPEG or PNG.");
+      setProblem("That is not an image. Choose a JPEG or PNG.");
       return;
     }
     if (file.size > MAX_SOURCE_BYTES) {
@@ -147,203 +73,193 @@ export function PhotoUpload({
       return;
     }
 
-    setProblem(null);
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-
-    image.onload = () => {
-      imageRef.current = image;
-      setSourceName(file.name);
-
-      const floor = Math.max(
-        STAGE_WIDTH / image.naturalWidth,
-        STAGE_HEIGHT / image.naturalHeight,
-      );
-      setMinScale(floor);
-      // Open centred, filling the frame.
-      setFrame({
-        scale: floor,
-        x: (STAGE_WIDTH - image.naturalWidth * floor) / 2,
-        y: (STAGE_HEIGHT - image.naturalHeight * floor) / 2,
-      });
-      URL.revokeObjectURL(url);
-    };
-
-    image.onerror = () => {
-      setProblem("That image could not be read.");
-      URL.revokeObjectURL(url);
-    };
-
-    image.src = url;
-  }
-
-  function move(dx: number, dy: number) {
-    const image = imageRef.current;
-    if (!image) return;
-    setFrame((current) => clamp({ ...current, x: current.x + dx, y: current.y + dy }, image));
-  }
-
-  function zoomTo(scale: number) {
-    const image = imageRef.current;
-    if (!image) return;
-
-    setFrame((current) => {
-      // Zoom about the centre of the stage, not the top-left corner.
-      const centreX = (STAGE_WIDTH / 2 - current.x) / current.scale;
-      const centreY = (STAGE_HEIGHT / 2 - current.y) / current.scale;
-
-      return clamp(
-        {
-          scale,
-          x: STAGE_WIDTH / 2 - centreX * scale,
-          y: STAGE_HEIGHT / 2 - centreY * scale,
-        },
-        image,
-      );
+    setSource((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return { url: URL.createObjectURL(file), name: file.name };
     });
-  }
+    setCropping(true);
+  }, []);
 
-  // Derived from state, not from imageRef: a ref read during render does not
-  // re-render when the image finishes decoding.
-  const loaded = sourceName !== null;
+  const applied = useCallback(
+    (file: File) => {
+      setPreview((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return URL.createObjectURL(file);
+      });
+      onChange(file);
+      setCropping(false);
+    },
+    [onChange],
+  );
+
+  useEffect(() => {
+    if (!cropping) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCropping(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cropping]);
+
+  const shown = preview ?? existingUrl ?? null;
 
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="block text-xs font-medium text-ink-2">Photo</span>
-        <span className="mono text-[11px] text-ink-3">
-          3:4 portrait · {OUTPUT_WIDTH} × {OUTPUT_HEIGHT}
+        <span className="text-xs font-medium text-ink-2">Photo</span>
+        <span className="mono text-[10px] tracking-wider text-ink-3">
+          3:4 PORTRAIT · 600 × 800
         </span>
       </div>
 
-      <div className="mt-1.5 rounded-2xl border border-line-strong bg-card p-4">
-        {loaded ? (
-          <>
-            <canvas
-              ref={canvasRef}
-              width={STAGE_WIDTH}
-              height={STAGE_HEIGHT}
-              tabIndex={0}
-              role="img"
-              aria-label="Badge photo crop. Drag to reposition, or use the arrow keys."
-              style={{ width: STAGE_WIDTH, height: STAGE_HEIGHT }}
-              className="max-w-full cursor-grab touch-none rounded-2xl bg-graphite-950 active:cursor-grabbing"
-              onPointerDown={(event) => {
-                event.currentTarget.setPointerCapture(event.pointerId);
-                dragRef.current = {
-                  pointerId: event.pointerId,
-                  x: event.clientX,
-                  y: event.clientY,
-                };
-              }}
-              onPointerMove={(event) => {
-                const drag = dragRef.current;
-                if (!drag || drag.pointerId !== event.pointerId) return;
-                move(event.clientX - drag.x, event.clientY - drag.y);
-                dragRef.current = {
-                  pointerId: event.pointerId,
-                  x: event.clientX,
-                  y: event.clientY,
-                };
-              }}
-              onPointerUp={() => {
-                dragRef.current = null;
-              }}
-              onPointerCancel={() => {
-                dragRef.current = null;
-              }}
-              onKeyDown={(event) => {
-                const steps: Record<string, [number, number]> = {
-                  ArrowLeft: [NUDGE_PX, 0],
-                  ArrowRight: [-NUDGE_PX, 0],
-                  ArrowUp: [0, NUDGE_PX],
-                  ArrowDown: [0, -NUDGE_PX],
-                };
-                if (steps[event.key]) {
-                  event.preventDefault();
-                  move(...steps[event.key]);
-                } else if (event.key === "+" || event.key === "=") {
-                  event.preventDefault();
-                  zoomTo(frame.scale * 1.15);
-                } else if (event.key === "-") {
-                  event.preventDefault();
-                  zoomTo(frame.scale / 1.15);
-                }
-              }}
-            />
-
-            <div className="mt-3 flex items-center gap-3">
-              <label htmlFor="photo-zoom" className="text-xs text-ink-2">
-                Zoom
-              </label>
-              <input
-                id="photo-zoom"
-                type="range"
-                min={minScale}
-                max={minScale * MAX_ZOOM}
-                step={minScale / 100}
-                value={frame.scale}
-                onChange={(event) => zoomTo(Number(event.target.value))}
-                className="h-1 flex-1 accent-ink"
-              />
-              <label className="btn btn-ghost cursor-pointer px-3 py-1.5 text-xs">
-                Replace
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(event) => accept(event.target.files?.[0])}
-                />
-              </label>
+      {shown ? (
+        <div className="mt-2 flex items-start gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={shown}
+            alt="The visitor's badge photo"
+            className="w-28 shrink-0 rounded-xl object-cover ring-1 ring-line"
+            style={{ aspectRatio: PHOTO_ASPECT }}
+          />
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm text-ink-2">
+              {preview
+                ? "Cropped and ready."
+                : "The photo already on file. It stays unless you replace it."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {source ? (
+                <button
+                  type="button"
+                  onClick={() => setCropping(true)}
+                  className="btn btn-ghost px-3 py-1.5 text-xs"
+                >
+                  Adjust crop
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="btn btn-ghost px-3 py-1.5 text-xs"
+              >
+                Choose a different photo
+              </button>
             </div>
-          </>
-        ) : (
-          <label
-            className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-line-strong px-6 py-12 text-center transition-colors hover:border-accent hover:bg-card-2"
-            style={{ minHeight: STAGE_HEIGHT }}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              accept(event.dataTransfer.files?.[0]);
-            }}
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            accept(event.dataTransfer.files?.[0]);
+          }}
+          className={`mt-2 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 transition-colors ${
+            dragging
+              ? "border-accent bg-accent-soft"
+              : "border-line-strong hover:border-accent"
+          }`}
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="h-8 w-8 text-ink-3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {existingUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={existingUrl}
-                alt="Photo currently on file"
-                className="mb-4 h-24 rounded-xl object-cover"
-                style={{ aspectRatio: PHOTO_ASPECT }}
-              />
-            ) : null}
-            <span className="text-sm font-medium text-ink">
-              {existingUrl ? "Replace the photo" : "Add a photo"}
-            </span>
-            <span className="mt-1 text-xs text-ink-3">
-              Drop an image here, or click to choose one. You will crop it to the card
-              next.
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(event) => accept(event.target.files?.[0])}
-            />
-          </label>
-        )}
-      </div>
+            <path d="M3 16.5V18a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-1.5M12 3v13.5M7.5 7.5 12 3l4.5 4.5" />
+          </svg>
+          <span className="mt-3 text-sm font-medium text-ink">Add a photo</span>
+          <span className="mt-1 text-xs text-ink-3">
+            Drop one here, or click to choose. You crop it next.
+          </span>
+        </button>
+      )}
 
-      {loaded ? (
-        <p className="mt-1.5 text-xs text-ink-3">
-          Drag to reposition. Exported at {OUTPUT_WIDTH} × {OUTPUT_HEIGHT} px — a
-          portrait photo, not the shape of the card it prints on.
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={(event) => {
+          accept(event.target.files?.[0]);
+          // Reset, so choosing the same file twice still fires a change event.
+          event.target.value = "";
+        }}
+      />
+
+      {problem || error ? (
+        <p role="alert" className="mt-2 text-xs text-revoked">
+          {problem ?? error}
         </p>
       ) : null}
 
-      {problem ?? error ? (
-        <p role="alert" className="mt-1.5 text-xs text-revoked">
-          {problem ?? error}
-        </p>
+      {cropping && source ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Crop the visitor photo"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-graphite-950/70 p-4 backdrop-blur-sm"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setCropping(false);
+          }}
+        >
+          {/*
+            Wide, because the cropper is two panes side by side above 1024px.
+            Below that it stacks and this scrolls -- the header stays put and the
+            cropper's own buttons travel with the controls, so nothing important
+            ends up off the bottom of a short screen.
+          */}
+          <div className="card flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden p-0">
+            <header className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-5 py-3.5">
+              <div className="min-w-0">
+                <h2 className="display text-[0.95rem] leading-tight text-ink">
+                  Frame the face
+                </h2>
+                <p className="mt-0.5 truncate text-[11px] text-ink-3">
+                  {source.name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCropping(false)}
+                aria-label="Close without saving"
+                className="-mt-0.5 -mr-1 shrink-0 rounded-lg p-1.5 text-ink-3 transition-colors hover:bg-card-2 hover:text-ink"
+              >
+                <svg
+                  aria-hidden
+                  viewBox="0 0 20 20"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                >
+                  <path d="M5 5l10 10M15 5L5 15" />
+                </svg>
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <PhotoCropper
+                source={source}
+                onApply={applied}
+                onCancel={() => setCropping(false)}
+                onChangeImage={() => inputRef.current?.click()}
+              />
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
