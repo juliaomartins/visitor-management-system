@@ -3,6 +3,8 @@
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 
+import { PHOTO_BOX_CQW } from "@/lib/badge-geometry";
+
 /**
  * THE BADGE, at true CR80 PORTRAIT proportion — 54 × 85.6 mm.
  *
@@ -84,7 +86,10 @@ export function BadgeCard({
       {/* Photo, cropped to a circle. Amber ring means VIP — the one signal that
           has to survive being read across a lobby. */}
       <div
-        className={`cr80-photo mt-[2cqw] aspect-square shrink-0 rounded-full p-[2cqw] ${
+        // Width comes from lib/badge-geometry, which derives it from the same
+        // millimetres services.py prints with, so the preview cannot drift.
+        style={{ width: `${PHOTO_BOX_CQW}cqw` }}
+        className={`mt-[2cqw] aspect-square shrink-0 rounded-full p-[2cqw] ${
           vip ? "bg-vip" : "bg-graphite-950"
         }`}
       >
