@@ -138,6 +138,41 @@ export const en = {
   "purge.cancel": "Cancel",
   "purge.confirm": "Delete permanently",
   "purge.pending": "Deleting\u2026",
+
+  // ------------------------------------------------------ visitor detail --
+  "common.loading": "Loading\u2026",
+  "visitor.fallbackTitle": "Visitor",
+  "visitor.notFound": "Could not load this visitor",
+  "visitor.notFoundBody": "They may have been deleted. Check the visitor list.",
+  "visitor.backToAll": "Back to all visitors",
+  "visitor.allVisitors": "All visitors",
+  "visitor.status.active": "Active",
+  "visitor.headingActive": "This badge opens the door",
+  "visitor.headingOff": "This badge is switched off",
+  "visitor.subActive":
+    "Any paired scanner will accept it and the lobby screen will welcome them.",
+  "visitor.subOff":
+    "The next scan of it shows red. Activating puts the same card back to work \u2014 nothing needs reprinting.",
+  "visitor.registered": "Registered",
+  "visitor.arrivals": "Arrivals",
+  "visitor.lastArrival": "Last arrival",
+  "visitor.notYet": "Not yet",
+  "visitor.scansLogged": "Scans logged",
+  "visitor.activating": "Activating\u2026",
+  "visitor.qrNote":
+    "This QR was generated when the visitor was registered and never changes. Reprint the card as often as you need \u2014 it scans the same every time. Deactivating stops it and activating starts it again, both without touching the code on the card. Deleting permanently is the only thing here that cannot be undone.",
+  "visitor.scanHistory": "Scan history",
+  "visitor.scanHistoryBody":
+    "Every time this badge was presented, including the times it was refused.",
+  "visitor.noScans": "This badge has not been scanned yet.",
+  "visitor.col.event": "Event",
+  "visitor.col.scannedAt": "Scanned at",
+  "visitor.col.result": "Result",
+  "visitor.col.device": "Device",
+  "scan.valid": "Valid",
+  "scan.duplicate": "Duplicate",
+  "scan.revoked": "Revoked",
+  "scan.invalid": "Invalid",
 } as const;
 
 /** Every message key in the dashboard. */
