@@ -52,6 +52,7 @@ export const pt: Messages = {
   "login.submit": "Iniciar sess\u00e3o",
   "login.submitting": "A iniciar sess\u00e3o\u2026",
   "login.badCredentials": "O utilizador e a palavra-passe n\u00e3o coincidem.",
+  "login.failedStatus": "Falha ao iniciar sess\u00e3o (HTTP {status}).",
   "login.unreachable":
     "N\u00e3o foi poss\u00edvel contactar o servidor. Verifique se o backend est\u00e1 a correr.",
   "login.servingFrom": "A partir de",
