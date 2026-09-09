@@ -14,6 +14,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from i18n import t
+from widgets import theme
+
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QPlainTextEdit,
@@ -23,9 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from widgets.theme import GHOST_BUTTON_QSS, LOG_QSS
 
-#: Lines kept per tab. A Next dev server is chatty and an event runs all day;
 #: without a cap the widget grows until scrolling stutters. Qt drops the oldest
 #: lines for us, which is the right end to lose.
 MAX_LINES = 5_000
@@ -36,7 +37,7 @@ class _Pane(QPlainTextEdit):
         super().__init__()
         self.setReadOnly(True)
         self.setMaximumBlockCount(MAX_LINES)
-        self.setStyleSheet(LOG_QSS)
+        self.setStyleSheet(theme.log_qss())
         # Wrapping a stack trace makes it unreadable; a horizontal scrollbar is
         # the lesser evil in a terminal view.
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
@@ -55,32 +56,47 @@ class LogViewer(QWidget):
         self._tabs = QTabWidget()
         self._panes: dict[str, _Pane] = {}
 
-        for key, label in [("app", "Application"), ("all", "All output")]:
+        # Tab labels are set in `retranslate`, which also runs once below, so
+        # the two orderings cannot drift apart.
+        self._tab_keys: list[str] = ["app", "all", *service_keys]
+        self._service_name_keys = service_names
+        for key in self._tab_keys:
             pane = _Pane()
             self._panes[key] = pane
-            self._tabs.addTab(pane, label)
-
-        for key in service_keys:
-            pane = _Pane()
-            self._panes[key] = pane
-            self._tabs.addTab(pane, service_names.get(key, key.title()))
+            self._tabs.addTab(pane, "")
 
         layout.addWidget(self._tabs)
 
         controls = QHBoxLayout()
         controls.addStretch(1)
 
-        copy = QPushButton("Copy tab")
-        copy.setStyleSheet(GHOST_BUTTON_QSS)
-        copy.clicked.connect(self._copy_current)
-        controls.addWidget(copy)
+        self._copy = QPushButton()
+        self._copy.clicked.connect(self._copy_current)
+        controls.addWidget(self._copy)
 
-        clear = QPushButton("Clear tab")
-        clear.setStyleSheet(GHOST_BUTTON_QSS)
-        clear.clicked.connect(self._clear_current)
-        controls.addWidget(clear)
+        self._clear = QPushButton()
+        self._clear.clicked.connect(self._clear_current)
+        controls.addWidget(self._clear)
 
         layout.addLayout(controls)
+
+        self.retranslate()
+        self.restyle()
+
+    def retranslate(self) -> None:
+        labels = {"app": t("log.application"), "all": t("log.allOutput")}
+        for index, key in enumerate(self._tab_keys):
+            self._tabs.setTabText(
+                index, labels.get(key) or t(self._service_name_keys.get(key, key))
+            )
+        self._copy.setText(t("log.copyTab"))
+        self._clear.setText(t("log.clearTab"))
+
+    def restyle(self) -> None:
+        self._copy.setStyleSheet(theme.ghost_button_qss())
+        self._clear.setStyleSheet(theme.ghost_button_qss())
+        for pane in self._panes.values():
+            pane.setStyleSheet(theme.log_qss())
 
     # ------------------------------------------------------------- writing --
 
