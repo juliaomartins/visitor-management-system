@@ -447,6 +447,43 @@ export const en = {
   "entry.col.time": "Time",
   "entry.col.name": "Name",
   "chart.noScans": "No scans in this range, so there is nothing to plot.",
+
+  // ------------------------------------------------------------ overview --
+  "overview.subtitleQuiet": "Today\u2019s arrivals across every door",
+  "overview.silentOne": "{count} door has gone quiet \u2014 check Devices",
+  "overview.silentMany": "{count} doors have gone quiet \u2014 check Devices",
+  "overview.registered": "Registered",
+  "overview.vipCount": "{count} VIP",
+  "overview.arrivedToday": "Arrived today",
+  "overview.arrivedNote": "{percent}% of those registered",
+  "overview.refusedAtDoor": "Refused at the door",
+  "overview.duplicateOne": "{count} duplicate scan not counted",
+  "overview.duplicateMany": "{count} duplicate scans not counted",
+  "overview.doorsReporting": "Doors reporting",
+  "overview.silentCount": "{count} silent",
+  "overview.allCheckedIn": "All checked in recently",
+  "overview.arrivalsByHour": "Arrivals by hour",
+  "overview.arrivalsByHourNote":
+    "Every badge presented today, plotted where it happened",
+  "overview.scanCountOne": "{count} scan",
+  "overview.scanCountMany": "{count} scans",
+  "overview.outcomeSplit": "Outcome split",
+  "overview.outcomeSplitNote": "How today\u2019s scans divided",
+  "overview.recentScans": "Recent scans",
+  "overview.recentScansNote": "Newest first, refusals included",
+  "overview.nothingToday": "Nothing has been scanned yet today.",
+  "overview.arrivalsAppear":
+    "Arrivals appear here the moment a guard scans a badge.",
+  "overview.colVisitor": "Visitor",
+  "overview.openLog": "Open the full entrance log \u2192",
+  "overview.arrivedSummary.oneOne":
+    "{people} person has arrived across {scans} scan.",
+  "overview.arrivedSummary.oneMany":
+    "{people} person has arrived across {scans} scans.",
+  "overview.arrivedSummary.manyOne":
+    "{people} people have arrived across {scans} scan.",
+  "overview.arrivedSummary.manyMany":
+    "{people} people have arrived across {scans} scans.",
 } as const;
 
 /** Every message key in the dashboard. */
