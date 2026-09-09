@@ -9,6 +9,7 @@
  * It sits in the top strip beside the device name, clear of the framing box, so
  * it never competes with the badge the guard is trying to line up.
  */
+import { useT } from "@/i18n";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, radius, spacing } from "@/theme";
@@ -20,6 +21,7 @@ export function QueueIndicator({
   pending: number;
   syncing: boolean;
 }) {
+  const t = useT();
   if (pending === 0) return null;
 
   return (
@@ -28,7 +30,10 @@ export function QueueIndicator({
       accessibilityRole="text"
       accessibilityLabel={
         syncing
-          ? `Syncing. ${pending} ${pending === 1 ? "scan" : "scans"} still pending.`
+          ? t(
+              pending === 1 ? "queue.syncingOne" : "queue.syncingMany",
+              { count: pending },
+            )
           : `${pending} ${pending === 1 ? "scan" : "scans"} pending sync.`
       }
     >
