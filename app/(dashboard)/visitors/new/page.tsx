@@ -15,7 +15,7 @@ export default function NewVisitorPage() {
   useSetPageMeta({
     title: issued ? "Badge issued" : "Register a visitor",
     subtitle: issued
-      ? "Copy the token before you leave this page"
+      ? "Print the card now, or from the visitor's page later"
       : "One badge, printed in advance, valid for the whole event",
   });
 
