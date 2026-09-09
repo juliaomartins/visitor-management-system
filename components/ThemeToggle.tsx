@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 
 /**
@@ -16,14 +17,18 @@ import { setTheme, useTheme } from "@/lib/theme";
  */
 export function ThemeToggle() {
   const theme = useTheme();
+  const t = useT();
   const next = theme === "dark" ? "light" : "dark";
+  // One message per destination rather than "Switch to" glued to an adjective:
+  // the adjective agrees with a noun that is not in the fragment.
+  const label = t(next === "dark" ? "theme.toDark" : "theme.toLight");
 
   return (
     <button
       type="button"
       onClick={() => setTheme(next)}
-      aria-label={`Switch the display to ${next} mode`}
-      title={`Switch to ${next} mode`}
+      aria-label={label}
+      title={label}
       className="fixed bottom-[clamp(0.6rem,1.6vh,1.4rem)] left-[clamp(0.6rem,1.6vw,1.4rem)] z-50 flex h-[clamp(28px,3vh,44px)] w-[clamp(28px,3vh,44px)] items-center justify-center rounded-full bg-stage-raised/70 text-ink-faint opacity-35 ring-1 ring-edge backdrop-blur transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-expo focus-visible:outline-none"
     >
       <svg
