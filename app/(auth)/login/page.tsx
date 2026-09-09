@@ -1,11 +1,13 @@
 "use client";
 
 import { EVENT, OrganiserCredit } from "@/components/brand";
+import { LanguageToggle } from "@/components/language-toggle";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useSyncExternalStore } from "react";
 
 import { LoginError, login } from "@/lib/auth";
+import { useErrorText, useT } from "@/lib/i18n";
 
 /**
  * The sign-in page, built from the dashboard's own parts.
@@ -20,6 +22,8 @@ const subscribeNever = () => () => {};
 function SignInPanel() {
   const router = useRouter();
   const params = useSearchParams();
+  const t = useT();
+  const errorText = useErrorText();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,10 +46,13 @@ function SignInPanel() {
       await login(username, password);
       router.replace(params.get("next") || "/dashboard");
     } catch (cause) {
+      // A LoginError means the server answered and said no. Anything else means
+      // it never answered at all, which is a different problem at a desk: check
+      // the machine, not the password.
       setError(
         cause instanceof LoginError
-          ? cause.message
-          : "Could not reach the server. Check that the backend is running.",
+          ? errorText(cause)
+          : t("login.unreachable"),
       );
       setBusy(false);
     }
@@ -77,16 +84,24 @@ function SignInPanel() {
         </span>
       </div>
 
-      <h1 className="display mt-8 text-2xl text-ink">Sign in</h1>
-      <p className="mt-1.5 text-sm text-ink-3">
-        Administrator accounts only. Guards use a paired phone, and the lobby
-        screen pairs itself.
-      </p>
+      {/*
+        THE LANGUAGE SWITCH BELONGS ON THIS PAGE, not only inside the dashboard.
+        Someone who has been handed a laptop left in a language they do not read
+        has to be able to change it before they can sign in, and the sign-in
+        screen is the one page they can reach without a session.
+      */}
+      <div className="mt-8 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="display text-2xl text-ink">{t("login.title")}</h1>
+          <p className="mt-1.5 text-sm text-ink-3">{t("login.intro")}</p>
+        </div>
+        <LanguageToggle />
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-7 space-y-4">
         <Field
           id="username"
-          label="Username"
+          label={t("login.username")}
           autoComplete="username"
           autoFocus
           value={username}
@@ -95,7 +110,7 @@ function SignInPanel() {
 
         <Field
           id="password"
-          label="Password"
+          label={t("login.password")}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -116,13 +131,14 @@ function SignInPanel() {
           disabled={busy}
           className="btn btn-primary w-full py-2.5 disabled:opacity-60"
         >
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? t("login.submitting") : t("login.submit")}
         </button>
       </form>
 
       {/* Genuinely useful at an event: confirms the laptop is on the right box. */}
       <p className="mono mt-8 text-xs text-ink-3">
-        Serving from <span className="text-ink-2">{host || "…"}</span>
+        {t("login.servingFrom")}{" "}
+        <span className="text-ink-2">{host || "…"}</span>
       </p>
 
       {/* Both organisers, together, at the foot of the page. Never one alone. */}
@@ -179,6 +195,8 @@ function Field({
  * fictional event.
  */
 function ProductDiagram() {
+  const t = useT();
+
   return (
     <div aria-hidden className="w-full max-w-lg">
       <div className="card overflow-hidden shadow-sm">
@@ -248,8 +266,7 @@ function ProductDiagram() {
       </div>
 
       <p className="mt-6 max-w-md text-sm leading-relaxed text-ink-3">
-        Register a visitor, print their card, and watch every arrival land in one
-        place — on your own network, with nothing leaving the building.
+        {t("login.pitch")}
       </p>
     </div>
   );
