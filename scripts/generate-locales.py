@@ -385,6 +385,108 @@ M = [
     ("scan.duplicate", "Duplicate", "Duplicado", "Duplikadu"),
     ("scan.revoked", "Revoked", "Revogado", "Revogadu"),
     ("scan.invalid", "Invalid", "Inválido", "Inválidu"),
+
+    ("//registration form", "", "", ""),
+    ("register.title", "Register a visitor", "Registar um visitante",
+     "Rejista vizitante ida"),
+    ("register.subtitle",
+     "One badge, printed in advance, valid for the whole event",
+     "Um crachá, impresso com antecedência, válido para todo o evento",
+     "Kartaun ida, imprime uluk, válidu ba eventu tomak"),
+    ("register.issuedTitle", "Badge issued", "Crachá emitido",
+     "Kartaun fó sai ona"),
+    ("register.issuedSubtitle",
+     "Print the card now, or from the visitor’s page later",
+     "Imprima o cartão agora, ou mais tarde a partir da página do visitante",
+     "Imprime kartaun agora, ka depois husi vizitante nia pájina"),
+    ("form.photoRequired",
+     "A badge needs a photo. Add one before registering.",
+     "Um crachá precisa de uma fotografia. Adicione uma antes de registar.",
+     "Kartaun presiza foto. Tau ida molok rejista."),
+    ("form.fullName", "Full name", "Nome completo", "Naran kompletu"),
+    ("form.fullNameHint", "As it should read on the badge.",
+     "Como deve aparecer no crachá.",
+     "Hanesan ne’ebé tenke mosu iha kartaun."),
+    ("form.country", "Country", "País", "Nasaun"),
+    ("form.organisation", "Organisation", "Organização", "Organizasaun"),
+    ("form.optional", "Optional.", "Opcional.", "Opsionál."),
+    ("form.category", "Category", "Categoria", "Kategoria"),
+    ("form.cat.normal", "Normal", "Normal", "Normál"),
+    ("form.cat.normalNote", "Standard badge", "Crachá normal",
+     "Kartaun normál"),
+    ("form.cat.vip", "VIP", "VIP", "VIP"),
+    ("form.cat.vipNote", "Distinct card and lobby welcome",
+     "Cartão distinto e boas-vindas no átrio",
+     "Kartaun espesiál no benvindu iha resepsaun"),
+    ("form.registering", "Registering…", "A registar…", "Rejista hela…"),
+    ("form.saving", "Saving…", "A guardar…", "Rai hela…"),
+    ("form.register", "Register and issue badge", "Registar e emitir crachá",
+     "Rejista no fó sai kartaun"),
+    ("form.save", "Save changes", "Guardar alterações", "Rai mudansa"),
+    ("form.noteCreate",
+     "The serial is assigned when you register. The QR is generated at the "
+     "same moment and never changes afterwards.",
+     "O número é atribuído no momento do registo. O QR é gerado nesse mesmo "
+     "instante e nunca muda depois.",
+     "Númeru fó bainhira rejista. QR kria iha momentu hanesan no nunka muda "
+     "depois."),
+    ("form.noteEdit",
+     "Editing details does not reissue the badge. The serial and the QR code "
+     "stay exactly as printed.",
+     "Editar os dados não reemite o crachá. O número e o código QR ficam "
+     "exatamente como foram impressos.",
+     "Edita dadus la fó sai kartaun foun. Númeru no kódigu QR sei hanesan ho "
+     "ne’ebé imprime ona."),
+
+    ("//badge receipt", "", "", ""),
+    ("receipt.badgeIssued", "Badge issued", "Crachá emitido",
+     "Kartaun fó sai ona"),
+    ("receipt.registered", "{name} is registered", "{name} está registado",
+     "{name} rejista ona"),
+    ("receipt.permanent",
+     "This QR is permanent. It was generated when {name} was registered and "
+     "will not change — print it now, or from their page later, as many times "
+     "as you need. It only stops working if you deactivate or delete the "
+     "visitor.",
+     "Este QR é permanente. Foi gerado quando {name} foi registado e não muda "
+     "— imprima-o agora, ou mais tarde a partir da página do visitante, as "
+     "vezes que precisar. Só deixa de funcionar se desativar ou eliminar o "
+     "visitante.",
+     "QR ne’e permanente. Nia kria bainhira rejista {name} no sei la muda — "
+     "imprime agora, ka depois husi nia pájina, dala hira mak presiza. Nia "
+     "para funsiona deit se dezativa ka hasai vizitante."),
+    ("receipt.qrAlt", "QR code for badge {serial}",
+     "Código QR do crachá {serial}", "Kódigu QR ba kartaun {serial}"),
+    ("receipt.badgeToken", "Badge token", "Token do crachá", "Token kartaun"),
+    ("receipt.rendering", "Rendering…", "A gerar…", "Kria hela…"),
+    ("receipt.downloadPdf", "Download badge PDF",
+     "Transferir PDF do crachá", "Deskarrega PDF kartaun"),
+    ("receipt.printBrowser", "Print from browser", "Imprimir pelo navegador",
+     "Imprime husi navegadór"),
+    ("receipt.copied", "Copied", "Copiado", "Kopia ona"),
+    ("receipt.copyToken", "Copy token", "Copiar token", "Kopia token"),
+    ("receipt.qrFailed",
+     "The QR code could not be drawn. Copy the token and print the badge from "
+     "another machine rather than issuing a card without a code.",
+     "Não foi possível desenhar o código QR. Copie o token e imprima o crachá "
+     "noutra máquina, em vez de emitir um cartão sem código.",
+     "La bele dezenha kódigu QR. Kopia token no imprime kartaun iha makina "
+     "seluk, duke fó sai kartaun laiha kódigu."),
+    ("receipt.copiedAnnounce", "Badge token copied to the clipboard.",
+     "Token do crachá copiado para a área de transferência.",
+     "Token kartaun kopia ba área transferénsia."),
+    ("receipt.badgeSerial", "Badge serial", "Número do crachá",
+     "Númeru kartaun"),
+    ("receipt.registerAnother", "Register another visitor",
+     "Registar outro visitante", "Rejista vizitante seluk"),
+    ("receipt.open", "Open {name}", "Abrir {name}", "Loke {name}"),
+    ("receipt.renderFailed", "The badge could not be rendered.",
+     "Não foi possível gerar o crachá.", "La bele kria kartaun."),
+
+    ("//edit", "", "", ""),
+    ("edit.title", "Edit {name}", "Editar {name}", "Edita {name}"),
+    ("edit.fallbackTitle", "Edit visitor", "Editar visitante",
+     "Edita vizitante"),
 ]
 
 
