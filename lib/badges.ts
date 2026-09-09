@@ -1,22 +1,25 @@
 /**
- * Badge PDFs.
+ * Badge PDFs and exports.
  *
- * Two endpoints, and the difference between them is the whole story of this
- * feature:
+ * EVERY ENDPOINT HERE IS NON-DESTRUCTIVE, AND THAT IS THE WHOLE STORY:
  *
- *   POST /badges/card           needs the RAW token. Non-destructive.
- *   GET  /badges/roster.xlsx    the visitor list. Non-destructive.
- *   POST /badges/reissue-sheet  needs only ids. DESTRUCTIVE — mints new tokens.
- *   POST /badges/export         .xlsx with QR. DESTRUCTIVE — mints new tokens.
+ *   POST /badges/card           needs the RAW token.
+ *   GET  /badges/roster.xlsx    the visitor list, no credentials.
+ *   POST /badges/reissue-sheet  needs only ids. Draws the A4 sheet.
+ *   POST /badges/export         .xlsx with the QR for each visitor.
  *
- * The raw token exists for exactly one moment: the response to `POST /visitors`.
- * Only its SHA-256 digest is stored, so the server cannot reprint a card it
- * issued earlier — it can only issue a new one. That is why the registration
- * receipt can hand you a PDF for free, and why every later print is a reissue
- * that kills the card the visitor is already wearing.
+ * A badge token is derived — `hmac(secret, id:token_version)` — so the server
+ * can reproduce the code on a card it printed weeks ago. Printing redraws what
+ * is already round somebody's neck; it never mints a replacement, and nothing
+ * a registrar does from the dashboard changes a QR.
  *
- * Both are fetched with the bearer token and handed to the browser as a blob. A
- * plain `<a href>` would carry no Authorization header and simply 401.
+ * `POST /badges/reissue` DOES rotate tokens and is deliberately not wrapped
+ * here. A badge is issued once at registration and stays valid until the
+ * visitor is revoked or deleted, so the dashboard has no button for it and no
+ * client function that could grow one by accident.
+ *
+ * All of these are fetched with the bearer token and handed to the browser as a
+ * blob. A plain `<a href>` would carry no Authorization header and simply 401.
  */
 import { ensureAccessToken, getAccessToken } from "@/lib/auth";
 import { ApiError } from "@/lib/visitors";
@@ -86,8 +89,11 @@ export async function downloadBadgeCard(
 }
 
 /**
- * DESTRUCTIVE. Every listed visitor gets a new token, and any card already
- * printed for them stops scanning the moment this returns.
+ * The A4 print sheet. NOT destructive any more.
+ *
+ * Badge tokens are derived from the visitor, so this draws the QR that is
+ * already on their card. Printing the same people twice produces two identical,
+ * working sheets -- which is the point: a reprint used to be impossible.
  */
 export async function downloadReissuedSheet(
   visitorIds: string[],
@@ -127,50 +133,4 @@ export async function downloadCredentialExport(
     count ? `vms-credentials-${count}.xlsx` : "vms-credentials.xlsx",
     visitorIds && visitorIds.length > 0 ? { visitor_ids: visitorIds } : {},
   );
-}
-
-export type ReissuedBadge = {
-  visitor_id: string;
-  badge_serial: string;
-  full_name: string;
-  category: string;
-  token: string;
-};
-
-/**
- * DESTRUCTIVE. Reissue the listed visitors and get their RAW tokens back, so the
- * dashboard can draw a working QR on screen.
- *
- * The reissue is not a design choice: the server keeps only `sha256(token)`, so
- * the code on a card it printed last week cannot be recovered — only replaced.
- * Every card already in the hands of these visitors stops scanning.
- *
- * The response is the only copy. It is held in component state and never stored.
- */
-export async function reissueBadges(
-  visitorIds: string[],
-): Promise<ReissuedBadge[]> {
-  await ensureAccessToken();
-
-  const response = await fetch("/api/v1/badges/reissue", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getAccessToken() ?? ""}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ visitor_ids: visitorIds }),
-  });
-
-  if (!response.ok) {
-    const detail = await response
-      .json()
-      .then((payload) => payload?.detail as string | undefined)
-      .catch(() => undefined);
-    throw new ApiError(
-      detail ?? `The badges could not be reissued (HTTP ${response.status}).`,
-    );
-  }
-
-  const payload = (await response.json()) as { issued: ReissuedBadge[] };
-  return payload.issued;
 }
