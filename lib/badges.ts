@@ -15,8 +15,8 @@
  *
  * `POST /badges/reissue` DOES rotate tokens and is deliberately not wrapped
  * here. A badge is issued once at registration and stays valid until the
- * visitor is revoked or deleted, so the dashboard has no button for it and no
- * client function that could grow one by accident.
+ * visitor is deactivated or deleted, so the dashboard has no button for it and
+ * no client function that could grow one by accident.
  *
  * All of these are fetched with the bearer token and handed to the browser as a
  * blob. A plain `<a href>` would carry no Authorization header and simply 401.
