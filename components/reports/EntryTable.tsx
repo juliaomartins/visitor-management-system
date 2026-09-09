@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import type { Entry, ScanResult } from "@/lib/reports";
 
 /**
@@ -49,12 +50,15 @@ const RESULTS: Record<
 };
 
 export function EntryTable({ entries }: { entries: Entry[] }) {
+  const t = useT();
   if (entries.length === 0) {
     return (
       <div className="px-6 py-16 text-center">
-        <p className="display text-lg text-ink">Nothing scanned in this range</p>
+        <p className="display text-lg text-ink">
+          {t("recap.nothingScanned")}
+        </p>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
-          Widen the dates, or clear the filters.
+          {t("entry.emptyBody")}
         </p>
       </div>
     );
@@ -66,12 +70,12 @@ export function EntryTable({ entries }: { entries: Entry[] }) {
         <thead>
           <tr className="border-b border-line text-left">
             <th className="w-1.5 px-0 py-2.5" />
-            <Th>Time</Th>
-            <Th>Result</Th>
-            <Th>Name</Th>
-            <Th>Country</Th>
-            <Th>Category</Th>
-            <Th>Device</Th>
+            <Th>{t("entry.col.time")}</Th>
+            <Th>{t("visitor.col.result")}</Th>
+            <Th>{t("entry.col.name")}</Th>
+            <Th>{t("form.country")}</Th>
+            <Th>{t("form.category")}</Th>
+            <Th>{t("visitor.col.device")}</Th>
           </tr>
         </thead>
         <tbody>
