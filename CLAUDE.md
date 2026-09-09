@@ -34,26 +34,48 @@ vms/
 Frontends consume contracts by relative path:
 `"@vms/contracts": "file:../vms-contracts"` — no submodule, no npm publishing.
 
-### THE THREE FRONTENDS ARE THEIR OWN GIT REPOSITORIES
+### THE THREE FRONTENDS WERE THEIR OWN GIT REPOSITORIES, AND WERE MERGED IN
 
-`vms-dashboard/`, `vms-screen/` and `vms-scanner/` each contain a `.git`
-directory. They are *not* submodules — there is no gitlink in the root tree and
-no `.gitmodules` — so from the root repository they simply look like untracked
-directories and their contents are invisible to it.
+`vms-dashboard/`, `vms-screen/` and `vms-scanner/` each used to contain a `.git`
+of their own. They were *not* submodules — no gitlink, no `.gitmodules` — so from
+the root repository they looked like untracked directories and their contents
+were invisible to it. A push from the root would have sent the backend, the
+contracts and the desktop app and **none of the three frontends**, silently,
+because as far as the root repo was concerned there was never anything there.
 
-This is worth knowing before any push. A `git push` from the root sends the
-backend, the contracts and the desktop app; the three frontends go nowhere, and
-git says nothing about it because as far as the root repo is concerned there was
-never anything there.
+They are now one repository. Each was merged with `git read-tree --prefix=`
+against a `-s ours` merge, which grafts the app's tree in at its folder while
+leaving the working tree untouched — so `node_modules` survived and nothing had
+to be reinstalled.
 
-Check where a commit will actually land before making it:
+**All 623 commits are reachable from `HEAD` and every one of them is pushed.**
+But be precise about what that gives you:
 
 ```bash
-git rev-parse --show-toplevel        # which repository am I in?
+git log --oneline                      # 623 commits, frontends included
+git show 2bc9385                       # a dashboard commit, intact
+git log --oneline -- vms-dashboard/    # only 1 — the merge
 ```
 
-`git -C vms-dashboard log` reads the dashboard's own history, which is where
-every frontend commit lives.
+The last line is not a bug and not fixable without rewriting history. Those
+commits were made *inside* the dashboard repo, so their paths are
+`app/(auth)/login/page.tsx`, not `vms-dashboard/app/(auth)/login/page.tsx`. Git
+filters by path, and the old paths do not carry the prefix. The commits are all
+there; only path-scoped log cannot associate them.
+
+To read a frontend's own history, filter by the pre-merge path instead:
+
+```bash
+git log --oneline -- 'app/(auth)/login/page.tsx'
+```
+
+The three merge commits claim `git log -- vms-dashboard/` reads the real
+history. **That claim is wrong** — it was written before the behaviour was
+checked. This paragraph is the accurate one.
+
+Backups of the three original repositories were taken as `git bundle` files
+before the merge. They are not in this repo; if the pre-merge history is ever
+needed as a standalone thing, that is where it is.
 
 ---
 
