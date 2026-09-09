@@ -32,8 +32,15 @@ export function PurgeDialog({
   open: boolean;
   visitorName: string;
   badgeSerial: string;
-  /** Scans that will survive, detached. Shown before anyone confirms. */
-  scanCount: number;
+  /**
+   * Scans that will survive, detached. Shown before anyone confirms.
+   *
+   * Undefined where the caller genuinely does not know — the visitor list holds
+   * no scan history, and fetching one visitor's just to fill in a number would
+   * put a request behind every right-click. The copy says less in that case
+   * rather than guessing at a figure.
+   */
+  scanCount?: number;
   pending: boolean;
   error?: string;
   onConfirm: () => void;
@@ -92,9 +99,11 @@ export function PurgeDialog({
 
         <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
           <li>
-            {scanCount === 0
-              ? "No scans are affected — this badge has never been presented."
-              : `${scanCount} ${scanCount === 1 ? "scan stays" : "scans stay"} in the entrance log but stop naming anybody.`}
+            {scanCount === undefined
+              ? "Any scans of this badge stay in the entrance log but stop naming anybody."
+              : scanCount === 0
+                ? "No scans are affected — this badge has never been presented."
+                : `${scanCount} ${scanCount === 1 ? "scan stays" : "scans stay"} in the entrance log but stop naming anybody.`}
           </li>
           <li>Badge {badgeSerial} is retired. The serial is not reused.</li>
           <li>
