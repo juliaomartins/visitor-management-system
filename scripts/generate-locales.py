@@ -316,6 +316,75 @@ M = [
     ("purge.confirm", "Delete permanently", "Eliminar definitivamente",
      "Hasai permanente"),
     ("purge.pending", "Deleting…", "A eliminar…", "Hasai hela…"),
+
+    ("//visitor detail", "", "", ""),
+    ("common.loading", "Loading…", "A carregar…", "Karga hela…"),
+    ("visitor.fallbackTitle", "Visitor", "Visitante", "Vizitante"),
+    ("visitor.notFound", "Could not load this visitor",
+     "Não foi possível carregar este visitante",
+     "La bele karga vizitante ne’e"),
+    ("visitor.notFoundBody",
+     "They may have been deleted. Check the visitor list.",
+     "Pode ter sido eliminado. Consulte a lista de visitantes.",
+     "Karik hasai tiha ona. Haree lista vizitante."),
+    ("visitor.backToAll", "Back to all visitors",
+     "Voltar a todos os visitantes", "Fila ba vizitante hotu"),
+    ("visitor.allVisitors", "All visitors", "Todos os visitantes",
+     "Vizitante hotu"),
+    ("visitor.status.active", "Active", "Ativo", "Ativu"),
+    ("visitor.headingActive", "This badge opens the door",
+     "Este crachá abre a porta", "Kartaun ne’e loke odamatan"),
+    ("visitor.headingOff", "This badge is switched off",
+     "Este crachá está desligado", "Kartaun ne’e desliga ona"),
+    ("visitor.subActive",
+     "Any paired scanner will accept it and the lobby screen will welcome them.",
+     "Qualquer leitor emparelhado aceita-o e o ecrã do átrio dá as "
+     "boas-vindas.",
+     "Leitór ne’ebé pareia ona sei simu, no ekrán resepsaun sei fó benvindu."),
+    ("visitor.subOff",
+     "The next scan of it shows red. Activating puts the same card back to "
+     "work — nothing needs reprinting.",
+     "A próxima leitura mostra vermelho. Ativar põe o mesmo cartão a funcionar "
+     "— não é preciso reimprimir.",
+     "Leitura tuirmai sei mosu mean. Ativa fó fila kartaun hanesan ba servisu "
+     "— la presiza imprime fali."),
+    ("visitor.registered", "Registered", "Registado", "Rejista"),
+    ("visitor.arrivals", "Arrivals", "Chegadas", "Xegada"),
+    ("visitor.lastArrival", "Last arrival", "Última chegada", "Xegada ikus"),
+    ("visitor.notYet", "Not yet", "Ainda não", "Seidauk"),
+    ("visitor.scansLogged", "Scans logged", "Leituras registadas",
+     "Leitura rejistadu"),
+    ("visitor.activating", "Activating…", "A ativar…", "Ativa hela…"),
+    ("visitor.qrNote",
+     "This QR was generated when the visitor was registered and never changes. "
+     "Reprint the card as often as you need — it scans the same every time. "
+     "Deactivating stops it and activating starts it again, both without "
+     "touching the code on the card. Deleting permanently is the only thing "
+     "here that cannot be undone.",
+     "Este QR foi gerado no registo do visitante e nunca muda. Reimprima o "
+     "cartão as vezes que precisar — lê-se sempre igual. Desativar para-o e "
+     "ativar volta a pô-lo a funcionar, sem tocar no código do cartão. "
+     "Eliminar definitivamente é a única coisa aqui que não pode ser anulada.",
+     "QR ne’e kria bainhira rejista vizitante no nunka muda. Imprime fali "
+     "kartaun dala hira mak presiza — nia lee hanesan beibeik. Dezativa para "
+     "nia, no ativa hahú fali, rua ne’e la book kódigu iha kartaun. Hasai "
+     "permanente mak buat ida deit iha ne’e ne’ebé la bele fila fali."),
+    ("visitor.scanHistory", "Scan history", "Histórico de leituras",
+     "Istória leitura"),
+    ("visitor.scanHistoryBody",
+     "Every time this badge was presented, including the times it was refused.",
+     "Todas as vezes que este crachá foi apresentado, incluindo as recusadas.",
+     "Dala hotu kartaun ne’e aprezenta, inklui dala ne’ebé rejeita."),
+    ("visitor.noScans", "This badge has not been scanned yet.",
+     "Este crachá ainda não foi lido.", "Kartaun ne’e seidauk lee."),
+    ("visitor.col.event", "Event", "Evento", "Eventu"),
+    ("visitor.col.scannedAt", "Scanned at", "Lido em", "Lee iha"),
+    ("visitor.col.result", "Result", "Resultado", "Rezultadu"),
+    ("visitor.col.device", "Device", "Dispositivo", "Aparellu"),
+    ("scan.valid", "Valid", "Válido", "Válidu"),
+    ("scan.duplicate", "Duplicate", "Duplicado", "Duplikadu"),
+    ("scan.revoked", "Revoked", "Revogado", "Revogadu"),
+    ("scan.invalid", "Invalid", "Inválido", "Inválidu"),
 ]
 
 
