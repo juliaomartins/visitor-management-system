@@ -304,4 +304,71 @@ export const tet: Messages = {
   "card.qrOnCard": "iha kartaun imprimidu",
   "card.qrDrawing": "dezenha hela\u2026",
   "card.qrFailed": "la bele dezenha",
+
+  // ------------------------------------------------------------- devices --
+  "time.justNow": "foin daudaun",
+  "device.kind.scanner": "Leit\u00f3r",
+  "device.kind.screen": "Ekr\u00e1n",
+  "device.kindInline.scanner": "leit\u00f3r",
+  "device.kindInline.screen": "ekr\u00e1n",
+  "devices.subtitleQuiet":
+    "Seguransa sira-nia telem\u00f3vel no ekr\u00e1n resepsaun",
+  "devices.silentOne": "Aparellu {count} seidauk komunika",
+  "devices.silentMany": "Aparellu {count} seidauk komunika",
+  "devices.alertOne": "Aparellu {count} nonook.",
+  "devices.alertMany": "Aparellu {count} nonook.",
+  "devices.alertBody":
+    "Odamatan ne\u2019eb\u00e9 laiha leitura durante minutu sanulu karik nonook ka offline \u2014 b\u00e1 haree.",
+  "devices.paired": "Aparellu ne\u2019eb\u00e9 pareia ona",
+  "devices.pairedBody":
+    "Atualiza an rasik. \u201cHaree ikus\u201d mak pedidu ikus ne\u2019eb\u00e9 aparellu halo, no ho ne\u2019e mak ita hatene odamatan nonook ka telem\u00f3vel mate.",
+  "devices.loadFailed": "La bele karga aparellu",
+  "devices.none": "Seidauk iha aparellu pareia",
+  "devices.noneBody":
+    "Kria k\u00f3digu iha leten, depois tau iha seguransa nia telem\u00f3vel ka ekr\u00e1n resepsaun.",
+  "devices.col.device": "Aparellu",
+  "devices.col.kind": "Tipu",
+  "devices.col.lastSeen": "Haree ikus",
+  "devices.col.state": "Estadu",
+  "devices.neverCheckedIn": "Nunka komunika",
+  "devices.silentCheck": "Nonook \u2014 haree odamatan",
+  "devices.notSeenSincePairing": "Laiha sin\u00e1l desde pareia",
+  "devices.stateRevoked": "REVOGADU",
+  "devices.stateActive": "ATIVU",
+  "devices.revoke": "Revoga",
+
+  // ------------------------------------------------------------- pairing --
+  "pair.title": "Pareia aparellu ida",
+  "pair.body":
+    "Loke aplikasaun iha telem\u00f3vel ka ekr\u00e1n, depois lee k\u00f3digu iha okos. K\u00f3digu ida-idak funsiona dala ida deit.",
+  "pair.codeButton": "K\u00f3digu {kind}",
+  "pair.blurb.scanner": "Seguransa nia telem\u00f3vel, iha odamatan",
+  "pair.blurb.screen": "Ekr\u00e1n resepsaun",
+  "pair.codeLabel": "K\u00f3digu pareia {kind}",
+  "pair.expired":
+    "K\u00f3digu ne\u2019e liu ona tempu. Kria seluk \u2014 laiha buat ida pareia ho nia.",
+  "pair.expiresIn": "Liu tempu iha",
+  "pair.alphabetNote":
+    "K\u00f3digu nunka iha 0, O, 1 ka I \u2014 haat ne\u2019e la tau tanba sira mak ema rona sala no hakerek sala. Aparellu mosu iha lista okos bainhira pareia.",
+
+  // ------------------------------------------------ revoke device dialog --
+  "revokeDevice.title": "Revoga {name}?",
+  "revokeDevice.body":
+    "{kind} ne\u2019e para funsiona {strong}. Se nia telem\u00f3vel odamatan nian, odamatan ne\u2019e la bele rejista xegada to\u2019o ema pareia fali.",
+  "revokeDevice.bodyStrong": "kedas",
+  "revokeDevice.point1":
+    "{strong} \u2014 iha segundu balu, la presiza ema b\u00e1. Prepara k\u00f3digu pareia foun se ita hakarak lori nia fila kedas.",
+  "revokeDevice.point1Strong": "Nia fila mesak ba ekr\u00e1n pareia",
+  "revokeDevice.point2":
+    "Nia token mate ona. Laiha dalan atu fila fali \u2014 atu hetan nia fali presiza k\u00f3digu pareia foun.",
+  "revokeDevice.point3":
+    "Leitura ne\u2019eb\u00e9 nia rejista ona sei rai, no sira ne\u2019eb\u00e9 nia rai offline sei sinkroniza bainhira pareia fali.",
+  "revokeDevice.point4":
+    "Nia sei hela iha lista ne\u2019e, ho marka revogadu, atu rejistu auditoria nafatin.",
+  "revokeDevice.cancel": "Rai ativu nafatin",
+  "revokeDevice.pending": "Revoga hela\u2026",
+  "revokeDevice.confirm": "Revoga aparellu",
+  "error.deviceLoad": "La bele karga lista aparellu.",
+  "error.pairingCode": "La bele kria k\u00f3digu pareia.",
+  "error.deviceRevoke": "La bele revoga aparellu.",
 };
