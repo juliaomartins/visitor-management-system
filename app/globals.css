@@ -69,11 +69,28 @@
   --color-ink-2: #4a5560;
   --color-ink-3: #8a94a0;
 
+  /*
+    THE GRAPHITE RAMP IS A PLATE, NOT AN INK RAMP, AND IT NEVER INVERTS.
+
+    Every single use of it in this app is a `bg-` -- thirteen of them: the
+    pairing-code panel, the sidebar tooltip, every confirm dialog, both chart
+    tooltips, the badge preview. Not one uses it as text. It exists to put a
+    dark plate with light type on top of whatever the page is doing.
+
+    That is why it must not flip with the theme. An earlier dark mode inverted
+    it, on the reasonable-sounding logic that a "950" should be the darkest
+    value available -- which turned all thirteen plates white while their text
+    stayed `#fff`, so the pairing code, the nav tooltips and every dialog went
+    invisible at once.
+
+    `graphite-500` is the small print ON that plate and was 4.1:1 here, under
+    the 4.5 floor. Lifted to #707c8b, measured at 4.50:1.
+  */
   --color-graphite-950: #0b1016;
   --color-graphite-900: #141b24;
   --color-graphite-800: #1f2833;
   --color-graphite-700: #2e3a47;
-  --color-graphite-500: #6b7684;
+  --color-graphite-500: #707c8b;
   --color-graphite-300: #b6bcc7;
 
   /*
@@ -144,12 +161,20 @@
   --color-ink-2: #a8b6c4;
   --color-ink-3: #75838f;
 
-  --color-graphite-950: #f4f8fb;
-  --color-graphite-900: #e2e9f0;
-  --color-graphite-800: #c3cdd8;
-  --color-graphite-700: #9aa7b4;
-  --color-graphite-500: #75838f;
-  --color-graphite-300: #3c4855;
+  /*
+    Still a dark plate -- just lifted off the dark page so it reads as raised.
+
+    #243043 measures 1.44:1 against the page and 1.30:1 against a card, which is
+    enough to see an edge, while white on it is 13.3:1 and graphite-300 is 7.0:1.
+    graphite-500 needs its own value here: #6b7684 falls to 2.9:1 on this plate,
+    so the small print lifts to #8e98a4 at 4.54:1.
+  */
+  --color-graphite-950: #243043;
+  --color-graphite-900: #2c3a4d;
+  --color-graphite-800: #35455a;
+  --color-graphite-700: #46586f;
+  --color-graphite-500: #8e98a4;
+  --color-graphite-300: #c3ccd8;
 
   --color-accent: #3372ff;
   --color-accent-2: #6d9bff;
@@ -373,10 +398,6 @@ body {
 }
 
 /* 19 mm photo inside a 21.2 mm ring. */
-.cr80-photo {
-  width: 39cqw;
-}
-
 /* 11 pt ≈ 3.9 mm. */
 .cr80-name {
   font-size: 7.2cqw;
