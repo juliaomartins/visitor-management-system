@@ -10,6 +10,11 @@
  * date from the browser's clock beyond "today", because a laptop set to the wrong
  * zone would otherwise silently ask for the wrong day.
  */
+import {
+  DEFAULT_LOCALE,
+  translate,
+  type MessageKey,
+} from "@/lib/locales";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
@@ -38,7 +43,7 @@ export function todayISO(): string {
   return local.toISOString().slice(0, 10);
 }
 
-function fail(error: unknown, fallback: string): never {
+function fail(error: unknown, fallback: MessageKey): never {
   if (error && typeof error === "object") {
     const body = error as Record<string, unknown>;
     if (typeof body.detail === "string") throw new ApiError(body.detail);
@@ -64,7 +69,7 @@ export function useEntryReport(filters: ReportFilters) {
         params: { query: toQuery(filters) },
         signal,
       });
-      if (error) fail(error, "The entrance log could not be loaded.");
+      if (error) fail(error, "error.reportLoad");
       return data;
     },
   });
@@ -88,20 +93,20 @@ export function useEntryReport(filters: ReportFilters) {
  * when uvicorn is restarted by hand, and there is always a window between the
  * two. "HTTP 404" is true and tells nobody what to do about it.
  */
-function describeExportFailure(status: number, what: string): string {
-  if (status === 404) {
-    return (
-      `${what} is not available on the server yet — it is running an older ` +
-      "build than this page. Restart the backend and try again."
-    );
-  }
-  if (status === 401 || status === 403) {
-    return "Your session expired. Reload the page and sign in again.";
-  }
-  if (status >= 500) {
-    return `The server could not build ${what.toLowerCase()} (HTTP ${status}).`;
-  }
-  return `${what} could not be downloaded (HTTP ${status}).`;
+/*
+  THE FORMAT'S NAME IS NO LONGER SPLICED INTO THE SENTENCE.
+
+  It used to read `${what.toLowerCase()}` mid-clause, which needs the noun to
+  behave the way an English noun behaves: lowercase in the middle, no article,
+  no gender. "o relatório PDF" and "Relatóriu PDF" do not oblige. The operator
+  already knows which of the three buttons they pressed, so the message says
+  "that export" and stays a sentence in every language.
+*/
+function describeExportFailure(status: number): MessageKey {
+  if (status === 404) return "reports.export.stale";
+  if (status === 401 || status === 403) return "reports.export.expired";
+  if (status >= 500) return "reports.export.serverError";
+  return "reports.export.downloadFailed";
 }
 
 export type ReportFormat = "csv" | "xlsx" | "pdf";
@@ -109,23 +114,23 @@ export type ReportFormat = "csv" | "xlsx" | "pdf";
 /** What each format is actually for, in the words the button uses. */
 export const REPORT_FORMATS: {
   format: ReportFormat;
-  label: string;
-  hint: string;
+  labelKey: MessageKey;
+  hintKey: MessageKey;
 }[] = [
   {
     format: "pdf",
-    label: "PDF report",
-    hint: "The written report — findings, charts and tables. For sending on.",
+    labelKey: "reports.format.pdf",
+    hintKey: "reports.format.pdfHint",
   },
   {
     format: "xlsx",
-    label: "Excel workbook",
-    hint: "Six sheets, figures as numbers. For anyone who wants to pivot it.",
+    labelKey: "reports.format.xlsx",
+    hintKey: "reports.format.xlsxHint",
   },
   {
     format: "csv",
-    label: "CSV log",
-    hint: "The raw scan log, one row per badge presented. No analysis.",
+    labelKey: "reports.format.csv",
+    hintKey: "reports.format.csvHint",
   },
 ];
 
@@ -151,10 +156,12 @@ export async function downloadEntriesExport(
   );
 
   if (!response.ok) {
-    const what =
-      REPORT_FORMATS.find((option) => option.format === format)?.label ??
-      "The export";
-    throw new ApiError(describeExportFailure(response.status, what));
+    const key = describeExportFailure(response.status);
+    throw new ApiError(
+      translate(DEFAULT_LOCALE, key, { status: response.status }),
+      {},
+      key,
+    );
   }
 
   const disposition = response.headers.get("Content-Disposition") ?? "";
