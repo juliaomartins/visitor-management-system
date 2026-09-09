@@ -558,6 +558,124 @@ M = [
     ("crop.applying", "Applying…", "A aplicar…", "Aplika hela…"),
     ("crop.use", "Use this photo", "Usar esta fotografia", "Uza foto ne’e"),
     ("crop.changeImage", "Change image", "Mudar de imagem", "Troka imajen"),
+
+    ("//badges", "", "", ""),
+    ("badges.title", "Badge printing", "Impressão de crachás",
+     "Impresaun kartaun"),
+    ("badges.subtitle", "Nine to an A4 sheet, with cut marks",
+     "Nove por folha A4, com marcas de corte",
+     "Sia iha folha A4 ida, ho marka korta"),
+    ("badges.loadFailed", "The visitor list could not be loaded.",
+     "Não foi possível carregar a lista de visitantes.",
+     "La bele karga lista vizitante."),
+    ("badges.safeTitle", "Printing is safe to repeat",
+     "Imprimir de novo é seguro", "Imprime fali seguru"),
+    ("badges.safeBody",
+     "Every sheet carries each visitor’s existing QR, so a card can be "
+     "reprinted as often as you need and the ones already handed out keep "
+     "working. To stop a lost card, deactivate that visitor on their own page "
+     "— the QR itself never changes, so activating them again puts the same "
+     "card back to work.",
+     "Cada folha leva o QR já existente de cada visitante, por isso um cartão "
+     "pode ser reimpresso as vezes que precisar e os já entregues continuam a "
+     "funcionar. Para travar um cartão perdido, desative esse visitante na "
+     "página dele — o QR nunca muda, por isso ativá-lo de novo põe o mesmo "
+     "cartão a funcionar.",
+     "Folha ida-idak lori vizitante nia QR ne’ebé iha ona, tan ne’e kartaun "
+     "bele imprime fali dala hira mak presiza no sira ne’ebé fó ona kontinua "
+     "funsiona. Atu para kartaun lakon, dezativa vizitante ne’e iha nia "
+     "pájina — QR nunka muda, tan ne’e ativa fali fó fila kartaun hanesan ba "
+     "servisu."),
+    ("badges.searchPlaceholder", "Name, organisation, country or serial",
+     "Nome, organização, país ou número",
+     "Naran, organizasaun, nasaun ka númeru"),
+    ("badges.clearSelection", "Clear selection", "Limpar seleção",
+     "Hamoos hili"),
+    ("badges.selectAll", "Select all {count}", "Selecionar todos ({count})",
+     "Hili hotu ({count})"),
+    ("badges.print", "Print", "Imprimir", "Imprime"),
+    ("badges.printCount", "Print {count}", "Imprimir {count}",
+     "Imprime {count}"),
+    ("badges.sheetFailed", "The sheet could not be produced.",
+     "Não foi possível produzir a folha.", "La bele halo folha."),
+    ("badges.export", "Export .xlsx", "Exportar .xlsx", "Esporta .xlsx"),
+    ("badges.fileFailed", "The file could not be produced.",
+     "Não foi possível produzir o ficheiro.", "La bele halo fixeiru."),
+    ("badges.selectedOne", "{count} selected · {sheets} A4 sheet",
+     "{count} selecionado · {sheets} folha A4",
+     "{count} hili · folha A4 {sheets}"),
+    ("badges.selectedMany", "{count} selected · {sheets} A4 sheets",
+     "{count} selecionados · {sheets} folhas A4",
+     "{count} hili · folha A4 {sheets}"),
+    ("badges.noMatch", "No visitors match that search.",
+     "Nenhum visitante corresponde a essa pesquisa.",
+     "Laiha vizitante ida tuir buka ne’e."),
+    ("badges.onSheet", "On the sheet", "Na folha", "Iha folha"),
+    ("badges.notPrinting", "Not printing", "Fora da folha", "La imprime"),
+
+    ("//export dialog", "", "", ""),
+    ("export.titleOne", "Export badge codes for {count} visitor?",
+     "Exportar códigos de crachá de {count} visitante?",
+     "Esporta kódigu kartaun ba vizitante {count}?"),
+    ("export.titleMany", "Export badge codes for {count} visitors?",
+     "Exportar códigos de crachá de {count} visitantes?",
+     "Esporta kódigu kartaun ba vizitante {count}?"),
+    ("export.body",
+     "This file contains a {strong} for every visitor in it. Nothing is "
+     "changed by exporting — the codes are the ones already on their cards — "
+     "but anyone holding the file can produce a badge that scans.",
+     "Este ficheiro contém um {strong} para cada visitante nele. Exportar não "
+     "altera nada — os códigos são os que já estão nos cartões — mas quem "
+     "tiver o ficheiro consegue produzir um crachá que é lido.",
+     "Fixeiru ne’e iha {strong} ba vizitante ida-idak. Esporta la muda buat "
+     "ida — kódigu sira mak ne’ebé iha ona sira-nia kartaun — maibé ema "
+     "ne’ebé iha fixeiru bele halo kartaun ne’ebé lee."),
+    ("export.bodyStrong", "working QR code", "código QR funcional",
+     "kódigu QR ne’ebé funsiona"),
+    ("export.point1",
+     "Send it the way you would send the printed cards, not the way you would "
+     "send a guest list.",
+     "Envie-o como enviaria os cartões impressos, não como enviaria uma lista "
+     "de convidados.",
+     "Haruka nia hanesan haruka kartaun imprimidu, la’ós hanesan haruka lista "
+     "konvidadu."),
+    ("export.point2",
+     "Exporting again later produces an identical file. Losing this one costs "
+     "nothing but the time to export it again.",
+     "Exportar de novo mais tarde produz um ficheiro idêntico. Perder este só "
+     "custa o tempo de o exportar outra vez.",
+     "Esporta fali depois sei halo fixeiru hanesan. Lakon ida ne’e la kustu "
+     "buat ida, tempu deit atu esporta fali."),
+    ("export.point3",
+     "To stop a specific badge, deactivate that visitor on their page. "
+     "Deleting the file does not stop anything.",
+     "Para travar um crachá específico, desative esse visitante na página "
+     "dele. Apagar o ficheiro não trava nada.",
+     "Atu para kartaun ida, dezativa vizitante ne’e iha nia pájina. Hasai "
+     "fixeiru la para buat ida."),
+    ("export.building", "Building…", "A preparar…", "Prepara hela…"),
+    ("export.confirm", "Export and download", "Exportar e transferir",
+     "Esporta no deskarrega"),
+
+    # ------------------------------------------------------------ badge card --
+    #
+    # ONLY THE PARTS THAT ARE NOT PRINTED.
+    #
+    # components/badge-card.tsx mirrors what apps/badges/services.py draws with
+    # ReportLab, and that is English: "Registered", "Country", "VIP GUEST" and
+    # the visitor's role line are printed onto the physical card in Helvetica.
+    # The preview exists to show what comes out of the printer, so translating
+    # those labels would make it lie about the card -- the registrar would check
+    # a Tetun preview and hand over an English badge.
+    #
+    # These two are screen-only: the deactivated overlay and the empty QR frame
+    # never appear on a printed card, so they follow the interface instead.
+    ("card.deactivated", "Deactivated", "Desativado", "Dezativadu"),
+    ("card.qrOnCard", "on the printed card", "no cartão impresso",
+     "iha kartaun imprimidu"),
+    ("card.qrDrawing", "drawing…", "a desenhar…", "dezenha hela…"),
+    ("card.qrFailed", "could not draw", "não foi possível desenhar",
+     "la bele dezenha"),
 ]
 
 
