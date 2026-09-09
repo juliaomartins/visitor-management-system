@@ -96,8 +96,30 @@ export function VisitorForm({
   const fieldError = (name: string) => fieldErrors?.[name]?.[0];
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-10 lg:grid-cols-[1fr_auto]">
-      <div className="max-w-md space-y-5">
+    /*
+      THE PHOTO IS THE FIRST THING, NOT THE LAST.
+
+      It used to sit in the right-hand rail underneath the card preview, in a
+      256px column and below the fold — so the registrar filled in three text
+      fields, hit register, and only then discovered the badge had no photo. The
+      visitor is standing at the desk for about ninety seconds and the photo is
+      the only part of this form that needs them present, so it goes first and it
+      gets the width.
+    */
+    <form onSubmit={handleSubmit} className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="max-w-lg space-y-6">
+        <div className="card p-5">
+          <PhotoUpload
+            onChange={handlePhoto}
+            existingUrl={existingPhotoUrl}
+            error={
+              missingPhoto
+                ? "A badge needs a photo. Add one before registering."
+                : fieldError("photo")
+            }
+          />
+        </div>
+
         <Field
           id="full_name"
           label="Full name"
@@ -206,7 +228,9 @@ export function VisitorForm({
         </div>
       </div>
 
-      <div className="w-full lg:w-64">
+      {/* Sticky, so the card stays in view while the fields are filled in. On a
+          laptop at a registration desk the form is taller than the screen. */}
+      <div className="w-full lg:sticky lg:top-6 lg:w-64 lg:self-start">
         {/*
           The card, updating as the form is filled in. A name too long for the
           plate, a photo cropped through someone's chin, a VIP band that was
@@ -233,21 +257,9 @@ export function VisitorForm({
         </div>
         <p className="mt-2 text-xs text-ink-3">
           {mode === "create"
-            ? "The serial and QR are assigned when you register."
+            ? "The serial is assigned when you register. The QR is generated at the same moment and never changes afterwards."
             : "Editing details does not reissue the badge. The serial and the QR code stay exactly as printed."}
         </p>
-
-        <div className="mt-6">
-          <PhotoUpload
-            onChange={handlePhoto}
-            existingUrl={existingPhotoUrl}
-            error={
-              missingPhoto
-                ? "A badge needs a photo. Add one before registering."
-                : fieldError("photo")
-            }
-          />
-        </div>
       </div>
     </form>
   );
