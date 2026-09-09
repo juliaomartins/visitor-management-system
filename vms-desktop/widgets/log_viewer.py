@@ -15,8 +15,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from i18n import t
-from widgets import theme
+from widgets import icons, theme
 
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QPlainTextEdit,
@@ -93,8 +94,13 @@ class LogViewer(QWidget):
         self._clear.setText(t("log.clearTab"))
 
     def restyle(self) -> None:
+        muted = theme.current().text_muted
         self._copy.setStyleSheet(theme.ghost_button_qss())
+        self._copy.setIcon(icons.copy(muted))
+        self._copy.setIconSize(QSize(16, 16))
         self._clear.setStyleSheet(theme.ghost_button_qss())
+        self._clear.setIcon(icons.trash(muted))
+        self._clear.setIconSize(QSize(16, 16))
         for pane in self._panes.values():
             pane.setStyleSheet(theme.log_qss())
 
