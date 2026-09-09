@@ -14,7 +14,7 @@ where that still reads.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
@@ -29,10 +29,16 @@ from PySide6.QtWidgets import (
 
 from i18n import t
 from services import State
-from widgets import theme
+from widgets import icons, theme
 from widgets.theme import subtle, title
 
-#: Below this the three buttons cannot share a row at a readable size.
+#: A floor for the wrap decision, which is otherwise measured.
+#:
+#: THE THRESHOLD USED TO BE A FIXED 320 AND IT WENT STALE THE MOMENT THE BUTTONS
+#: GAINED ICONS -- every label got wider, the row stopped fitting at widths that
+#: had been fine, and Qt went back to eliding. Asking the buttons how wide they
+#: actually want to be survives an icon, a longer translation and a different
+#: font; a number does not.
 WRAP_BELOW = 320
 
 #: The card stops shrinking here. Narrower than this and the name itself
@@ -78,6 +84,13 @@ class ServiceCard(QFrame):
 
         header = QHBoxLayout()
         header.setSpacing(8)
+
+        # A mark per service, so a card is recognisable before the name is
+        # read. Blank for a service with no mark rather than a borrowed one.
+        self._mark = QLabel()
+        self._mark.setFixedSize(20, 20)
+        header.addWidget(self._mark, 0)
+
         self._title = title("")
         # The name may be long in Portuguese ("Ecra do atrio"); let it elide
         # rather than force the whole card wider than its column.
@@ -190,9 +203,29 @@ class ServiceCard(QFrame):
                 self._buttons.addWidget(self._open, 0, 2)
                 self._buttons.setColumnStretch(3, 1)
 
+        # THE CARD'S HEIGHT HAS TO FOLLOW THE WRAP.
+        #
+        # It is Fixed vertically, so its height comes from its sizeHint -- and
+        # a sizeHint computed before the buttons moved onto a second row is a
+        # row short. Without this the card kept its one-row height and the
+        # second row was simply cut off by the panel below it.
+        self.updateGeometry()
+
+    def _row_needs(self) -> int:
+        """How wide one row of buttons wants to be, icons and labels included."""
+        buttons = self._each_button()
+        spacing = self._buttons.horizontalSpacing() * max(0, len(buttons) - 1)
+        margins = self.layout().contentsMargins()
+        return (
+            sum(b.sizeHint().width() for b in buttons)
+            + spacing
+            + margins.left()
+            + margins.right()
+        )
+
     def resizeEvent(self, event) -> None:  # noqa: N802  (Qt naming)
         super().resizeEvent(event)
-        self._lay_out_buttons(wrapped=event.size().width() < WRAP_BELOW)
+        self._lay_out_buttons(wrapped=event.size().width() < self._row_needs())
 
     # -------------------------------------------------------------- content --
 
@@ -218,10 +251,28 @@ class ServiceCard(QFrame):
 
     def restyle(self) -> None:
         self.setStyleSheet(theme.card_qss())
+        p = theme.current()
+
+        # Icons are redrawn rather than recoloured: they are pixmaps, and the
+        # palette they were painted in is baked in. Asking for them again is
+        # the whole reason they are painted instead of loaded from files.
         self._start.setStyleSheet(theme.primary_button_qss())
+        self._start.setIcon(icons.play(p.on_accent))
         self._stop.setStyleSheet(theme.ghost_button_qss())
+        self._stop.setIcon(icons.stop(p.text_muted))
         if self._open is not None:
             self._open.setStyleSheet(theme.ghost_button_qss())
+            self._open.setIcon(icons.external(p.text_muted))
+
+        # Without an explicit size Qt picks its own, which the stylesheet's
+        # padding then squeezes until the icon sits against the label with no
+        # gap at all. 16px leaves the spacing the style intends.
+        for button in self._each_button():
+            button.setIconSize(QSize(16, 16))
+
+        mark = icons.for_service(self.key)
+        if mark is not None:
+            self._mark.setPixmap(mark(p.text_faint, 18).pixmap(18, 18))
         self._progress.setStyleSheet(theme.progress_qss())
         theme.restyle_labels(self)
         self.set_state(self._state, self._note)
