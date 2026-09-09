@@ -2,13 +2,23 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { downloadRoster } from "@/lib/badges";
 
 import { useSetPageMeta } from "@/components/page-meta";
+import { DeactivateDialog } from "@/components/visitors/DeactivateDialog";
+import { PurgeDialog } from "@/components/visitors/PurgeDialog";
+import { RowContextMenu } from "@/components/visitors/RowContextMenu";
 import { api, type Visitor, type VisitorCategory } from "@/lib/api";
 import { queryKeys } from "@/lib/query-client";
+import {
+  ApiError,
+  useActivateVisitor,
+  useDeactivateVisitor,
+  usePurgeVisitor,
+} from "@/lib/visitors";
 
 type CategoryFilter = VisitorCategory | "all";
 
@@ -33,10 +43,36 @@ function useDebounced<T>(value: T, delay: number): T {
 }
 
 export default function VisitorsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const debouncedSearch = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
   const searchRef = useRef<HTMLInputElement | null>(null);
+
+  /*
+    `menu` is where the menu is drawn; `target` is who it acts on, and the two
+    are separate because they do not end together.
+
+    Choosing an item closes the menu and only then runs the action, so a single
+    piece of state would be null by the time the mutation fired -- and these
+    mutations take their visitor id when the hook is called, not when `mutate`
+    is. `target` is therefore set as the menu opens and left alone as it closes,
+    which keeps the three hooks below pointed at the right person for the whole
+    of an action and its confirmation.
+  */
+  const [menu, setMenu] = useState<{
+    visitor: Visitor;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [target, setTarget] = useState<Visitor | null>(null);
+  const [confirming, setConfirming] = useState<"deactivate" | "purge" | null>(
+    null,
+  );
+
+  const deactivate = useDeactivateVisitor(target?.id ?? "");
+  const activate = useActivateVisitor(target?.id ?? "");
+  const purge = usePurgeVisitor(target?.id ?? "");
 
   // At a registration desk this list is searched far more than it is read, and
   // the hand is on the keyboard between guests. "/" puts the cursor in the box
@@ -220,21 +256,143 @@ export default function VisitorsPage() {
         ) : (
           <ul className="space-y-1">
             {visitors.map((visitor) => (
-              <VisitorRow key={visitor.id} visitor={visitor} />
+              <VisitorRow
+                key={visitor.id}
+                visitor={visitor}
+                onOpenMenu={(x, y) => {
+                  setTarget(visitor);
+                  setMenu({ visitor, x, y });
+                }}
+              />
             ))}
           </ul>
         )}
       </div>
+
+      {menu ? (
+        <RowContextMenu
+          x={menu.x}
+          y={menu.y}
+          heading={menu.visitor.full_name}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label: "Edit details",
+              onSelect: () => router.push(`/visitors/${menu.visitor.id}/edit`),
+            },
+            menu.visitor.is_active
+              ? {
+                  label: "Deactivate visitor",
+                  onSelect: () => setConfirming("deactivate"),
+                }
+              : {
+                  /*
+                    Activating asks nothing, exactly as it does on the visitor's
+                    own page. A dialog guards a loss, and there is none here --
+                    the badge simply starts scanning again, and the way back is
+                    the item that was in this slot a moment ago.
+                  */
+                  label: "Activate visitor",
+                  onSelect: () => activate.mutate(),
+                },
+            {
+              label: "Delete permanently",
+              danger: true,
+              onSelect: () => setConfirming("purge"),
+            },
+          ]}
+        />
+      ) : null}
+
+      {target ? (
+        <DeactivateDialog
+          open={confirming === "deactivate"}
+          visitorName={target.full_name}
+          badgeSerial={target.badge_serial}
+          pending={deactivate.isPending}
+          error={
+            deactivate.error instanceof ApiError
+              ? deactivate.error.message
+              : undefined
+          }
+          onConfirm={() =>
+            deactivate.mutate(undefined, {
+              onSuccess: () => setConfirming(null),
+            })
+          }
+          onCancel={() => {
+            if (!deactivate.isPending) {
+              setConfirming(null);
+              deactivate.reset();
+            }
+          }}
+        />
+      ) : null}
+
+      {target ? (
+        <PurgeDialog
+          open={confirming === "purge"}
+          visitorName={target.full_name}
+          badgeSerial={target.badge_serial}
+          pending={purge.isPending}
+          error={
+            purge.error instanceof ApiError ? purge.error.message : undefined
+          }
+          onConfirm={() =>
+            /* Already on the list, so nothing to navigate to -- the row simply
+               leaves when the refetch lands. */
+            purge.mutate(undefined, { onSuccess: () => setConfirming(null) })
+          }
+          onCancel={() => {
+            if (!purge.isPending) {
+              setConfirming(null);
+              purge.reset();
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
-function VisitorRow({ visitor }: { visitor: Visitor }) {
+function VisitorRow({
+  visitor,
+  onOpenMenu,
+}: {
+  visitor: Visitor;
+  onOpenMenu: (x: number, y: number) => void;
+}) {
   const vip = visitor.category === "vip";
   const inactive = !visitor.is_active;
 
   return (
-    <li>
+    /*
+      The handler sits on the <li> rather than the link so the whole row responds,
+      including the gap either side of the text. `contextmenu` bubbles, so a
+      right-click anywhere in the row -- and the Menu key or Shift+F10 while the
+      link has focus -- arrives here just the same.
+    */
+    <li
+      onContextMenu={(event) => {
+        event.preventDefault();
+
+        /*
+          The Menu key and Shift+F10 raise this event with no pointer behind it,
+          and browsers disagree about what to report for it -- Chrome sends
+          0,0. Left alone that drops the menu in the corner of the window,
+          nowhere near the row it belongs to, which is precisely the user who
+          cannot see where it went. Anchoring to the row's own box fixes it for
+          them and changes nothing for a mouse.
+        */
+        if (event.clientX === 0 && event.clientY === 0) {
+          const row = event.currentTarget.getBoundingClientRect();
+          onOpenMenu(row.left + 24, row.bottom - 8);
+          return;
+        }
+
+        onOpenMenu(event.clientX, event.clientY);
+      }}
+    >
       <Link
         href={`/visitors/${visitor.id}`}
         className="group flex items-center gap-4 rounded-lg p-2.5 transition-colors hover:bg-card-2"
