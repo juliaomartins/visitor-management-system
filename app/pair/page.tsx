@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -24,9 +25,19 @@ import { getDeviceToken, setDeviceToken } from "@/lib/device-token";
  * After this the machine is switched on each morning and goes straight to the
  * display. There is no sign-in and nothing to remember.
  */
+/*
+  NOT TRANSLATED, ON PURPOSE.
+
+  This is the device name sent to the backend and shown in the dashboard's
+  device list. Translating it would mean the same screen appears as "Lobby
+  screen", "Ecra do atrio" or "Ekran resepsaun" depending on what language the
+  kiosk happened to be in when somebody paired it -- three names for one wall,
+  in a list an administrator reads to work out which door is quiet.
+*/
 const SCREEN_NAME = "Lobby screen";
 
 export default function PairPage() {
+  const t = useT();
   const router = useRouter();
   const server = useServer();
   const [code, setCode] = useState("");
@@ -55,7 +66,7 @@ export default function PairPage() {
       setError(
         cause instanceof ApiError
           ? cause.message
-          : "Could not reach the server. Check this machine is on the event network.",
+          : t("pair.unreachable"),
       );
       setBusy(false);
     }
@@ -107,14 +118,14 @@ export default function PairPage() {
         </div>
 
         <h1 className="mt-8 text-[clamp(1.75rem,5vw,2.75rem)] leading-tight font-bold tracking-tight text-ink">
-          Pair this display
+          {t("pair.title")}
         </h1>
         <p className="mt-3 text-[clamp(0.95rem,1.6vw,1.15rem)] leading-relaxed text-ink-soft">
-          Enter the screen pairing code from the dashboard.
+          {t("pair.body")}
         </p>
 
         <label htmlFor="code" className="sr-only">
-          Six character pairing code
+          {t("pair.codeLabel")}
         </label>
         <input
           id="code"
@@ -155,7 +166,7 @@ export default function PairPage() {
           disabled={!ready}
           className="mt-8 w-full rounded-2xl bg-ink px-6 py-5 text-lg font-bold text-stage transition-opacity disabled:opacity-25"
         >
-          {busy ? "Pairing…" : "Pair display"}
+          {busy ? t("pair.pairing") : t("pair.submit")}
         </button>
 
         {/* At an event this answers "is it pointed at the right box?" in a glance,
@@ -166,8 +177,8 @@ export default function PairPage() {
           className="mt-8 w-full text-center text-sm text-ink-faint transition-colors hover:text-ink-soft"
         >
           {server.searching
-            ? "Finding the server…"
-            : (server.origin ?? "No server found")}
+            ? t("pair.finding")
+            : (server.origin ?? t("pair.noServer"))}
         </button>
       </form>
     </main>
