@@ -1,10 +1,12 @@
 "use client";
 
+import { LanguageToggle } from "@/components/language-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 import { useEffect, useState } from "react";
 
 import { usePageMeta } from "@/components/page-meta";
+import { useFormat, useT } from "@/lib/i18n";
 
 /**
  * The page's name, its size, and the time. Nothing else.
@@ -21,16 +23,15 @@ import { usePageMeta } from "@/components/page-meta";
  */
 export function Topbar() {
   const { title, subtitle, count } = usePageMeta();
+  const t = useT();
+  const format = useFormat();
   const [clock, setClock] = useState<string | null>(null);
 
   useEffect(() => {
-    const tick = () =>
-      setClock(
-        new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      );
+    // 24-hour in every language. `useFormat` explains why: Tetum has no CLDR
+    // data of its own, so an AM/PM clock would be arriving from a borrowed
+    // locale rather than from a decision.
+    const tick = () => setClock(format.time(new Date()));
 
     // Deferred to its own task rather than run in the effect body, so mounting
     // does not cascade a second render before the first has painted.
@@ -41,7 +42,7 @@ export function Topbar() {
       clearTimeout(first);
       clearInterval(every);
     };
-  }, []);
+  }, [format]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-card/85 px-4 py-4 backdrop-blur sm:px-6">
@@ -65,14 +66,15 @@ export function Topbar() {
         <p
           suppressHydrationWarning
           className="mono hidden shrink-0 text-sm font-medium text-ink sm:block"
-          aria-label="Local time"
+          aria-label={t("topbar.localTime")}
         >
           {clock ?? "--:--"}
         </p>
 
         {/* Next to the clock rather than buried in a settings page: the reason
-            anyone reaches for it is the room they are sitting in, and that
-            changes during the day. */}
+            anyone reaches for either of these is the room and the person in
+            front of you, and both change during the day. */}
+        <LanguageToggle compact />
         <ThemeToggle compact />
       </div>
     </header>
