@@ -10,6 +10,7 @@
  * on foreground and on network return; the pill in the overlay says how far
  * behind the phone is.
  */
+import { useT } from "@/i18n";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,6 +33,7 @@ import { clearAll, initQueue } from "@/storage/queue";
 import { colors, HIT_SIZE, radius, spacing } from "@/theme";
 
 export default function ScannerScreen() {
+  const t = useT();
   const { device, forget } = useSession();
   const [permission, requestPermission] = useCameraPermissions();
   const [torchOn, setTorchOn] = useState(false);
@@ -108,13 +110,12 @@ export default function ScannerScreen() {
 
   function confirmUnpair() {
     Alert.alert(
-      "Unpair this phone?",
-      "It stops being able to record scans until it is paired again with a new " +
-        "code. Revoke it from the dashboard as well if the phone is lost.",
+      t("unpair.title"),
+      t("unpair.body"),
       [
-        { text: "Keep paired", style: "cancel" },
+        { text: t("unpair.keep"), style: "cancel" },
         {
-          text: "Unpair",
+          text: t("unpair.confirm"),
           style: "destructive",
           onPress: async () => {
             // A phone handed back must not carry the guest list or unsent scans
@@ -149,10 +150,9 @@ export default function ScannerScreen() {
     return (
       <SafeAreaView style={styles.permission}>
         <View style={styles.permissionBody}>
-          <Text style={styles.permissionTitle}>The camera is off</Text>
+          <Text style={styles.permissionTitle}>{t("camera.off")}</Text>
           <Text style={styles.permissionText}>
-            This app reads badge QR codes and does nothing else with the camera. No
-            photos are taken and nothing is stored on the phone.
+            {t("camera.why")}
           </Text>
         </View>
         <Pressable
@@ -161,7 +161,11 @@ export default function ScannerScreen() {
           style={({ pressed }) => [styles.allow, pressed && styles.pressed]}
         >
           <Text style={styles.allowLabel}>
-            {permission.canAskAgain ? "Allow the camera" : "Open settings to allow it"}
+            {t(
+              permission.canAskAgain
+                ? "camera.allow"
+                : "camera.openSettings",
+            )}
           </Text>
         </Pressable>
       </SafeAreaView>
@@ -192,13 +196,13 @@ export default function ScannerScreen() {
         <CameraOverlay
           torchOn={torchOn}
           onToggleTorch={() => setTorchOn((on) => !on)}
-          deviceName={device?.name ?? "Scanner"}
+          deviceName={device?.name ?? t("camera.fallbackName")}
           pending={status.pending}
           syncing={status.syncing}
           hint={
             state.phase === "sending"
-              ? "Checking…"
-              : "Hold the badge QR inside the frame"
+              ? t("camera.checking")
+              : t("camera.hint")
           }
         />
       </SafeAreaView>
