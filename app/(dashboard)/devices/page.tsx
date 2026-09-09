@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useSetPageMeta } from "@/components/page-meta";
+import { useErrorText, useT } from "@/lib/i18n";
 import { DeviceTable } from "@/components/devices/DeviceTable";
 import { PairingCodeCard } from "@/components/devices/PairingCodeCard";
 import { RevokeDeviceDialog } from "@/components/devices/RevokeDeviceDialog";
@@ -18,15 +19,19 @@ export default function DevicesPage() {
 
   // Same clock and same predicate as the table, so the heading and the amber rows
   // can never disagree about which devices are silent.
+  const t = useT();
+  const errorText = useErrorText();
   const now = useNow();
   const silent = devices.filter((device) => isSilent(device, now)).length;
 
   useSetPageMeta({
-    title: "Devices",
+    title: t("nav.devices"),
     subtitle:
       silent > 0
-        ? `${silent} ${silent === 1 ? "device has" : "devices have"} not checked in recently`
-        : "Guard phones and the lobby screen",
+        ? t(silent === 1 ? "devices.silentOne" : "devices.silentMany", {
+            count: silent,
+          })
+        : t("devices.subtitleQuiet"),
     count: data ? devices.length : undefined,
   });
 
@@ -48,10 +53,11 @@ export default function DevicesPage() {
           />
           <span>
             <span className="font-semibold">
-              {silent} {silent === 1 ? "device is" : "devices are"} silent.
+              {t(silent === 1 ? "devices.alertOne" : "devices.alertMany", {
+                count: silent,
+              })}
             </span>{" "}
-            A door with no scans in ten minutes is either quiet or offline — walk
-            over and check.
+            {t("devices.alertBody")}
           </span>
         </p>
       ) : null}
@@ -61,25 +67,24 @@ export default function DevicesPage() {
       <section className="card">
         <div className="border-b border-line px-6 py-5">
           <h2 className="display text-base text-ink">
-            Paired devices
+            {t("devices.paired")}
           </h2>
           <p className="mt-1 text-sm text-ink-3">
-            Refreshes on its own. &ldquo;Last seen&rdquo; is the last request a
-            device made, so it is how you tell a quiet door from a dead phone.
+            {t("devices.pairedBody")}
           </p>
         </div>
 
         {isPending ? (
           <p className="mono px-6 py-12 text-center text-xs text-ink-3">
-            Loading…
+            {t("common.loading")}
           </p>
         ) : isError ? (
           <div className="px-6 py-12 text-center">
-            <p className="display text-lg text-revoked">Could not load devices</p>
+            <p className="display text-lg text-revoked">
+              {t("devices.loadFailed")}
+            </p>
             <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-3">
-              {error instanceof ApiError
-                ? error.message
-                : "The request failed before it reached the server."}
+              {errorText(error, "visitors.requestFailed")}
             </p>
           </div>
         ) : (
