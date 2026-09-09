@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { useRichT, useT } from "@/lib/i18n";
+
 /**
  * Confirm before switching a visitor off.
  *
@@ -34,6 +36,8 @@ export function DeactivateDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
+  const rich = useRichT();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
@@ -60,21 +64,19 @@ export function DeactivateDialog({
           id="deactivate-title"
           className="text-lg font-semibold tracking-tight"
         >
-          Deactivate {visitorName}?
+          {t("deactivate.title", { name: visitorName })}
         </h2>
 
         <p className="mt-2 text-sm text-ink-2">
-          Badge <span className="mono text-ink">{badgeSerial}</span> stops
-          working immediately. The next scan of it shows red at the door.
+          {rich("deactivate.body", {
+            serial: <span className="mono text-ink">{badgeSerial}</span>,
+          })}
         </p>
 
         <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
-          <li>They stay on the visitor list, marked deactivated.</li>
-          <li>Their scan history is kept.</li>
-          <li>
-            Reversible. Activating puts the same printed card back to work —
-            there is nothing to reprint.
-          </li>
+          <li>{t("deactivate.point1")}</li>
+          <li>{t("deactivate.point2")}</li>
+          <li>{t("deactivate.point3")}</li>
         </ul>
 
         {error ? (
@@ -93,7 +95,7 @@ export function DeactivateDialog({
             disabled={pending}
             className="btn btn-ghost disabled:opacity-60"
           >
-            Keep them active
+            {t("deactivate.cancel")}
           </button>
           <button
             type="button"
@@ -101,7 +103,7 @@ export function DeactivateDialog({
             disabled={pending}
             className="btn btn-danger disabled:opacity-70"
           >
-            {pending ? "Deactivating…" : "Deactivate"}
+            {pending ? t("deactivate.pending") : t("deactivate.confirm")}
           </button>
         </div>
       </div>
