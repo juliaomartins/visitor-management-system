@@ -158,3 +158,40 @@ export function useFormat() {
     };
   }, [locale]);
 }
+
+/**
+ * Turn a thrown error into something a registrar can read.
+ *
+ * ERRORS ARE THROWN OUTSIDE REACT, so the data layer cannot call `useT`. It
+ * attaches a `key` instead and this resolves it at the point of display, which
+ * is the only place that knows the current language.
+ *
+ * The shape is matched structurally rather than by importing `ApiError`, so the
+ * translation layer does not have to depend on the visitor data module — and so
+ * a second error class elsewhere works here without being taught to.
+ *
+ * A `key` is present only on messages the dashboard wrote. Anything the BACKEND
+ * sent arrives as plain `message` and is shown as it came: Django is not
+ * translated, and inventing a Tetun sentence for a server error we did not
+ * write would be a guess about what went wrong.
+ */
+export function useErrorText(): (
+  error: unknown,
+  fallback?: MessageKey,
+) => string {
+  const t = useT();
+
+  return useCallback(
+    (error, fallback = "error.unexpected") => {
+      if (error && typeof error === "object") {
+        const carrier = error as { key?: MessageKey; message?: unknown };
+        if (carrier.key) return t(carrier.key);
+        if (typeof carrier.message === "string" && carrier.message.trim()) {
+          return carrier.message;
+        }
+      }
+      return t(fallback);
+    },
+    [t],
+  );
+}
