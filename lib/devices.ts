@@ -6,6 +6,7 @@
  * than no `last_seen_at`, because it reads as "the phone is fine" when the phone
  * may be flat in someone's pocket.
  */
+import type { MessageKey } from "@/lib/locales";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
@@ -31,13 +32,31 @@ export const STALE_AFTER_MS = 10 * 60 * 1000;
  */
 const DEVICE_POLL_MS = 15_000;
 
-const DEVICE_KIND_LABEL: Record<DeviceKind, string> = {
-  scanner: "Scanner",
-  screen: "Screen",
+/*
+  A KEY, NOT A WORD.
+
+  This is a module constant in a data module -- there is no translator here and
+  there should not be. Callers resolve it, which is also what lets the same kind
+  read "Scanner" as a column value and "scanner" inside a sentence: those are
+  different messages in every language, and one lowercased string cannot be
+  both. `kindInlineKey` is the mid-sentence form.
+*/
+const DEVICE_KIND_KEY: Record<DeviceKind, MessageKey> = {
+  scanner: "device.kind.scanner",
+  screen: "device.kind.screen",
 };
 
-export function kindLabel(kind: DeviceKind): string {
-  return DEVICE_KIND_LABEL[kind] ?? kind;
+const DEVICE_KIND_INLINE_KEY: Record<DeviceKind, MessageKey> = {
+  scanner: "device.kindInline.scanner",
+  screen: "device.kindInline.screen",
+};
+
+export function kindLabelKey(kind: DeviceKind): MessageKey {
+  return DEVICE_KIND_KEY[kind] ?? "device.kind.scanner";
+}
+
+export function kindInlineKey(kind: DeviceKind): MessageKey {
+  return DEVICE_KIND_INLINE_KEY[kind] ?? "device.kindInline.scanner";
 }
 
 /**
@@ -79,7 +98,7 @@ export function useDevices() {
     queryKey: ["devices"],
     queryFn: async ({ signal }) => {
       const { data, error } = await api.GET("/api/v1/devices", { signal });
-      if (error) fail(error, "The device list could not be loaded.");
+      if (error) fail(error, "error.deviceLoad");
       return data;
     },
     refetchInterval: DEVICE_POLL_MS,
@@ -97,7 +116,7 @@ export function useCreatePairingCode() {
       const { data, error } = await api.POST("/api/v1/devices/pairing-code", {
         body: { kind },
       });
-      if (error) fail(error, "A pairing code could not be generated.");
+      if (error) fail(error, "error.pairingCode");
       return data;
     },
   });
@@ -113,7 +132,7 @@ export function useRevokeDevice() {
       const { data, error } = await api.POST("/api/v1/devices/{id}/revoke", {
         params: { path: { id } },
       });
-      if (error) fail(error, "The device could not be revoked.");
+      if (error) fail(error, "error.deviceRevoke");
       return data;
     },
     onSuccess: () => {
