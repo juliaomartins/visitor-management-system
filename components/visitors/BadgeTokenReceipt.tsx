@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 
 import { downloadBadgeCard } from "@/lib/badges";
+import { useT } from "@/lib/i18n";
 import { ApiError, type VisitorIssued } from "@/lib/visitors";
 
 /**
@@ -84,7 +85,9 @@ export function BadgeTokenReceipt({
       await downloadBadgeCard(visitor.badge_token, visitor.badge_serial);
     } catch (cause) {
       setPdfError(
-        cause instanceof ApiError ? cause.message : "The badge could not be rendered.",
+        cause instanceof ApiError
+          ? cause.message
+          : t("receipt.renderFailed"),
       );
     } finally {
       setSaving(false);
@@ -102,6 +105,7 @@ export function BadgeTokenReceipt({
     }
   }
 
+  const t = useT();
   const vip = visitor.category === "vip";
 
   return (
@@ -119,15 +123,14 @@ export function BadgeTokenReceipt({
         that costs nothing, which is worse than saying nothing at all.
       */}
       <div className="rounded-2xl border border-valid bg-valid-soft px-6 py-6">
-        <p className="mono text-[11px] uppercase text-valid">Badge issued</p>
+        <p className="mono text-[11px] uppercase text-valid">
+          {t("receipt.badgeIssued")}
+        </p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink">
-          {visitor.full_name} is registered
+          {t("receipt.registered", { name: visitor.full_name })}
         </h2>
         <p className="mt-2 text-sm text-ink-2">
-          This QR is permanent. It was generated when {visitor.full_name} was
-          registered and will not change — print it now, or from their page
-          later, as many times as you need. It only stops working if you
-          deactivate or delete the visitor.
+          {t("receipt.permanent", { name: visitor.full_name })}
         </p>
 
         <div className="mt-5 flex flex-wrap items-start gap-5">
@@ -136,13 +139,15 @@ export function BadgeTokenReceipt({
               ref={screenQr}
               className="block h-52 w-52"
               role="img"
-              aria-label={`QR code for badge ${visitor.badge_serial}`}
+              aria-label={t("receipt.qrAlt", {
+                serial: visitor.badge_serial,
+              })}
             />
           </div>
 
           <div className="min-w-56 flex-1 space-y-3">
             <div>
-              <p className="text-xs text-ink-3">Badge token</p>
+              <p className="text-xs text-ink-3">{t("receipt.badgeToken")}</p>
               <code className="mono mt-1 block overflow-x-auto rounded-xl bg-card-2 px-3 py-2.5 text-xs text-ink">
                 {visitor.badge_token}
               </code>
@@ -155,7 +160,9 @@ export function BadgeTokenReceipt({
                 disabled={saving}
                 className="btn btn-primary disabled:opacity-70"
               >
-                {saving ? "Rendering…" : "Download badge PDF"}
+                {saving
+                  ? t("receipt.rendering")
+                  : t("receipt.downloadPdf")}
               </button>
               {/* Kept alongside the PDF: this one needs nothing but a browser, so
                   it still works if the server cannot render. */}
@@ -164,14 +171,14 @@ export function BadgeTokenReceipt({
                 onClick={() => window.print()}
                 className="btn btn-ghost"
               >
-                Print from browser
+                {t("receipt.printBrowser")}
               </button>
               <button
                 type="button"
                 onClick={copy}
                 className="btn btn-ghost"
               >
-                {copied ? "Copied" : "Copy token"}
+                {copied ? t("receipt.copied") : t("receipt.copyToken")}
               </button>
             </div>
 
@@ -183,22 +190,31 @@ export function BadgeTokenReceipt({
 
             {qrFailed ? (
               <p role="alert" className="text-xs text-revoked">
-                The QR code could not be drawn. Copy the token and print the badge
-                from another machine rather than issuing a card without a code.
+                {t("receipt.qrFailed")}
               </p>
             ) : null}
           </div>
         </div>
 
         <p aria-live="polite" className="sr-only">
-          {copied ? "Badge token copied to the clipboard." : ""}
+          {copied ? t("receipt.copiedAnnounce") : ""}
         </p>
       </div>
 
       <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
-        <Row label="Badge mono" value={visitor.badge_serial} mono />
-        <Row label="Country" value={visitor.country} />
-        <Row label="Category" value={vip ? "VIP" : "Normal"} />
+        {/* The label read "Badge mono" -- the CSS class had leaked into the
+            copy. Translating that into three languages would have made a
+            typo permanent, so it is corrected here rather than carried. */}
+        <Row
+          label={t("receipt.badgeSerial")}
+          value={visitor.badge_serial}
+          mono
+        />
+        <Row label={t("form.country")} value={visitor.country} />
+        <Row
+          label={t("form.category")}
+          value={t(vip ? "form.cat.vip" : "form.cat.normal")}
+        />
       </dl>
 
       <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -207,19 +223,19 @@ export function BadgeTokenReceipt({
           onClick={onRegisterAnother}
           className="btn btn-primary"
         >
-          Register another visitor
+          {t("receipt.registerAnother")}
         </button>
         <Link
           href={`/visitors/${visitor.id}`}
           className="btn btn-ghost"
         >
-          Open {visitor.full_name}
+          {t("receipt.open", { name: visitor.full_name })}
         </Link>
         <Link
           href="/visitors"
           className="px-2 py-2.5 text-sm text-ink-3 hover:text-ink"
         >
-          Back to all visitors
+          {t("visitor.backToAll")}
         </Link>
       </div>
 
