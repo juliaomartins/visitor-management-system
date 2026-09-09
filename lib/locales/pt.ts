@@ -378,4 +378,89 @@ export const pt: Messages = {
   "error.pairingCode":
     "N\u00e3o foi poss\u00edvel gerar um c\u00f3digo de emparelhamento.",
   "error.deviceRevoke": "N\u00e3o foi poss\u00edvel revogar o dispositivo.",
+
+  // ------------------------------------------------------------- reports --
+  "reports.title": "Registo de entradas",
+  "reports.subtitleQuiet": "Chegadas e recusas",
+  "reports.subtitleRefused": "{count} recusados \u00e0 porta",
+  "reports.subtitleNoRefusals": "Nenhum crach\u00e1 recusado neste intervalo",
+  "reports.allOutcomes": "Todos os resultados",
+  "reports.allCategories": "Todas as categorias",
+  "reports.from": "De",
+  "reports.to": "At\u00e9",
+  "reports.outcome": "Resultado",
+  "reports.any": "Qualquer",
+  "reports.exportNote":
+    "Exatamente como os filtros acima est\u00e3o definidos.",
+  "reports.preparing": "A preparar\u2026",
+  "reports.exportFailed":
+    "N\u00e3o foi poss\u00edvel guardar a exporta\u00e7\u00e3o.",
+  "reports.logFailed": "N\u00e3o foi poss\u00edvel carregar o registo",
+  "reports.everyBadge": "Todos os crach\u00e1s apresentados",
+  "reports.everyBadgeNote":
+    "As linhas por tr\u00e1s dos n\u00fameros acima, recusas inclu\u00eddas",
+  "reports.timezone": "Horas mostradas em {zone}.",
+  "reports.format.pdf": "Relat\u00f3rio PDF",
+  "reports.format.pdfHint":
+    "O relat\u00f3rio escrito \u2014 conclus\u00f5es, gr\u00e1ficos e tabelas. Para reencaminhar.",
+  "reports.format.xlsx": "Livro Excel",
+  "reports.format.xlsxHint":
+    "Seis folhas, valores como n\u00fameros. Para quem quiser trabalh\u00e1-los.",
+  "reports.format.csv": "Registo CSV",
+  "reports.format.csvHint":
+    "O registo bruto de leituras, uma linha por crach\u00e1 apresentado. Sem an\u00e1lise.",
+  "reports.export.stale":
+    "Essa exporta\u00e7\u00e3o ainda n\u00e3o existe no servidor \u2014 est\u00e1 a correr uma vers\u00e3o mais antiga do que esta p\u00e1gina. Reinicie o backend e tente de novo.",
+  "reports.export.expired":
+    "A sua sess\u00e3o expirou. Recarregue a p\u00e1gina e inicie sess\u00e3o de novo.",
+  "reports.export.serverError":
+    "O servidor n\u00e3o conseguiu produzir essa exporta\u00e7\u00e3o (HTTP {status}).",
+  "reports.export.downloadFailed":
+    "N\u00e3o foi poss\u00edvel transferir essa exporta\u00e7\u00e3o (HTTP {status}).",
+  "error.reportLoad":
+    "N\u00e3o foi poss\u00edvel carregar o registo de entradas.",
+
+  // --------------------------------------------------------------- recap --
+  "recap.unavailable": "An\u00e1lise indispon\u00edvel",
+  "recap.unavailableBody":
+    "O servidor respondeu sem as conclus\u00f5es derivadas, o que significa que est\u00e1 a correr uma vers\u00e3o mais antiga do que esta p\u00e1gina. Reinicie o backend e recarregue \u2014 o registo abaixo n\u00e3o \u00e9 afetado e continua exato.",
+  "recap.scans": "Leituras",
+  "recap.inRange": "Neste intervalo",
+  "recap.people": "Pessoas",
+  "recap.distinct": "Visitantes distintos",
+  "recap.duplicates": "Duplicados",
+  "recap.reEntries": "Reentradas, n\u00e3o recusas",
+  "recap.refused": "Recusados",
+  "recap.invalidOrRevoked": "Inv\u00e1lidos ou revogados",
+  "recap.nothingScanned": "Nada lido neste intervalo",
+  "recap.nothingScannedBody":
+    "Alargue as datas, ou limpe os filtros. Ainda n\u00e3o h\u00e1 nada para relatar.",
+  "recap.attendance": "Presen\u00e7a",
+  "recap.attendanceNote": "{arrived} de {registered} registados",
+  "recap.scansLogged": "Leituras registadas",
+  "recap.repeatNote": "{count} pessoas passaram mais do que uma vez",
+  "recap.busiestHour": "Hora de maior movimento",
+  "recap.peakNote": "{total} leituras \u00b7 {share}% do per\u00edodo",
+  "recap.noArrivals": "Nenhuma chegada registada",
+  "recap.refusalNote": "{rate}% de tudo o que foi apresentado",
+  "recap.noneTurnedAway": "Nenhum crach\u00e1 recusado",
+  "recap.whatNumbersSay": "O que dizem os n\u00fameros",
+  "recap.whatNumbersSayNote":
+    "Gerado a partir deste intervalo \u2014 cada linha \u00e9 uma afirma\u00e7\u00e3o que os dados sustentam",
+  "recap.loadByDoor": "Movimento por porta",
+  "recap.loadByDoorNote":
+    "Uma porta que recusa crach\u00e1s \u00e9 uma porta com um problema",
+  "recap.noDoorScan": "Nenhuma porta registou leituras.",
+  "recap.refusedHere": "{count} recusados aqui",
+  "recap.notArrived": "Registados, ainda n\u00e3o chegaram",
+  "recap.notArrivedCount": "{count} de {registered}",
+  "recap.notArrivedNote":
+    "Sem leitura v\u00e1lida neste intervalo. A lista completa est\u00e1 no PDF e no livro Excel.",
+
+  // ----------------------------------------------------------- entry log --
+  "entry.emptyBody": "Alargue as datas, ou limpe os filtros.",
+  "entry.col.time": "Hora",
+  "entry.col.name": "Nome",
+  "chart.noScans":
+    "Sem leituras neste intervalo, por isso n\u00e3o h\u00e1 nada para representar.",
 };
