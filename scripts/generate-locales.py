@@ -141,6 +141,9 @@ M = [
     ("login.badCredentials", "That username and password did not match.",
      "O utilizador e a palavra-passe não coincidem.",
      "Naran uzuáriu ho liafuan-xave la hanesan."),
+    ("login.failedStatus", "Sign-in failed (HTTP {status}).",
+     "Falha ao iniciar sessão (HTTP {status}).",
+     "La konsege tama (HTTP {status})."),
     ("login.unreachable",
      "Could not reach the server. Check that the backend is running.",
      "Não foi possível contactar o servidor. Verifique se o backend está a "
