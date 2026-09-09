@@ -76,6 +76,68 @@ export const en = {
   "error.visitorActivate": "The visitor could not be activated.",
   "error.visitorDeactivate": "The visitor could not be deactivated.",
   "error.visitorDelete": "The visitor could not be deleted.",
+
+  // -------------------------------------------------------- visitor list --
+  "visitors.title": "Visitors",
+  "visitors.subtitle": "Everyone registered for the event",
+  "visitors.search": "Search visitors",
+  "visitors.searchPlaceholder": "Name, organisation, country or badge serial",
+  "visitors.filterCategory": "Filter by category",
+  "visitors.tab.all": "Everyone",
+  "visitors.tab.normal": "Normal",
+  "visitors.tab.vip": "VIP",
+  "visitors.exportTitle":
+    "Spreadsheet of everyone registered. Nothing is reissued.",
+  "visitors.exporting": "Exporting\u2026",
+  "visitors.export": "Export .xlsx",
+  "visitors.exportFailed": "The roster could not be exported.",
+  "visitors.register": "Register visitor",
+  "visitors.refreshing": "Refreshing\u2026",
+  "visitors.loadFailed": "Could not load visitors",
+  "visitors.requestFailed": "The request failed before it reached the server.",
+  "visitors.serverRejected": "The server rejected that request.",
+  "visitors.noneMatch": "No one matches those filters",
+  "visitors.noneMatchBody": "Try a shorter search, or widen the category.",
+  "visitors.empty": "No visitors yet",
+  "visitors.emptyBody": "Register the first visitor to issue a badge.",
+  "visitors.menu.edit": "Edit details",
+  "visitors.menu.deactivate": "Deactivate visitor",
+  "visitors.menu.activate": "Activate visitor",
+  "visitors.menu.delete": "Delete permanently",
+  "visitors.status.deactivated": "Deactivated",
+
+  // --------------------------------------------------- deactivate dialog --
+  "deactivate.title": "Deactivate {name}?",
+  "deactivate.body":
+    "Badge {serial} stops working immediately. The next scan of it shows red at the door.",
+  "deactivate.point1": "They stay on the visitor list, marked deactivated.",
+  "deactivate.point2": "Their scan history is kept.",
+  "deactivate.point3":
+    "Reversible. Activating puts the same printed card back to work \u2014 there is nothing to reprint.",
+  "deactivate.cancel": "Keep them active",
+  "deactivate.confirm": "Deactivate",
+  "deactivate.pending": "Deactivating\u2026",
+
+  // -------------------------------------------------------- purge dialog --
+  "purge.warning": "Cannot be undone",
+  "purge.title": "Delete {name} permanently?",
+  "purge.body":
+    "This removes the registration and the visitor\u2019s photo from the server. Deactivating is the reversible option; this is not it.",
+  "purge.scansUnknown":
+    "Any scans of this badge stay in the entrance log but stop naming anybody.",
+  "purge.scansNone":
+    "No scans are affected \u2014 this badge has never been presented.",
+  "purge.scansOne":
+    "{count} scan stays in the entrance log but stops naming anybody.",
+  "purge.scansMany":
+    "{count} scans stay in the entrance log but stop naming anybody.",
+  "purge.serialRetired": "Badge {serial} is retired. The serial is not reused.",
+  "purge.reRegister":
+    "Registering them again later creates a new visitor, a new serial and a new QR.",
+  "purge.typeToConfirm": "Type {serial} to confirm",
+  "purge.cancel": "Cancel",
+  "purge.confirm": "Delete permanently",
+  "purge.pending": "Deleting\u2026",
 } as const;
 
 /** Every message key in the dashboard. */
