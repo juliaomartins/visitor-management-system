@@ -141,4 +141,39 @@ export const tet: Messages = {
   "purge.cancel": "Kansela",
   "purge.confirm": "Hasai permanente",
   "purge.pending": "Hasai hela\u2026",
+
+  // ------------------------------------------------------ visitor detail --
+  "common.loading": "Karga hela\u2026",
+  "visitor.fallbackTitle": "Vizitante",
+  "visitor.notFound": "La bele karga vizitante ne\u2019e",
+  "visitor.notFoundBody": "Karik hasai tiha ona. Haree lista vizitante.",
+  "visitor.backToAll": "Fila ba vizitante hotu",
+  "visitor.allVisitors": "Vizitante hotu",
+  "visitor.status.active": "Ativu",
+  "visitor.headingActive": "Kartaun ne\u2019e loke odamatan",
+  "visitor.headingOff": "Kartaun ne\u2019e desliga ona",
+  "visitor.subActive":
+    "Leit\u00f3r ne\u2019eb\u00e9 pareia ona sei simu, no ekr\u00e1n resepsaun sei f\u00f3 benvindu.",
+  "visitor.subOff":
+    "Leitura tuirmai sei mosu mean. Ativa f\u00f3 fila kartaun hanesan ba servisu \u2014 la presiza imprime fali.",
+  "visitor.registered": "Rejista",
+  "visitor.arrivals": "Xegada",
+  "visitor.lastArrival": "Xegada ikus",
+  "visitor.notYet": "Seidauk",
+  "visitor.scansLogged": "Leitura rejistadu",
+  "visitor.activating": "Ativa hela\u2026",
+  "visitor.qrNote":
+    "QR ne\u2019e kria bainhira rejista vizitante no nunka muda. Imprime fali kartaun dala hira mak presiza \u2014 nia lee hanesan beibeik. Dezativa para nia, no ativa hah\u00fa fali, rua ne\u2019e la book k\u00f3digu iha kartaun. Hasai permanente mak buat ida deit iha ne\u2019e ne\u2019eb\u00e9 la bele fila fali.",
+  "visitor.scanHistory": "Ist\u00f3ria leitura",
+  "visitor.scanHistoryBody":
+    "Dala hotu kartaun ne\u2019e aprezenta, inklui dala ne\u2019eb\u00e9 rejeita.",
+  "visitor.noScans": "Kartaun ne\u2019e seidauk lee.",
+  "visitor.col.event": "Eventu",
+  "visitor.col.scannedAt": "Lee iha",
+  "visitor.col.result": "Rezultadu",
+  "visitor.col.device": "Aparellu",
+  "scan.valid": "V\u00e1lidu",
+  "scan.duplicate": "Duplikadu",
+  "scan.revoked": "Revogadu",
+  "scan.invalid": "Inv\u00e1lidu",
 };
