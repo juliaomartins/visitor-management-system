@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-import { kindLabel, type Device } from "@/lib/devices";
+import { kindInlineKey, type Device } from "@/lib/devices";
+import { useRichT, useT } from "@/lib/i18n";
 
 /**
  * Confirm before killing a device.
@@ -28,6 +29,8 @@ export function RevokeDeviceDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
+  const rich = useRichT();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const open = device !== null;
 
@@ -56,33 +59,39 @@ export function RevokeDeviceDialog({
             id="revoke-device-title"
             className="text-lg font-semibold tracking-tight"
           >
-            Revoke {device.name}?
+            {t("revokeDevice.title", { name: device.name })}
           </h2>
 
           <p className="mt-2 text-sm text-ink-2">
-            This {kindLabel(device.kind).toLowerCase()} stops working{" "}
-            <span className="font-medium text-ink">immediately</span>. If it is
-            a door phone, that door cannot record arrivals until someone re-pairs
-            it.
+            {/*
+              The kind comes from its own mid-sentence message rather than from
+              lowercasing the column label. Lowercasing a noun is an English
+              habit; Portuguese and Tetun do not agree that the two forms are
+              the same word with a different first letter.
+            */}
+            {rich("revokeDevice.body", {
+              kind: t(kindInlineKey(device.kind)),
+              strong: (
+                <span className="font-medium text-ink">
+                  {t("revokeDevice.bodyStrong")}
+                </span>
+              ),
+            })}
           </p>
 
           <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
             <li>
-              <span className="font-medium text-ink-2">
-                It drops back to its pairing screen on its own
-              </span>{" "}
-              — within seconds, without anyone walking over to it. Have a new
-              pairing code ready if you mean to bring it straight back.
+              {rich("revokeDevice.point1", {
+                strong: (
+                  <span className="font-medium text-ink-2">
+                    {t("revokeDevice.point1Strong")}
+                  </span>
+                ),
+              })}
             </li>
-            <li>
-              Its token is dead. There is no un-revoke — getting it back means a new
-              pairing code.
-            </li>
-            <li>
-              Scans it already recorded are kept, and any it saved offline will
-              still sync once it is paired again.
-            </li>
-            <li>It stays in this list, marked revoked, so the audit trail holds.</li>
+            <li>{t("revokeDevice.point2")}</li>
+            <li>{t("revokeDevice.point3")}</li>
+            <li>{t("revokeDevice.point4")}</li>
           </ul>
 
           {error ? (
@@ -101,7 +110,7 @@ export function RevokeDeviceDialog({
               disabled={pending}
               className="btn btn-ghost disabled:opacity-60"
             >
-              Keep it active
+              {t("revokeDevice.cancel")}
             </button>
             <button
               type="button"
@@ -109,7 +118,9 @@ export function RevokeDeviceDialog({
               disabled={pending}
               className="btn btn-danger disabled:opacity-70"
             >
-              {pending ? "Revoking…" : "Revoke device"}
+              {pending
+                ? t("revokeDevice.pending")
+                : t("revokeDevice.confirm")}
             </button>
           </div>
         </div>
