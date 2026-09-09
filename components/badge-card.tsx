@@ -64,14 +64,14 @@ export function BadgeCard({
   token?: string;
 }) {
   const vip = visitor.category === "vip";
-  const revoked = visitor.is_active === false;
+  const inactive = visitor.is_active === false;
   const role = vip ? "VIP GUEST" : visitor.organization || "VISITOR";
 
   return (
     <div
       style={{ width }}
       className={`cr80 relative flex shrink-0 flex-col items-center overflow-hidden rounded-[2cqw] bg-white ${
-        revoked ? "opacity-60" : ""
+        inactive ? "opacity-60" : ""
       }`}
     >
       {/* Lanyard slot — a punch guide on the real card, drawn here so the
@@ -99,7 +99,7 @@ export function BadgeCard({
             src={visitor.photo}
             alt=""
             className={`h-full w-full rounded-full bg-line object-cover ${
-              revoked ? "grayscale" : ""
+              inactive ? "grayscale" : ""
             }`}
           />
         ) : (
@@ -153,10 +153,13 @@ export function BadgeCard({
         )}
       </div>
 
-      {revoked ? (
+      {inactive ? (
+        /* "Deactivated" is four characters longer than the "Revoked" this
+           replaced, so the padding and tracking come in to keep the pill inside
+           a 54mm-wide card at preview size. */
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="cr80-serial mono rounded-full bg-graphite-950 px-[4cqw] py-[1.5cqw] font-bold tracking-[0.2em] text-white uppercase">
-            Revoked
+          <span className="cr80-serial mono rounded-full bg-graphite-950 px-[3cqw] py-[1.5cqw] font-bold tracking-[0.12em] text-white uppercase">
+            Deactivated
           </span>
         </div>
       ) : null}
