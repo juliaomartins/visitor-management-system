@@ -176,4 +176,55 @@ export const tet: Messages = {
   "scan.duplicate": "Duplikadu",
   "scan.revoked": "Revogadu",
   "scan.invalid": "Inv\u00e1lidu",
+
+  // --------------------------------------------------- registration form --
+  "register.title": "Rejista vizitante ida",
+  "register.subtitle": "Kartaun ida, imprime uluk, v\u00e1lidu ba eventu tomak",
+  "register.issuedTitle": "Kartaun f\u00f3 sai ona",
+  "register.issuedSubtitle":
+    "Imprime kartaun agora, ka depois husi vizitante nia p\u00e1jina",
+  "form.photoRequired": "Kartaun presiza foto. Tau ida molok rejista.",
+  "form.fullName": "Naran kompletu",
+  "form.fullNameHint": "Hanesan ne\u2019eb\u00e9 tenke mosu iha kartaun.",
+  "form.country": "Nasaun",
+  "form.organisation": "Organizasaun",
+  "form.optional": "Opsion\u00e1l.",
+  "form.category": "Kategoria",
+  "form.cat.normal": "Norm\u00e1l",
+  "form.cat.normalNote": "Kartaun norm\u00e1l",
+  "form.cat.vip": "VIP",
+  "form.cat.vipNote": "Kartaun espesi\u00e1l no benvindu iha resepsaun",
+  "form.registering": "Rejista hela\u2026",
+  "form.saving": "Rai hela\u2026",
+  "form.register": "Rejista no f\u00f3 sai kartaun",
+  "form.save": "Rai mudansa",
+  "form.noteCreate":
+    "N\u00fameru f\u00f3 bainhira rejista. QR kria iha momentu hanesan no nunka muda depois.",
+  "form.noteEdit":
+    "Edita dadus la f\u00f3 sai kartaun foun. N\u00fameru no k\u00f3digu QR sei hanesan ho ne\u2019eb\u00e9 imprime ona.",
+
+  // ------------------------------------------------------- badge receipt --
+  "receipt.badgeIssued": "Kartaun f\u00f3 sai ona",
+  "receipt.registered": "{name} rejista ona",
+  "receipt.permanent":
+    "QR ne\u2019e permanente. Nia kria bainhira rejista {name} no sei la muda \u2014 imprime agora, ka depois husi nia p\u00e1jina, dala hira mak presiza. Nia para funsiona deit se dezativa ka hasai vizitante.",
+  "receipt.qrAlt": "K\u00f3digu QR ba kartaun {serial}",
+  "receipt.badgeToken": "Token kartaun",
+  "receipt.rendering": "Kria hela\u2026",
+  "receipt.downloadPdf": "Deskarrega PDF kartaun",
+  "receipt.printBrowser": "Imprime husi navegad\u00f3r",
+  "receipt.copied": "Kopia ona",
+  "receipt.copyToken": "Kopia token",
+  "receipt.qrFailed":
+    "La bele dezenha k\u00f3digu QR. Kopia token no imprime kartaun iha makina seluk, duke f\u00f3 sai kartaun laiha k\u00f3digu.",
+  "receipt.copiedAnnounce":
+    "Token kartaun kopia ba \u00e1rea transfer\u00e9nsia.",
+  "receipt.badgeSerial": "N\u00fameru kartaun",
+  "receipt.registerAnother": "Rejista vizitante seluk",
+  "receipt.open": "Loke {name}",
+  "receipt.renderFailed": "La bele kria kartaun.",
+
+  // ---------------------------------------------------------------- edit --
+  "edit.title": "Edita {name}",
+  "edit.fallbackTitle": "Edita vizitante",
 };
