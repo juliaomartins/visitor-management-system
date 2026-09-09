@@ -264,4 +264,44 @@ export const tet: Messages = {
   "crop.applying": "Aplika hela\u2026",
   "crop.use": "Uza foto ne\u2019e",
   "crop.changeImage": "Troka imajen",
+
+  // -------------------------------------------------------------- badges --
+  "badges.title": "Impresaun kartaun",
+  "badges.subtitle": "Sia iha folha A4 ida, ho marka korta",
+  "badges.loadFailed": "La bele karga lista vizitante.",
+  "badges.safeTitle": "Imprime fali seguru",
+  "badges.safeBody":
+    "Folha ida-idak lori vizitante nia QR ne\u2019eb\u00e9 iha ona, tan ne\u2019e kartaun bele imprime fali dala hira mak presiza no sira ne\u2019eb\u00e9 f\u00f3 ona kontinua funsiona. Atu para kartaun lakon, dezativa vizitante ne\u2019e iha nia p\u00e1jina \u2014 QR nunka muda, tan ne\u2019e ativa fali f\u00f3 fila kartaun hanesan ba servisu.",
+  "badges.searchPlaceholder": "Naran, organizasaun, nasaun ka n\u00fameru",
+  "badges.clearSelection": "Hamoos hili",
+  "badges.selectAll": "Hili hotu ({count})",
+  "badges.print": "Imprime",
+  "badges.printCount": "Imprime {count}",
+  "badges.sheetFailed": "La bele halo folha.",
+  "badges.export": "Esporta .xlsx",
+  "badges.fileFailed": "La bele halo fixeiru.",
+  "badges.selectedOne": "{count} hili \u00b7 folha A4 {sheets}",
+  "badges.selectedMany": "{count} hili \u00b7 folha A4 {sheets}",
+  "badges.noMatch": "Laiha vizitante ida tuir buka ne\u2019e.",
+  "badges.onSheet": "Iha folha",
+  "badges.notPrinting": "La imprime",
+
+  // ------------------------------------------------------- export dialog --
+  "export.titleOne": "Esporta k\u00f3digu kartaun ba vizitante {count}?",
+  "export.titleMany": "Esporta k\u00f3digu kartaun ba vizitante {count}?",
+  "export.body":
+    "Fixeiru ne\u2019e iha {strong} ba vizitante ida-idak. Esporta la muda buat ida \u2014 k\u00f3digu sira mak ne\u2019eb\u00e9 iha ona sira-nia kartaun \u2014 maib\u00e9 ema ne\u2019eb\u00e9 iha fixeiru bele halo kartaun ne\u2019eb\u00e9 lee.",
+  "export.bodyStrong": "k\u00f3digu QR ne\u2019eb\u00e9 funsiona",
+  "export.point1":
+    "Haruka nia hanesan haruka kartaun imprimidu, la\u2019\u00f3s hanesan haruka lista konvidadu.",
+  "export.point2":
+    "Esporta fali depois sei halo fixeiru hanesan. Lakon ida ne\u2019e la kustu buat ida, tempu deit atu esporta fali.",
+  "export.point3":
+    "Atu para kartaun ida, dezativa vizitante ne\u2019e iha nia p\u00e1jina. Hasai fixeiru la para buat ida.",
+  "export.building": "Prepara hela\u2026",
+  "export.confirm": "Esporta no deskarrega",
+  "card.deactivated": "Dezativadu",
+  "card.qrOnCard": "iha kartaun imprimidu",
+  "card.qrDrawing": "dezenha hela\u2026",
+  "card.qrFailed": "la bele dezenha",
 };
