@@ -365,6 +365,88 @@ export const en = {
   "error.deviceLoad": "The device list could not be loaded.",
   "error.pairingCode": "A pairing code could not be generated.",
   "error.deviceRevoke": "The device could not be revoked.",
+
+  // ------------------------------------------------------------- reports --
+  "reports.title": "Entrance log",
+  "reports.subtitleQuiet": "Arrivals and refusals",
+  "reports.subtitleRefused": "{count} refused at the door",
+  "reports.subtitleNoRefusals": "No badges refused in this range",
+  "reports.allOutcomes": "All outcomes",
+  "reports.allCategories": "All categories",
+  "reports.from": "From",
+  "reports.to": "To",
+  "reports.outcome": "Outcome",
+  "reports.any": "Any",
+  "reports.exportNote":
+    "Whatever the filters above are set to, exactly as shown.",
+  "reports.preparing": "Preparing\u2026",
+  "reports.exportFailed": "The export could not be saved.",
+  "reports.logFailed": "Could not load the log",
+  "reports.everyBadge": "Every badge presented",
+  "reports.everyBadgeNote":
+    "The rows behind the figures above, refusals included",
+  "reports.timezone": "Times shown in {zone}.",
+  "reports.format.pdf": "PDF report",
+  "reports.format.pdfHint":
+    "The written report \u2014 findings, charts and tables. For sending on.",
+  "reports.format.xlsx": "Excel workbook",
+  "reports.format.xlsxHint":
+    "Six sheets, figures as numbers. For anyone who wants to pivot it.",
+  "reports.format.csv": "CSV log",
+  "reports.format.csvHint":
+    "The raw scan log, one row per badge presented. No analysis.",
+  "reports.export.stale":
+    "That export is not available on the server yet \u2014 it is running an older build than this page. Restart the backend and try again.",
+  "reports.export.expired":
+    "Your session expired. Reload the page and sign in again.",
+  "reports.export.serverError":
+    "The server could not build that export (HTTP {status}).",
+  "reports.export.downloadFailed":
+    "That export could not be downloaded (HTTP {status}).",
+  "error.reportLoad": "The entrance log could not be loaded.",
+
+  // --------------------------------------------------------------- recap --
+  "recap.unavailable": "Analysis unavailable",
+  "recap.unavailableBody":
+    "The server answered without the derived findings, which means it is running an older build than this page. Restart the backend and reload \u2014 the log below is unaffected and still accurate.",
+  "recap.scans": "Scans",
+  "recap.inRange": "In this range",
+  "recap.people": "People",
+  "recap.distinct": "Distinct visitors",
+  "recap.duplicates": "Duplicates",
+  "recap.reEntries": "Re-entries, not refusals",
+  "recap.refused": "Refused",
+  "recap.invalidOrRevoked": "Invalid or revoked",
+  "recap.nothingScanned": "Nothing scanned in this range",
+  "recap.nothingScannedBody":
+    "Widen the dates, or clear the filters. There is nothing to report on yet.",
+  "recap.attendance": "Attendance",
+  "recap.attendanceNote": "{arrived} of {registered} registered",
+  "recap.scansLogged": "Scans logged",
+  "recap.repeatNote": "{count} people came through more than once",
+  "recap.busiestHour": "Busiest hour",
+  "recap.peakNote": "{total} scans \u00b7 {share}% of the period",
+  "recap.noArrivals": "No arrivals recorded",
+  "recap.refusalNote": "{rate}% of everything presented",
+  "recap.noneTurnedAway": "No badge turned away",
+  "recap.whatNumbersSay": "What the numbers say",
+  "recap.whatNumbersSayNote":
+    "Generated from this range \u2014 every line is a claim the data supports",
+  "recap.loadByDoor": "Load by door",
+  "recap.loadByDoorNote":
+    "One door turning away badges is a door with a problem",
+  "recap.noDoorScan": "No door recorded a scan.",
+  "recap.refusedHere": "{count} refused here",
+  "recap.notArrived": "Registered, not yet arrived",
+  "recap.notArrivedCount": "{count} of {registered}",
+  "recap.notArrivedNote":
+    "No valid scan in this range. Full list is in the PDF and the workbook.",
+
+  // ----------------------------------------------------------- entry log --
+  "entry.emptyBody": "Widen the dates, or clear the filters.",
+  "entry.col.time": "Time",
+  "entry.col.name": "Name",
+  "chart.noScans": "No scans in this range, so there is nothing to plot.",
 } as const;
 
 /** Every message key in the dashboard. */
