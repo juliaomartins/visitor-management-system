@@ -1,5 +1,8 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+import { ApiError } from "@/lib/visitors";
+import { DEFAULT_LOCALE, translate } from "@/lib/locales";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
@@ -29,6 +32,7 @@ import { todayISO, useEntryReport } from "@/lib/reports";
  * last week to compare against.
  */
 export default function DashboardPage() {
+  const t = useT();
   const today = todayISO();
   const report = useEntryReport({ from: today, to: today });
 
@@ -36,7 +40,13 @@ export default function DashboardPage() {
     queryKey: queryKeys.visitors({ overview: true }),
     queryFn: async ({ signal }) => {
       const { data, error } = await api.GET("/api/v1/visitors", { signal });
-      if (error) throw new Error("The visitor list could not be loaded.");
+      if (error) {
+        throw new ApiError(
+          translate(DEFAULT_LOCALE, "badges.loadFailed"),
+          {},
+          "badges.loadFailed",
+        );
+      }
       return data;
     },
   });
@@ -61,51 +71,68 @@ export default function DashboardPage() {
   const refusedSpark = hours.map((bucket) => bucket.refused);
 
   useSetPageMeta({
-    title: "Dashboard",
+    title: t("nav.dashboard"),
     subtitle:
       silent > 0
-        ? `${silent} ${silent === 1 ? "door has" : "doors have"} gone quiet — check Devices`
-        : "Today's arrivals across every door",
+        ? t(silent === 1 ? "overview.silentOne" : "overview.silentMany", {
+            count: silent,
+          })
+        : t("overview.subtitleQuiet"),
   });
 
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
-          label="Registered"
+          label={t("overview.registered")}
           value={registered ?? "—"}
-          note={vips === undefined ? undefined : `${vips} VIP`}
+          note={
+            vips === undefined
+              ? undefined
+              : t("overview.vipCount", { count: vips })
+          }
         />
         <StatTile
-          label="Arrived today"
+          label={t("overview.arrivedToday")}
           value={arrived}
           note={
             registered
-              ? `${Math.round((arrived / registered) * 100)}% of those registered`
+              ? t("overview.arrivedNote", {
+                  percent: Math.round((arrived / registered) * 100),
+                })
               : undefined
           }
           tone="good"
           spark={arrivalSpark}
         />
         <StatTile
-          label="Refused at the door"
+          label={t("overview.refusedAtDoor")}
           value={refused}
           note={
             summary
-              ? `${summary.by_result.duplicate} duplicate ${
-                  summary.by_result.duplicate === 1 ? "scan" : "scans"
-                } not counted`
+              ? t(
+                  summary.by_result.duplicate === 1
+                    ? "overview.duplicateOne"
+                    : "overview.duplicateMany",
+                  { count: summary.by_result.duplicate },
+                )
               : undefined
           }
           tone={refused > 0 ? "alert" : "plain"}
           spark={refusedSpark}
         />
         <StatTile
-          label="Doors reporting"
+          label={t("overview.doorsReporting")}
           value={
-            online === undefined ? "—" : `${online}/${devices?.length ?? 0}`
+            online === undefined
+              ? "—"
+              : `${online}/${devices?.length ?? 0}`
           }
-          note={silent > 0 ? `${silent} silent` : "All checked in recently"}
+          note={
+            silent > 0
+              ? t("overview.silentCount", { count: silent })
+              : t("overview.allCheckedIn")
+          }
           tone={silent > 0 ? "warn" : "good"}
         />
       </div>
@@ -114,25 +141,32 @@ export default function DashboardPage() {
         <section className="card">
           <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5 pb-3">
             <div>
-              <h2 className="display text-[1.05rem] text-ink">Arrivals by hour</h2>
+              <h2 className="display text-[1.05rem] text-ink">
+                {t("overview.arrivalsByHour")}
+              </h2>
               <p className="mt-0.5 text-xs text-ink-3">
-                Every badge presented today, plotted where it happened
+                {t("overview.arrivalsByHourNote")}
               </p>
             </div>
             {summary ? (
               <p className="mono text-xs text-ink-3">
-                {summary.total} {summary.total === 1 ? "scan" : "scans"}
+                {t(
+                  summary.total === 1
+                    ? "overview.scanCountOne"
+                    : "overview.scanCountMany",
+                  { count: summary.total },
+                )}
               </p>
             ) : null}
           </div>
 
           {report.isPending ? (
             <p className="mono px-5 py-20 text-center text-xs text-ink-3">
-              Loading…
+              {t("common.loading")}
             </p>
           ) : report.isError ? (
             <p className="px-5 py-20 text-center text-sm text-revoked">
-              The entrance log could not be loaded.
+              {t("error.reportLoad")}
             </p>
           ) : (
             <ArrivalsCurve buckets={summary?.by_hour ?? []} />
@@ -141,9 +175,11 @@ export default function DashboardPage() {
 
         <section className="card">
           <div className="px-5 pt-5 pb-3">
-            <h2 className="display text-[1.05rem] text-ink">Outcome split</h2>
+            <h2 className="display text-[1.05rem] text-ink">
+              {t("overview.outcomeSplit")}
+            </h2>
             <p className="mt-0.5 text-xs text-ink-3">
-              How today&rsquo;s scans divided
+              {t("overview.outcomeSplitNote")}
             </p>
           </div>
 
@@ -151,7 +187,7 @@ export default function DashboardPage() {
             <OutcomeSplit summary={summary} />
           ) : (
             <p className="mono px-5 py-20 text-center text-xs text-ink-3">
-              Loading…
+              {t("common.loading")}
             </p>
           )}
         </section>
@@ -160,16 +196,18 @@ export default function DashboardPage() {
       <section className="card overflow-hidden">
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-4">
           <div>
-            <h2 className="display text-[1.05rem] text-ink">Recent scans</h2>
+            <h2 className="display text-[1.05rem] text-ink">
+              {t("overview.recentScans")}
+            </h2>
             <p className="mt-0.5 text-xs text-ink-3">
-              Newest first, refusals included
+              {t("overview.recentScansNote")}
             </p>
           </div>
           <Link
             href="/visitors/new"
             className="btn btn-primary"
           >
-            Register visitor
+            {t("visitors.register")}
           </Link>
         </div>
 
