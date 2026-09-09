@@ -9,6 +9,7 @@
  * day for information nobody is looking at; coming back to this screen is the
  * moment somebody actually wants to know.
  */
+import { useT } from "@/i18n";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -59,14 +60,15 @@ function useServerStatus(): Status {
 }
 
 export function ServerBar() {
+  const t = useT();
   const status = useServerStatus();
 
   const label =
     status === "checking"
-      ? "Checking"
+      ? t("server.checking")
       : status === "online"
-        ? "Online"
-        : "Offline";
+        ? t("server.online")
+        : t("server.offline");
 
   const tint =
     status === "checking"
@@ -85,7 +87,7 @@ export function ServerBar() {
       <Pressable
         onPress={() => router.push("/settings")}
         accessibilityRole="button"
-        accessibilityLabel="Server address settings"
+        accessibilityLabel={t("server.settingsA11y")}
         hitSlop={12}
         style={({ pressed }) => [styles.gear, pressed && styles.pressed]}
       >
