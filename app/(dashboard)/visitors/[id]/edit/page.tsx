@@ -4,35 +4,40 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 import { useSetPageMeta } from "@/components/page-meta";
+import { useErrorText, useT } from "@/lib/i18n";
 import { VisitorForm } from "@/components/visitors/VisitorForm";
 import { ApiError, useUpdateVisitor, useVisitor } from "@/lib/visitors";
 
 export default function EditVisitorPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const t = useT();
+  const errorText = useErrorText();
   const { data: visitor, isPending, isError } = useVisitor(id);
   const update = useUpdateVisitor(id);
 
   useSetPageMeta({
-    title: visitor ? `Edit ${visitor.full_name}` : "Edit visitor",
+    title: visitor
+      ? t("edit.title", { name: visitor.full_name })
+      : t("edit.fallbackTitle"),
     subtitle: visitor?.badge_serial,
   });
 
   if (isPending) {
-    return <p className="mono text-xs text-ink-3">Loading…</p>;
+    return <p className="mono text-xs text-ink-3">{t("common.loading")}</p>;
   }
 
   if (isError || !visitor) {
     return (
       <div className="card px-6 py-16 text-center">
         <p className="display text-lg text-revoked">
-          Could not load this visitor
+          {t("visitor.notFound")}
         </p>
         <Link
           href="/visitors"
           className="mt-4 inline-block text-sm text-ink underline underline-offset-4"
         >
-          Back to all visitors
+          {t("visitor.backToAll")}
         </Link>
       </div>
     );
@@ -63,7 +68,9 @@ export default function EditVisitorPage() {
           registeredAt={visitor.created_at}
           submitting={update.isPending}
           formError={
-            error && Object.keys(error.fields).length === 0 ? error.message : undefined
+            error && Object.keys(error.fields).length === 0
+              ? errorText(error, "error.visitorSave")
+              : undefined
           }
           fieldErrors={error?.fields}
           cancelHref={`/visitors/${id}`}
