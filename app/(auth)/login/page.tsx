@@ -79,7 +79,7 @@ function SignInPanel() {
             {EVENT.subtitle}
           </span>
           <span className="block text-[11px] leading-tight text-ink-3">
-            {EVENT.dates}
+            {t("brand.dates")}
           </span>
         </span>
       </div>
