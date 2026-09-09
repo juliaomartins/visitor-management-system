@@ -299,6 +299,72 @@ export const en = {
   "card.qrOnCard": "on the printed card",
   "card.qrDrawing": "drawing\u2026",
   "card.qrFailed": "could not draw",
+
+  // ------------------------------------------------------------- devices --
+  "time.justNow": "just now",
+  "device.kind.scanner": "Scanner",
+  "device.kind.screen": "Screen",
+  "device.kindInline.scanner": "scanner",
+  "device.kindInline.screen": "screen",
+  "devices.subtitleQuiet": "Guard phones and the lobby screen",
+  "devices.silentOne": "{count} device has not checked in recently",
+  "devices.silentMany": "{count} devices have not checked in recently",
+  "devices.alertOne": "{count} device is silent.",
+  "devices.alertMany": "{count} devices are silent.",
+  "devices.alertBody":
+    "A door with no scans in ten minutes is either quiet or offline \u2014 walk over and check.",
+  "devices.paired": "Paired devices",
+  "devices.pairedBody":
+    "Refreshes on its own. \u201cLast seen\u201d is the last request a device made, so it is how you tell a quiet door from a dead phone.",
+  "devices.loadFailed": "Could not load devices",
+  "devices.none": "No devices paired yet",
+  "devices.noneBody":
+    "Generate a code above, then enter it on the guard\u2019s phone or the lobby screen.",
+  "devices.col.device": "Device",
+  "devices.col.kind": "Kind",
+  "devices.col.lastSeen": "Last seen",
+  "devices.col.state": "State",
+  "devices.neverCheckedIn": "Never checked in",
+  "devices.silentCheck": "Silent \u2014 check the door",
+  "devices.notSeenSincePairing": "Not seen since pairing",
+  "devices.stateRevoked": "REVOKED",
+  "devices.stateActive": "ACTIVE",
+  "devices.revoke": "Revoke",
+
+  // ------------------------------------------------------------- pairing --
+  "pair.title": "Pair a device",
+  "pair.body":
+    "Open the app on the phone or screen, then read it the code below. Each code works once.",
+  "pair.codeButton": "{kind} code",
+  "pair.blurb.scanner": "A guard\u2019s phone, at a door",
+  "pair.blurb.screen": "The lobby display",
+  "pair.codeLabel": "{kind} pairing code",
+  "pair.expired":
+    "This code has expired. Generate another \u2014 nothing was paired with it.",
+  "pair.expiresIn": "Expires in",
+  "pair.alphabetNote":
+    "Codes never contain 0, O, 1 or I \u2014 those four are left out because they are the ones people mishear and mistype. The device appears in the list below the moment it pairs.",
+
+  // ------------------------------------------------ revoke device dialog --
+  "revokeDevice.title": "Revoke {name}?",
+  "revokeDevice.body":
+    "This {kind} stops working {strong}. If it is a door phone, that door cannot record arrivals until someone re-pairs it.",
+  "revokeDevice.bodyStrong": "immediately",
+  "revokeDevice.point1":
+    "{strong} \u2014 within seconds, without anyone walking over to it. Have a new pairing code ready if you mean to bring it straight back.",
+  "revokeDevice.point1Strong": "It drops back to its pairing screen on its own",
+  "revokeDevice.point2":
+    "Its token is dead. There is no un-revoke \u2014 getting it back means a new pairing code.",
+  "revokeDevice.point3":
+    "Scans it already recorded are kept, and any it saved offline will still sync once it is paired again.",
+  "revokeDevice.point4":
+    "It stays in this list, marked revoked, so the audit trail holds.",
+  "revokeDevice.cancel": "Keep it active",
+  "revokeDevice.pending": "Revoking\u2026",
+  "revokeDevice.confirm": "Revoke device",
+  "error.deviceLoad": "The device list could not be loaded.",
+  "error.pairingCode": "A pairing code could not be generated.",
+  "error.deviceRevoke": "The device could not be revoked.",
 } as const;
 
 /** Every message key in the dashboard. */
