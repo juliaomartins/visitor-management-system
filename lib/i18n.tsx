@@ -189,6 +189,18 @@ export function useFormat() {
     });
     const number = new Intl.NumberFormat(tag);
 
+    /*
+      Elapsed time, from the platform rather than from a hand-rolled ladder.
+
+      The devices table used to build "5 min ago" and "2 hours ago" itself,
+      with its own singular/plural test. That is three languages' worth of
+      grammar to maintain by hand for something Intl already knows, and it was
+      going to be wrong in Tetun on the first day. `numeric: "always"` keeps it
+      literal -- "1 day ago" rather than "yesterday" -- because a door that has
+      been silent since yesterday is a fact, not a figure of speech.
+    */
+    const elapsed = new Intl.RelativeTimeFormat(tag, { numeric: "always" });
+
     const parse = (value: string | number | Date) =>
       value instanceof Date ? value : new Date(value);
 
@@ -197,6 +209,26 @@ export function useFormat() {
       time: (value: string | number | Date) => time.format(parse(value)),
       dateTime: (value: string | number | Date) => dateTime.format(parse(value)),
       number: (value: number) => number.format(value),
+
+      /**
+       * "just now", "5 minutes ago", "2 days ago" -- in the reader's language.
+       *
+       * `now` is passed in rather than read here, so every row in a table
+       * measures against the same instant and the shared clock stays the one
+       * source of truth about what time it is.
+       */
+      relative: (value: string | number | Date, now: number) => {
+        const ms = now - parse(value).getTime();
+        if (ms < 45_000) return translate(locale, "time.justNow");
+
+        const minutes = Math.round(ms / 60_000);
+        if (minutes < 60) return elapsed.format(-minutes, "minute");
+
+        const hours = Math.round(minutes / 60);
+        if (hours < 24) return elapsed.format(-hours, "hour");
+
+        return elapsed.format(-Math.round(hours / 24), "day");
+      },
     };
   }, [locale]);
 }
