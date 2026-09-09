@@ -15,6 +15,8 @@
  * there are several phones on several doors, and that name is how the devices
  * page tells a quiet door from a dead phone.
  */
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useT } from "@/i18n";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -45,6 +47,7 @@ import { useSession } from "@/session";
 import { colors, HIT_SIZE, radius, spacing } from "@/theme";
 
 export default function PairScreen() {
+  const t = useT();
   const { adopt, storageAvailable } = useSession();
   const server = useServer();
   const [code, setCode] = useState("");
@@ -69,7 +72,7 @@ export default function PairScreen() {
       if (cause instanceof ApiError || cause instanceof NetworkError) {
         setError(cause.message);
       } else {
-        setError("Pairing failed. Try again.");
+        setError(t("pair.failed"));
       }
       setBusy(false);
     }
@@ -102,6 +105,19 @@ export default function PairScreen() {
             there is no code to redeem against a server nobody can reach. */}
         <ServerBar />
 
+        {/*
+          AT THE TOP OF THE FIRST SCREEN, not buried in settings.
+
+          This is the only screen a phone shows before it is paired, and a guard
+          handed a phone in a language they cannot read has to be able to change
+          it before doing anything else. The three labels are language names in
+          their own language, so the row is recognisable without reading the
+          interface around it.
+        */}
+        <View style={styles.languageRow}>
+          <LanguageToggle />
+        </View>
+
         <View style={styles.header}>
             <Image
               source={require("../../assets/images/brand/drcc-event.png")}
@@ -115,10 +131,8 @@ export default function PairScreen() {
           </View>
 
           <View style={styles.intro}>
-            <Text style={styles.title}>Pair this phone</Text>
-            <Text style={styles.body}>
-              Enter the scanner pairing code from the dashboard.
-            </Text>
+            <Text style={styles.title}>{t("pair.title")}</Text>
+            <Text style={styles.body}>{t("pair.body")}</Text>
           </View>
 
           <View>
@@ -140,7 +154,7 @@ export default function PairScreen() {
               // A code is six characters of an unambiguous alphabet, so the
               // default keyboard is right — a numeric pad would hide the letters.
               style={styles.codeInput}
-              accessibilityLabel="Six character pairing code"
+              accessibilityLabel={t("pair.codeLabel")}
             />
 
             {/* Progress without a number to read: the rule fills as they type. */}
@@ -155,23 +169,22 @@ export default function PairScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Name this phone</Text>
+            <Text style={styles.label}>{t("pair.nameLabel")}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="North door"
+              placeholder={t("pair.namePlaceholder")}
               placeholderTextColor={colors.textFaint}
               autoCorrect={false}
               maxLength={100}
               style={styles.nameInput}
-              accessibilityLabel="Device name"
+              accessibilityLabel={t("pair.nameA11y")}
             />
           </View>
 
           {!storageAvailable ? (
             <Text style={styles.error}>
-              This device has no secure storage, so a token cannot be kept. Run the
-              scanner on a phone, not in a browser.
+              {t("pair.noSecureStorage")}
             </Text>
           ) : null}
 
@@ -203,8 +216,8 @@ export default function PairScreen() {
           <Pressable onPress={server.rescan} accessibilityRole="button">
             <Text style={styles.server}>
               {server.searching
-                ? "Finding the server…"
-                : (server.origin ?? "No server found")}
+                ? t("pair.finding")
+                : (server.origin ?? t("pair.noServer"))}
             </Text>
           </Pressable>
 
@@ -239,6 +252,7 @@ export default function PairScreen() {
 }
 
 const styles = StyleSheet.create({
+  languageRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   scroll: {
