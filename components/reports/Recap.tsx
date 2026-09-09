@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormat, useT } from "@/lib/i18n";
 import type { EntryReport } from "@/lib/reports";
 
 /**
@@ -28,36 +29,40 @@ export function Recap({ report }: { report: EntryReport }) {
     undefined", which is a worse answer than saying what is actually wrong — so
     the type is widened here deliberately rather than trusted.
   */
+  const t = useT();
+  const format = useFormat();
   const insights = report.insights as EntryReport["insights"] | undefined;
 
   if (!insights) {
     return (
       <section className="card p-5 sm:p-6">
         <h2 className="display text-[1.05rem] text-ink">
-          Analysis unavailable
+          {t("recap.unavailable")}
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-2">
-          The server answered without the derived findings, which means it is
-          running an older build than this page. Restart the backend and reload —
-          the log below is unaffected and still accurate.
+          {t("recap.unavailableBody")}
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Figure label="Scans" value={summary.total.toLocaleString()} note="In this range" />
           <Figure
-            label="People"
-            value={summary.unique_visitors.toLocaleString()}
-            note="Distinct visitors"
+            label={t("recap.scans")}
+            value={format.number(summary.total)}
+            note={t("recap.inRange")}
           />
           <Figure
-            label="Duplicates"
+            label={t("recap.people")}
+            value={format.number(summary.unique_visitors)}
+            note={t("recap.distinct")}
+          />
+          <Figure
+            label={t("recap.duplicates")}
             value={String(summary.by_result.duplicate)}
-            note="Re-entries, not refusals"
+            note={t("recap.reEntries")}
           />
           <Figure
-            label="Refused"
+            label={t("recap.refused")}
             value={String(summary.by_result.invalid + summary.by_result.revoked)}
-            note="Invalid or revoked"
+            note={t("recap.invalidOrRevoked")}
             tone={
               summary.by_result.invalid + summary.by_result.revoked > 0
                 ? "alert"
@@ -72,9 +77,11 @@ export function Recap({ report }: { report: EntryReport }) {
   if (summary.total === 0) {
     return (
       <section className="card px-6 py-14 text-center">
-        <p className="display text-lg text-ink">Nothing scanned in this range</p>
+        <p className="display text-lg text-ink">
+          {t("recap.nothingScanned")}
+        </p>
         <p className="mx-auto mt-2 max-w-sm text-sm text-ink-3">
-          Widen the dates, or clear the filters. There is nothing to report on yet.
+          {t("recap.nothingScannedBody")}
         </p>
       </section>
     );
@@ -84,32 +91,38 @@ export function Recap({ report }: { report: EntryReport }) {
     <section className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Figure
-          label="Attendance"
+          label={t("recap.attendance")}
           value={`${insights.attendance_rate}%`}
-          note={`${insights.arrived} of ${insights.registered} registered`}
+          note={t("recap.attendanceNote", {
+            arrived: insights.arrived,
+            registered: insights.registered,
+          })}
           tone="accent"
         />
         <Figure
-          label="Scans logged"
-          value={summary.total.toLocaleString()}
-          note={`${insights.repeat_people} people came through more than once`}
+          label={t("recap.scansLogged")}
+          value={format.number(summary.total)}
+          note={t("recap.repeatNote", { count: insights.repeat_people })}
         />
         <Figure
-          label="Busiest hour"
+          label={t("recap.busiestHour")}
           value={insights.peak_hour ? formatHour(insights.peak_hour) : "—"}
           note={
             insights.peak_hour
-              ? `${insights.peak_total} scans · ${insights.peak_share}% of the period`
-              : "No arrivals recorded"
+              ? t("recap.peakNote", {
+                  total: insights.peak_total,
+                  share: insights.peak_share,
+                })
+              : t("recap.noArrivals")
           }
         />
         <Figure
-          label="Refused"
+          label={t("recap.refused")}
           value={String(insights.refused)}
           note={
             insights.refused > 0
-              ? `${insights.refusal_rate}% of everything presented`
-              : "No badge turned away"
+              ? t("recap.refusalNote", { rate: insights.refusal_rate })
+              : t("recap.noneTurnedAway")
           }
           tone={insights.refused > 0 ? "alert" : "good"}
         />
@@ -119,12 +132,23 @@ export function Recap({ report }: { report: EntryReport }) {
         {/* The report in sentences. Written server-side so the PDF says the
             same words. */}
         <div className="card p-5 sm:p-6">
-          <h2 className="display text-[1.05rem] text-ink">What the numbers say</h2>
+          <h2 className="display text-[1.05rem] text-ink">
+            {t("recap.whatNumbersSay")}
+          </h2>
           <p className="mt-0.5 text-xs text-ink-3">
-            Generated from this range — every line is a claim the data supports
+            {t("recap.whatNumbersSayNote")}
           </p>
 
           <ul className="mt-4 space-y-2.5">
+            {/*
+              THESE SENTENCES ARE WRITTEN BY THE BACKEND AND ARRIVE IN ENGLISH.
+
+              `apps/reports/services.py` composes the narrative so the PDF and
+              this panel say the same words, which is the right call and the
+              reason they cannot be translated here: there is no key to look up,
+              only prose. Making the report multilingual is a change to that
+              service -- and to the PDF it also writes -- not to this component.
+            */}
             {insights.narrative.map((line, index) => (
               <li key={index} className="flex gap-3 text-sm leading-relaxed text-ink-2">
                 <span
@@ -138,13 +162,17 @@ export function Recap({ report }: { report: EntryReport }) {
         </div>
 
         <div className="card p-5 sm:p-6">
-          <h2 className="display text-[1.05rem] text-ink">Load by door</h2>
+          <h2 className="display text-[1.05rem] text-ink">
+            {t("recap.loadByDoor")}
+          </h2>
           <p className="mt-0.5 text-xs text-ink-3">
-            One door turning away badges is a door with a problem
+            {t("recap.loadByDoorNote")}
           </p>
 
           {insights.doors.length === 0 ? (
-            <p className="mt-4 text-sm text-ink-3">No door recorded a scan.</p>
+            <p className="mt-4 text-sm text-ink-3">
+              {t("recap.noDoorScan")}
+            </p>
           ) : (
             <ul className="mt-4 space-y-3.5">
               {insights.doors.map((door) => (
@@ -175,7 +203,7 @@ export function Recap({ report }: { report: EntryReport }) {
 
                   {door.refused > 0 ? (
                     <p className="mt-1 text-xs text-revoked">
-                      {door.refused} refused here
+                      {t("recap.refusedHere", { count: door.refused })}
                     </p>
                   ) : null}
                 </li>
@@ -191,14 +219,17 @@ export function Recap({ report }: { report: EntryReport }) {
         <div className="card p-5 sm:p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="display text-[1.05rem] text-ink">
-              Registered, not yet arrived
+              {t("recap.notArrived")}
             </h2>
             <span className="pill-status bg-vip-soft text-vip">
-              {insights.not_arrived_count} of {insights.registered}
+              {t("recap.notArrivedCount", {
+                count: insights.not_arrived_count,
+                registered: insights.registered,
+              })}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-ink-3">
-            No valid scan in this range. Full list is in the PDF and the workbook.
+            {t("recap.notArrivedNote")}
           </p>
 
           <ul className="mt-4 flex flex-wrap gap-2">
