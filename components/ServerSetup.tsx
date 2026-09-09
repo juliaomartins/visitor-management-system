@@ -1,5 +1,6 @@
 "use client";
 
+import { useRichT, useT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 
 import { normaliseOrigin, probe } from "@/lib/server";
@@ -26,6 +27,8 @@ export function ServerSetup({
   onResolved: (origin: string) => void;
   onCancel?: () => void;
 }) {
+  const t = useT();
+  const rich = useRichT();
   const [value, setValue] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +44,7 @@ export function ServerSetup({
 
     const origin = normaliseOrigin(value);
     if (!origin) {
-      setError("That does not look like an address. Try 10.101.196.41:8000");
+      setError(t("server.badAddress"));
       return;
     }
 
@@ -94,7 +97,7 @@ export function ServerSetup({
           htmlFor="server-origin"
           className="mt-8 block text-sm font-medium text-ink-soft"
         >
-          Server address
+          {t("server.address")}
         </label>
         <input
           id="server-origin"
@@ -110,8 +113,9 @@ export function ServerSetup({
           className="mt-2 w-full rounded-xl border border-edge bg-stage-raised px-6 py-5 text-3xl text-ink placeholder:text-ink-faint focus:border-live focus:outline-none"
         />
         <p className="mt-2 text-sm text-ink-faint">
-          A bare IP is fine — <span className="text-ink-soft">http://</span> and the
-          port are filled in for you.
+          {rich("server.hint", {
+            http: <span className="text-ink-soft">http://</span>,
+          })}
         </p>
 
         {error ? (
@@ -129,7 +133,7 @@ export function ServerSetup({
             disabled={checking || value.trim().length === 0}
             className="flex-1 rounded-xl bg-ink px-6 py-5 text-xl font-bold text-stage transition-opacity disabled:opacity-30"
           >
-            {checking ? "Checking…" : "Connect"}
+            {checking ? t("server.checking") : t("server.connect")}
           </button>
 
           {onCancel ? (
