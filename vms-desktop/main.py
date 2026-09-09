@@ -8,6 +8,12 @@ would be deletable tomorrow without changing how VMS works.
 Everything the window does with a service goes through `ServiceRegistry`;
 everything it knows about paths and commands comes from `config`. The window
 itself only wires signals and paints.
+
+IT HAS TO SURVIVE BEING MADE SMALL. Earlier it did not: the cards sat directly
+in the window, so dragging the edge in squeezed fixed-height widgets until the
+status word clipped and the buttons elided to "....". The panels now live in a
+splitter over a scroll area, which is the difference between a window that gets
+tighter and a window that gets broken.
 """
 
 from __future__ import annotations
@@ -21,43 +27,67 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from PySide6.QtCore import Qt, QTimer  # noqa: E402
-from PySide6.QtGui import QGuiApplication, QIcon  # noqa: E402
+from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QIcon  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
+import i18n  # noqa: E402
 import preflight  # noqa: E402
 from config import Mode, service_environment, service_specs  # noqa: E402
+from i18n import t  # noqa: E402
 from launcher import Orchestrator  # noqa: E402
 from network import detect_lan_ip  # noqa: E402
 from services import ServiceRegistry, State  # noqa: E402
+from widgets import theme  # noqa: E402
 from widgets.log_viewer import LogViewer  # noqa: E402
 from widgets.network_card import NetworkCard  # noqa: E402
 from widgets.service_card import ServiceCard  # noqa: E402
-from widgets.theme import (  # noqa: E402
-    DANGER_BUTTON_QSS,
-    PRIMARY_BUTTON_QSS,
-    STATE_COLOURS,
-    TEXT_FAINT,
-    WINDOW_QSS,
-)
 
 APP_NAME = "VMS Control Center"
+
+#: How long the wait cursor stays after a start is asked for.
+#:
+#: A CONFIRMATION, NOT A PROGRESS BAR. Holding the busy cursor for the eight
+#: seconds a Next dev server really takes would make a responsive window feel
+#: hung, and nothing is blocked in the meantime — the click already returned.
+#: Half a second says "that registered"; the card's own bar carries the rest.
+CLICK_FEEDBACK_MS = 550
 
 
 class ControlCenter(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(APP_NAME)
-        self.setStyleSheet(WINDOW_QSS)
+
+        i18n.load()
+        theme.set_palette(i18n.settings().value("theme", "dark"))
+
+        # SIZED TO THE SCREEN THAT EXISTS, not to a number that looked right on
+        # a development monitor. A fixed 1180x860 is TALLER than a 1280x720
+        # laptop, and Windows then clamps the window and clips the URL column --
+        # measured on exactly such a machine.
+        available = QGuiApplication.primaryScreen().availableGeometry()
+        self.resize(
+            min(1180, int(available.width() * 0.94)),
+            min(880, int(available.height() * 0.94)),
+        )
+        # Small, because the splitter and the scroll area below genuinely cope.
+        # This is roughly the point where one card plus a few log lines still
+        # read; past it the window would be lying about being usable.
+        self.setMinimumSize(420, 420)
 
         icon = Path(__file__).resolve().parent / "assets" / "vms.ico"
         if icon.is_file():
@@ -72,27 +102,13 @@ class ControlCenter(QMainWindow):
 
         self._build_ui()
         self._connect()
-
-        # Apply geometry only after the card grid exists. Windows may deliver a
-        # resize event synchronously from resize()/setMinimumSize(), and the
-        # handler needs the layout objects created by _build_ui().
-        available = QGuiApplication.primaryScreen().availableGeometry()
-        self.resize(
-            min(1180, int(available.width() * 0.94)),
-            min(880, int(available.height() * 0.94)),
-        )
-        self.setMinimumSize(760, 520)
+        self.restyle()
+        self.retranslate()
 
         self._network.set_address(self._lan_ip)
-        self._logs.app(f"{APP_NAME} ready. LAN address {self._lan_ip}.")
-        self._logs.app(
-            "Run All checks the environment first, then starts the backend and "
-            "waits for it before starting anything else."
-        )
-        self._logs.app(
-            "LAN access needs Windows Firewall to permit ports 8000, 3000 and "
-            "3001. No firewall rule is changed automatically."
-        )
+        self._logs.app(t("msg.ready", app=APP_NAME, ip=self._lan_ip))
+        self._logs.app(t("msg.runAllHint"))
+        self._logs.app(t("msg.firewall"))
 
     # ------------------------------------------------------------------ ui --
 
@@ -105,8 +121,24 @@ class ControlCenter(QMainWindow):
         root.setSpacing(10)
 
         root.addLayout(self._build_header())
+
+        # THE SPLITTER IS WHY THIS SURVIVES A SMALL WINDOW.
+        #
+        # Above: the network card and the service cards, inside a scroll area,
+        # so when there is not enough height they scroll instead of being
+        # compressed past legibility. Below: the log. The user can drag the
+        # balance, and neither half can crush the other.
+        self._split = QSplitter(Qt.Orientation.Vertical)
+        self._split.setChildrenCollapsible(False)
+        self._split.setHandleWidth(8)
+
+        panels = QWidget()
+        panel_layout = QVBoxLayout(panels)
+        panel_layout.setContentsMargins(0, 0, 0, 0)
+        panel_layout.setSpacing(10)
+
         self._network = NetworkCard()
-        root.addWidget(self._network)
+        panel_layout.addWidget(self._network)
 
         self._grid = QGridLayout()
         self._grid.setHorizontalSpacing(12)
@@ -116,7 +148,7 @@ class ControlCenter(QMainWindow):
         for spec in self._specs.values():
             self._cards[spec.key] = ServiceCard(
                 spec.key,
-                spec.name,
+                spec.name_key,
                 spec.technology,
                 spec.port,
                 can_open=spec.opens_in_browser,
@@ -124,25 +156,38 @@ class ControlCenter(QMainWindow):
             )
         self._columns = 0
         self._relayout_cards(4)
-        root.addLayout(self._grid)
+        panel_layout.addLayout(self._grid)
+        panel_layout.addStretch(1)
+
+        self._scroll = QScrollArea()
+        self._scroll.setWidget(panels)
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        # Never a horizontal bar: the cards reflow to fewer columns instead,
+        # and a control panel you have to scroll sideways is a failed layout.
+        self._scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._split.addWidget(self._scroll)
 
         self._logs = LogViewer(
-            list(self._specs), {k: s.name for k, s in self._specs.items()}
+            list(self._specs), {k: s.name_key for k, s in self._specs.items()}
         )
-        # A floor, not a preference. Without it the cards and the network card
-        # take their natural heights first and the log is squeezed to nothing
-        # on a short screen -- and the log is most of the point.
-        self._logs.setMinimumHeight(170)
-        root.addWidget(self._logs, stretch=1)
+        self._logs.setMinimumHeight(120)
+        self._split.addWidget(self._logs)
+
+        # Panels first, log second, and the log keeps its share when the window
+        # grows: a taller window should show more log, not more empty card.
+        self._split.setStretchFactor(0, 3)
+        self._split.setStretchFactor(1, 2)
+        root.addWidget(self._split, stretch=1)
 
     def _relayout_cards(self, columns: int) -> None:
         """Arrange the four cards in 1, 2 or 4 columns.
 
         NOT COSMETIC. Two rows of cards cost about 155px of height, and on a
         1280x720 laptop -- which is what this was measured on -- that pushes the
-        log viewer off the bottom of the screen entirely. The log is most of the
-        point of a control centre, so on a wide window the cards go in one row
-        and give the height back.
+        log viewer off the bottom of the screen entirely.
         """
         if columns == self._columns:
             return
@@ -152,47 +197,222 @@ class ControlCenter(QMainWindow):
             self._grid.removeWidget(card)
         for index, card in enumerate(self._cards.values()):
             self._grid.addWidget(card, index // columns, index % columns)
+        for column in range(4):
+            self._grid.setColumnStretch(column, 1 if column < columns else 0)
 
     def resizeEvent(self, event) -> None:  # noqa: N802  (Qt naming)
         super().resizeEvent(event)
         width = event.size().width()
-        self._relayout_cards(4 if width >= 1150 else 2 if width >= 720 else 1)
+        # Thresholds are the card's own minimum (232px) plus spacing, so a
+        # column is only offered when a card at that width still reads.
+        self._relayout_cards(4 if width >= 1150 else 2 if width >= 620 else 1)
+        rows = 1 if width >= 900 else 2
+        self._lay_out_header(rows=rows)
+        # Measured against what the buttons ACTUALLY report, which already
+        # includes whatever the display scaling did to them.
+        needed = sum(
+            b.sizeHint().width() + 8
+            for b in (self._language, self._theme, self._run_all, self._stop_all)
+        ) + self._overall.sizeHint().width()
+        room = width - 32 - (self._titles.sizeHint().width() if rows == 1 else 0)
+        self._lay_out_controls(rows=1 if needed <= room else 2)
+        # MEASURED, NOT GUESSED. A pixel threshold has to be right in three
+        # languages at once, and it is not: "Mudar para claro" is a third wider
+        # than "Switch to light", so a number tuned on English clips Portuguese.
+        # Asking the font how wide the full labels would be gets it right in
+        # every language, including ones added later.
+        available = width - (32 if rows == 1 else 32)
+        if rows == 1:
+            available -= self._titles.sizeHint().width()
+        self._set_compact_controls(self._full_controls_width() > available)
 
-    def _build_header(self) -> QHBoxLayout:
-        header = QHBoxLayout()
+    def _build_header(self) -> QGridLayout:
+        """Title on the left, controls on the right -- until there is no room.
+
+        THE HEADER WAS THE LAST THING TO BREAK WHEN NARROW. It was one
+        QHBoxLayout, so below about 700px the title elided to "VMS CON", the
+        theme button to "ch to", and Run All left the window entirely. A row
+        that cannot wrap will always do that; this one drops the controls onto
+        a second row instead, and shortens their labels again below that.
+        """
+        header = QGridLayout()
+        header.setHorizontalSpacing(8)
+        header.setVerticalSpacing(8)
+        header.setContentsMargins(0, 0, 0, 0)
 
         left = QVBoxLayout()
         left.setSpacing(1)
-        heading = QLabel("VMS CONTROL CENTER")
-        font = heading.font()
+        self._heading = QLabel("VMS CONTROL CENTER")
+        font = self._heading.font()
         font.setPointSize(17)
         font.setWeight(font.Weight.Bold)
-        heading.setFont(font)
-        left.addWidget(heading)
-        subtitle = QLabel("Visitor Management System")
-        subtitle.setStyleSheet(f"color: {TEXT_FAINT};")
-        left.addWidget(subtitle)
-        header.addLayout(left)
+        self._heading.setFont(font)
+        left.addWidget(self._heading)
+        self._subtitle = QLabel()
+        left.addWidget(self._subtitle)
 
-        header.addStretch(1)
+        self._titles = QWidget()
+        self._titles.setLayout(left)
+        # Ignored horizontally: the title may elide, but it must never be the
+        # reason a control is pushed off the window.
+        self._titles.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
 
         self._overall = QLabel()
         self._overall.setTextFormat(Qt.TextFormat.RichText)
-        header.addWidget(self._overall)
-        header.addSpacing(14)
 
-        self._run_all = QPushButton("▶  Run All")
-        self._run_all.setStyleSheet(PRIMARY_BUTTON_QSS)
+        # Language and theme sit beside the controls they affect rather than in
+        # a settings dialog: the reason anyone reaches for either is the person
+        # or the room in front of them, and both change during a day.
+        self._language = QPushButton()
+        self._language.setMinimumHeight(34)
+        self._language_menu = QMenu(self)
+        self._language_group = QActionGroup(self)
+        self._language_group.setExclusive(True)
+        for code, label in i18n.LANGUAGES:
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setChecked(code == i18n.current())
+            action.triggered.connect(lambda _checked, c=code: self._set_language(c))
+            self._language_group.addAction(action)
+            self._language_menu.addAction(action)
+        self._language.setMenu(self._language_menu)
+
+        self._theme = QPushButton()
+        self._theme.setMinimumHeight(34)
+        self._theme.clicked.connect(self._toggle_theme)
+
+        self._run_all = QPushButton()
         self._run_all.setMinimumHeight(38)
-        header.addWidget(self._run_all)
 
-        self._stop_all = QPushButton("■  Stop All")
-        self._stop_all.setStyleSheet(DANGER_BUTTON_QSS)
+        self._stop_all = QPushButton()
         self._stop_all.setMinimumHeight(38)
-        header.addWidget(self._stop_all)
 
-        self._refresh_overall()
+        # THE CONTROL ROW WRAPS TOO, and it has to.
+        #
+        # Compact labels alone were not enough: on a screen with display
+        # scaling every button is a quarter wider than the offscreen test
+        # measures, so a row that "just fits" at 100% loses Run All entirely at
+        # 125%. A layout that can put the actions on their own line does not
+        # care what the scaling is.
+        self._controls = QWidget()
+        # Preferred, not Ignored: the row must be allowed to ask for the width
+        # its buttons need. Making it Ignored starved it at full size, which is
+        # the opposite failure to the one being fixed.
+        self._controls.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+        )
+        # A column of rows, not a grid with spans. Spanning cells made the
+        # column widths satisfy two different rows at once, and the total came
+        # out wider than the window -- which is how Run All ended up off the
+        # right edge at 470px even in compact mode.
+        self._control_box = QVBoxLayout(self._controls)
+        self._control_box.setContentsMargins(0, 0, 0, 0)
+        self._control_box.setSpacing(8)
+        self._control_line_a = QHBoxLayout()
+        self._control_line_a.setSpacing(8)
+        self._control_line_b = QHBoxLayout()
+        self._control_line_b.setSpacing(8)
+        self._control_box.addLayout(self._control_line_a)
+        self._control_box.addLayout(self._control_line_b)
+        for button in (self._language, self._theme, self._run_all, self._stop_all):
+            button.setSizePolicy(
+                QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
+            )
+        self._control_rows = 0
+        self._lay_out_controls(rows=1)
+
+        self._header = header
+        self._header_rows = 0
+        self._lay_out_header(rows=1)
         return header
+
+    def _lay_out_controls(self, *, rows: int) -> None:
+        """Status and the four controls, on one line or two."""
+        if rows == self._control_rows:
+            return
+        self._control_rows = rows
+
+        for line in (self._control_line_a, self._control_line_b):
+            while line.count():
+                item = line.takeAt(0)
+                if item.widget() is not None:
+                    item.widget().setParent(self._controls)
+
+        self._control_line_a.addWidget(self._overall)
+        self._control_line_a.addStretch(1)
+        self._control_line_a.addWidget(self._language)
+        self._control_line_a.addWidget(self._theme)
+
+        target = self._control_line_a if rows == 1 else self._control_line_b
+        if rows == 2:
+            # The actions get a line of their own, where they are big enough to
+            # hit and cannot be pushed out by the status word growing.
+            self._control_line_b.addStretch(1)
+        target.addWidget(self._run_all)
+        target.addWidget(self._stop_all)
+
+        for widget in (
+            self._overall,
+            self._language,
+            self._theme,
+            self._run_all,
+            self._stop_all,
+        ):
+            widget.show()
+
+    def _lay_out_header(self, *, rows: int) -> None:
+        if rows == self._header_rows:
+            return
+        self._header_rows = rows
+
+        self._header.removeWidget(self._titles)
+        self._header.removeWidget(self._controls)
+        if rows == 1:
+            self._header.addWidget(self._titles, 0, 0)
+            self._header.addWidget(self._controls, 0, 1)
+            self._header.setColumnStretch(0, 1)
+            self._header.setColumnStretch(1, 0)
+        else:
+            self._header.addWidget(self._titles, 0, 0)
+            self._header.addWidget(self._controls, 1, 0)
+            self._header.setColumnStretch(0, 1)
+            self._header.setColumnStretch(1, 0)
+
+    def _full_controls_width(self) -> int:
+        """How wide the control row would be with its labels written out.
+
+        Computed from font metrics rather than from the widgets, so it does not
+        depend on which mode they are currently in -- reading their sizeHint
+        while they are compact would say the compact row fits and flip straight
+        back, which is an oscillation, not a layout.
+        """
+        dark = theme.current().name == "dark"
+        labels = [
+            i18n.language_name(i18n.current()),
+            t("pref.toLight") if dark else t("pref.toDark"),
+            f"▶  {t('app.runAll')}",
+            f"■  {t('app.stopAll')}",
+        ]
+        metrics = self._run_all.fontMetrics()
+        # 28px is the QSS horizontal padding plus border; 8px is the row spacing.
+        total = sum(metrics.horizontalAdvance(text) + 28 for text in labels)
+        total += 8 * len(labels)
+        total += self._overall.sizeHint().width()
+        return total
+
+    def _set_compact_controls(self, compact: bool) -> None:
+        """Shorten the two preference buttons when the row is tight.
+
+        A language code and a single glyph carry the same meaning as the full
+        words at a third of the width, and losing them entirely would leave
+        somebody stuck in a language they cannot read.
+        """
+        if compact == getattr(self, "_compact", None):
+            return
+        self._compact = compact
+        self.retranslate()
 
     def _connect(self) -> None:
         self._run_all.clicked.connect(self._on_run_all)
@@ -212,12 +432,82 @@ class ControlCenter(QMainWindow):
         self._orchestrator.open_browser.connect(self._on_open_browser)
         self._orchestrator.finished.connect(self._on_run_all_finished)
 
+    # ------------------------------------------------- theme and language --
+
+    def restyle(self) -> None:
+        """Re-apply every stylesheet from the current palette."""
+        self.setStyleSheet(theme.window_qss())
+        p = theme.current()
+        self._heading.setStyleSheet(f"color: {p.text};")
+        self._subtitle.setStyleSheet(f"color: {p.text_faint};")
+        self._language.setStyleSheet(theme.ghost_button_qss())
+        self._theme.setStyleSheet(theme.ghost_button_qss())
+        self._run_all.setStyleSheet(theme.primary_button_qss())
+        self._stop_all.setStyleSheet(theme.danger_button_qss())
+        self._network.restyle()
+        self._logs.restyle()
+        for card in self._cards.values():
+            card.restyle()
+        self._refresh_overall()
+
+    def retranslate(self) -> None:
+        self._subtitle.setText(t("app.subtitle"))
+        dark = theme.current().name == "dark"
+        if getattr(self, "_compact", False):
+            self._language.setText(i18n.current().upper())
+            self._language.setToolTip(t("pref.language"))
+            self._theme.setText("☀" if dark else "☽")
+            self._theme.setToolTip(
+                t("pref.toLight") if dark else t("pref.toDark")
+            )
+            self._run_all.setText("▶")
+            self._run_all.setToolTip(t("app.runAll"))
+            self._stop_all.setText("■")
+            self._stop_all.setToolTip(t("app.stopAll"))
+        else:
+            self._language.setText(i18n.language_name(i18n.current()))
+            self._language.setToolTip(t("pref.language"))
+            self._theme.setText(t("pref.toLight") if dark else t("pref.toDark"))
+            self._theme.setToolTip("")
+            self._run_all.setText(f"▶  {t('app.runAll')}")
+            self._run_all.setToolTip("")
+            self._stop_all.setText(f"■  {t('app.stopAll')}")
+            self._stop_all.setToolTip("")
+        self._network.retranslate()
+        self._logs.retranslate()
+        for card in self._cards.values():
+            card.retranslate()
+        self._refresh_overall()
+
+    def _toggle_theme(self) -> None:
+        nxt = "light" if theme.current().name == "dark" else "dark"
+        theme.set_palette(nxt)
+        i18n.settings().setValue("theme", nxt)
+        self.restyle()
+        self.retranslate()
+
+    def _set_language(self, code: str) -> None:
+        i18n.set_locale(code)
+        self.retranslate()
+
     # -------------------------------------------------------------- actions --
+
+    def _flash_busy(self) -> None:
+        """Acknowledge a click that starts something slow.
+
+        See CLICK_FEEDBACK_MS: this is a receipt for the press, not a measure of
+        the work. `restoreOverrideCursor` is scheduled rather than paired with a
+        matching call at completion because completion may never arrive -- a
+        service can fail to start -- and a wait cursor with no owner is the one
+        thing worse than none at all.
+        """
+        QApplication.setOverrideCursor(Qt.CursorShape.BusyCursor)
+        QTimer.singleShot(CLICK_FEEDBACK_MS, QApplication.restoreOverrideCursor)
 
     def _on_refresh_network(self) -> None:
         self._lan_ip = detect_lan_ip()
         self._network.set_address(self._lan_ip)
-        self._logs.app(f"Network re-detected: {self._lan_ip}")
+        self._logs.app(t("msg.networkRedetected", ip=self._lan_ip))
 
     def _on_run_all(self) -> None:
         include_scanner = self._cards["scanner"].include_in_run_all
@@ -229,28 +519,28 @@ class ControlCenter(QMainWindow):
             first = report.failures[0]
             QMessageBox.critical(
                 self,
-                "Cannot start VMS",
-                f"{first.label}\n\n{first.detail}\n\n"
-                "Nothing has been started. The Application log lists every "
-                "check.",
+                t("dlg.cannotStart"),
+                f"{first.label}\n\n{first.detail}\n\n{t('dlg.nothingStarted')}",
             )
             return
 
+        self._flash_busy()
         self._lan_ip = report.lan_ip
         self._network.set_address(self._lan_ip)
         self._run_all.setEnabled(False)
         self._orchestrator.start_all(self._lan_ip, include_scanner=include_scanner)
 
     def _on_stop_all(self) -> None:
+        self._flash_busy()
         self._orchestrator.cancel()
-        self._logs.app("Stopping all services...")
         self._registry.stop_all()
         self._run_all.setEnabled(True)
 
     def _on_start_one(self, key: str) -> None:
         """Starting one service by hand still waits for readiness properly."""
+        self._flash_busy()
         spec = self._specs[key]
-        self._logs.app(f"Starting {spec.name}...")
+        self._logs.app(t("msg.starting", name=t(spec.name_key)))
         self._registry[key].start(service_environment(key, self._lan_ip))
 
         from launcher import ReadinessProbe, probe_for
@@ -261,17 +551,26 @@ class ControlCenter(QMainWindow):
 
         readiness = ReadinessProbe(probe, self)
         readiness.ready.connect(self._on_single_ready)
-        readiness.timed_out.connect(
-            lambda k: self._logs.app(f"{self._specs[k].name} did not report ready.")
-        )
+        readiness.timed_out.connect(self._on_single_timeout)
         readiness.start()
 
     def _on_single_ready(self, key: str) -> None:
         self._registry[key].mark_ready()
-        self._logs.app(f"{self._specs[key].name} is ready.")
+        self._logs.app(t("msg.isReady", name=t(self._specs[key].name_key)))
+
+    def _on_single_timeout(self, key: str) -> None:
+        from config import READY_TIMEOUT_MS
+
+        self._logs.app(
+            t(
+                "msg.timedOut",
+                name=t(self._specs[key].name_key),
+                seconds=READY_TIMEOUT_MS.get(key, 0) // 1000,
+            )
+        )
 
     def _on_stop_one(self, key: str) -> None:
-        self._logs.app(f"Stopping {self._specs[key].name}...")
+        self._flash_busy()
         self._registry[key].stop()
 
     def _on_open_one(self, key: str) -> None:
@@ -280,7 +579,7 @@ class ControlCenter(QMainWindow):
             self._on_open_browser(key, f"http://{self._lan_ip}:{spec.port}")
 
     def _on_open_browser(self, key: str, url: str) -> None:
-        self._logs.app(f"Opening {self._specs[key].name}: {url}")
+        self._logs.app(f"{t(self._specs[key].name_key)}: {url}")
         webbrowser.open(url)
 
     # -------------------------------------------------------------- signals --
@@ -290,26 +589,20 @@ class ControlCenter(QMainWindow):
         self._refresh_overall()
 
     def _on_unexpected_exit(self, key: str, code: int) -> None:
-        spec = self._specs[key]
-        self._logs.app(
-            f"{spec.name} stopped on its own (exit code {code}). "
-            f"See the {spec.name} tab for what it printed."
-        )
+        name = t(self._specs[key].name_key)
+        self._logs.app(f"{name} — exit code {code}. See the {name} tab.")
         self._run_all.setEnabled(True)
 
     def _on_run_all_finished(self, ok: bool) -> None:
         self._run_all.setEnabled(True)
         if not ok:
-            QMessageBox.warning(
-                self,
-                "Some services are not ready",
-                "One or more services did not answer in time.\n\n"
-                "They may still be starting. The per-service tabs show what "
-                "each one printed.",
-            )
+            self._logs.app(t("msg.notReady"))
+        else:
+            self._logs.app(t("msg.allRunning"))
 
     def _refresh_overall(self) -> None:
         """ONLINE / PARTIAL / OFFLINE, from the states rather than a flag."""
+        colours = theme.state_colours()
         states = [self._registry[key].state for key in self._specs]
         required = [
             self._registry[key].state
@@ -318,20 +611,21 @@ class ControlCenter(QMainWindow):
         ]
 
         if all(state is State.READY for state in required):
-            word, colour = "ONLINE", STATE_COLOURS[State.READY]
+            word, colour = t("app.online"), colours[State.READY]
         elif any(state is State.ERROR for state in states):
-            word, colour = "PARTIAL", STATE_COLOURS[State.ERROR]
+            word, colour = t("app.partial"), colours[State.ERROR]
         elif any(
             state in (State.STARTING, State.RUNNING, State.READY, State.STOPPING)
             for state in states
         ):
-            word, colour = "PARTIAL", STATE_COLOURS[State.STARTING]
+            word, colour = t("app.partial"), colours[State.STARTING]
         else:
-            word, colour = "OFFLINE", STATE_COLOURS[State.STOPPED]
+            word, colour = t("app.offline"), colours[State.STOPPED]
 
         self._overall.setText(
             f'<span style="color:{colour}; font-size:15px;">●</span>&nbsp;'
-            f'<span style="color:{colour}; font-weight:700; letter-spacing:1px;">{word}</span>'
+            f'<span style="color:{colour}; font-weight:700; '
+            f'letter-spacing:1px;">{word}</span>'
         )
 
     # ----------------------------------------------------------------- exit --
@@ -343,15 +637,17 @@ class ControlCenter(QMainWindow):
         running is worse than one that never started them: the ports stay held,
         the next launch fails its preflight, and nothing on screen explains why.
         """
-        running = [self._specs[k].name for k in self._specs if self._registry[k].is_active]
+        running = [
+            t(self._specs[k].name_key)
+            for k in self._specs
+            if self._registry[k].is_active
+        ]
 
         if running:
             answer = QMessageBox.question(
                 self,
-                "Stop running services?",
-                "These are still running and will be stopped:\n\n  "
-                + "\n  ".join(running)
-                + "\n\nClose the control centre?",
+                t("app.stopAll"),
+                "\n  ".join(running),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
             )
             if answer is not QMessageBox.StandardButton.Yes:
@@ -368,13 +664,10 @@ class ControlCenter(QMainWindow):
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
+    app.setOrganizationName(i18n.ORGANISATION)
 
     window = ControlCenter()
     window.show()
-
-    # Give Qt one turn of the event loop before anything heavy, so the window
-    # is on screen rather than the app appearing to hang on launch.
-    QTimer.singleShot(0, lambda: None)
     return app.exec()
 
 
