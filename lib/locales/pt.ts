@@ -502,4 +502,8 @@ export const pt: Messages = {
     "{people} pessoas chegaram em {scans} leitura.",
   "overview.arrivedSummary.manyMany":
     "{people} pessoas chegaram em {scans} leituras.",
+
+  // --------------------------------------------------------------- brand --
+  "brand.organisedBy": "Organizado por {first} e {second}.",
+  "brand.dates": "D\u00edli, 2\u20133 de outubro de 2026",
 };
