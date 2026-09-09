@@ -224,6 +224,41 @@ export const en = {
   // ---------------------------------------------------------------- edit --
   "edit.title": "Edit {name}",
   "edit.fallbackTitle": "Edit visitor",
+
+  // ----------------------------------------------- photo upload and crop --
+  "photo.label": "Photo",
+  "photo.spec": "3:4 PORTRAIT \u00b7 600 \u00d7 800",
+  "photo.notImage": "That is not an image. Choose a JPEG or PNG.",
+  "photo.tooLarge": "That image is over 20 MB. Choose a smaller one.",
+  "photo.alt": "The visitor\u2019s badge photo",
+  "photo.ready": "Cropped and ready.",
+  "photo.onFile": "The photo already on file. It stays unless you replace it.",
+  "photo.adjustCrop": "Adjust crop",
+  "photo.chooseDifferent": "Choose a different photo",
+  "photo.add": "Add a photo",
+  "photo.dropHint": "Drop one here, or click to choose. You crop it next.",
+  "photo.dialogLabel": "Crop the visitor photo",
+  "photo.frameFace": "Frame the face",
+  "photo.closeWithoutSaving": "Close without saving",
+  "crop.alt": "The photo being cropped",
+  "crop.preview": "Cropped image",
+  "crop.circleHint":
+    "Only the circle is printed and shown on the lobby screen. Fill it with the head and shoulders.",
+  "crop.aspect": "Aspect ratio",
+  "crop.ratio.badge": "Badge (locked)",
+  "crop.ratio.square": "Square",
+  "crop.ratio.free": "Free",
+  "crop.width": "Width",
+  "crop.height": "Height",
+  "crop.heightLocked": "Height (locked)",
+  "crop.tooSmall":
+    "This crop is {width}px wide. The badge prints the photo at {min}px for 300dpi, so it will look soft on the card. Crop less, or use a larger photo.",
+  "crop.quality": "Image quality",
+  "crop.bestCompression": "Best compression",
+  "crop.bestQuality": "Best quality",
+  "crop.applying": "Applying\u2026",
+  "crop.use": "Use this photo",
+  "crop.changeImage": "Change image",
 } as const;
 
 /** Every message key in the dashboard. */
