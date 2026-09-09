@@ -78,3 +78,22 @@ class VisitorDetailSerializer(VisitorSerializer):
         from .services import badge_token
 
         return badge_token(visitor)
+
+
+class VisitorPurgedSerializer(serializers.Serializer):
+    """What a permanent delete reports back.
+
+    Not a ModelSerializer: by the time this is rendered the row is gone. It
+    exists so the shape is in the schema and the dashboard can read
+    `scans_orphaned` from a generated type rather than a hand-written one.
+    """
+
+    badge_serial = serializers.CharField(
+        help_text="The serial of the registration that was removed."
+    )
+    scans_orphaned = serializers.IntegerField(
+        help_text=(
+            "Scan events kept but detached from the visitor. They still count "
+            "towards the entrance log; they no longer say who presented the badge."
+        )
+    )
