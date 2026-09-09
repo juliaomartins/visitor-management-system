@@ -10,7 +10,13 @@ import { downloadRoster } from "@/lib/badges";
 import { useSetPageMeta } from "@/components/page-meta";
 import { DeactivateDialog } from "@/components/visitors/DeactivateDialog";
 import { PurgeDialog } from "@/components/visitors/PurgeDialog";
-import { RowContextMenu } from "@/components/visitors/RowContextMenu";
+import {
+  BanIcon,
+  CheckCircleIcon,
+  PencilIcon,
+  RowContextMenu,
+  TrashIcon,
+} from "@/components/visitors/RowContextMenu";
 import { api, type Visitor, type VisitorCategory } from "@/lib/api";
 import { queryKeys } from "@/lib/query-client";
 import {
@@ -278,11 +284,13 @@ export default function VisitorsPage() {
           items={[
             {
               label: "Edit details",
+              icon: <PencilIcon />,
               onSelect: () => router.push(`/visitors/${menu.visitor.id}/edit`),
             },
             menu.visitor.is_active
               ? {
                   label: "Deactivate visitor",
+                  icon: <BanIcon />,
                   onSelect: () => setConfirming("deactivate"),
                 }
               : {
@@ -293,10 +301,12 @@ export default function VisitorsPage() {
                     the item that was in this slot a moment ago.
                   */
                   label: "Activate visitor",
+                  icon: <CheckCircleIcon />,
                   onSelect: () => activate.mutate(),
                 },
             {
               label: "Delete permanently",
+              icon: <TrashIcon />,
               danger: true,
               onSelect: () => setConfirming("purge"),
             },
