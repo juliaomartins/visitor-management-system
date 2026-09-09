@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { useRichT, useT } from "@/lib/i18n";
+
 /**
  * Confirm the one thing left that deserves a confirmation.
  *
@@ -33,6 +35,8 @@ export function ReissueDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
+  const rich = useRichT();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
@@ -42,7 +46,15 @@ export function ReissueDialog({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  const subject = `${count} ${count === 1 ? "visitor" : "visitors"}`;
+  /*
+    The whole question is one message per plural form, not a count glued
+    to a noun glued into a sentence. Portuguese agrees the participle
+    with the noun and Tetun does not inflect it, so neither can be built
+    from English fragments.
+  */
+  const title = t(count === 1 ? "export.titleOne" : "export.titleMany", {
+    count,
+  });
 
   return (
     <dialog
@@ -57,30 +69,23 @@ export function ReissueDialog({
     >
       <div className="px-6 py-6">
         <h2 id="reissue-title" className="text-lg font-semibold tracking-tight">
-          {`Export badge codes for ${subject}?`}
+          {title}
         </h2>
 
         <p className="mt-2 text-sm text-ink-2">
-          This file contains a{" "}
-          <span className="font-medium text-ink">working QR code</span> for every
-          visitor in it. Nothing is changed by exporting &mdash; the codes are the
-          ones already on their cards &mdash; but anyone holding the file can
-          produce a badge that scans.
+          {rich("export.body", {
+            strong: (
+              <span className="font-medium text-ink">
+                {t("export.bodyStrong")}
+              </span>
+            ),
+          })}
         </p>
 
         <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
-          <li>
-            Send it the way you would send the printed cards, not the way you
-            would send a guest list.
-          </li>
-          <li>
-            Exporting again later produces an identical file. Losing this one
-            costs nothing but the time to export it again.
-          </li>
-          <li>
-            To stop a specific badge, deactivate that visitor on their page.
-            Deleting the file does not stop anything.
-          </li>
+          <li>{t("export.point1")}</li>
+          <li>{t("export.point2")}</li>
+          <li>{t("export.point3")}</li>
         </ul>
 
         {error ? (
@@ -99,7 +104,7 @@ export function ReissueDialog({
             disabled={pending}
             className="btn btn-ghost disabled:opacity-60"
           >
-            Cancel
+            {t("purge.cancel")}
           </button>
           <button
             type="button"
@@ -107,7 +112,7 @@ export function ReissueDialog({
             disabled={pending}
             className="btn btn-primary disabled:opacity-70"
           >
-            {pending ? "Building…" : "Export and download"}
+            {pending ? t("export.building") : t("export.confirm")}
           </button>
         </div>
       </div>
