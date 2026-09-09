@@ -44,16 +44,19 @@ export default function BadgesPage() {
   const [confirming, setConfirming] = useState<"export" | null>(null);
 
   /*
-    NO TOKENS ARE HELD ON THIS PAGE, and the cards below show an empty QR frame
-    on purpose.
+    THIS PAGE ASKS FOR REAL BADGE TOKENS, AND THE CARDS BELOW DRAW REAL QR CODES.
 
-    The list endpoint deliberately does not return `badge_token`: one request
-    should not hand back 250 working credentials. The cards here are a layout
-    preview -- name, photo, serial, VIP band -- so a badge that overflows is
-    caught before fifty come off the printer.
+    It used to show an empty frame, because the list endpoint withheld
+    `badge_token` on the principle that one request should not hand back 250
+    working credentials. The principle survives -- the field is still opt-in, and
+    every other list call goes without it -- but it does not apply here. The
+    print queue exists to catch what a sheet of nine will get wrong before the
+    paper is spent, and the QR is the one part of a badge nobody can check by
+    eye. A frame saying "on the printed card" verifies nothing.
 
-    The real QR is in three places that matter: the printed sheet, the .xlsx,
-    and each visitor's own page.
+    Nor is much given away: the .xlsx button a few pixels up already hands the
+    same admin the same codes in a file they can carry out of the building. What
+    changes here is convenience, not exposure.
   */
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -61,7 +64,12 @@ export default function BadgesPage() {
   const { data, isPending, isError } = useQuery({
     queryKey: queryKeys.visitors({ badges: true }),
     queryFn: async ({ signal }) => {
-      const { data, error } = await api.GET("/api/v1/visitors", { signal });
+      const { data, error } = await api.GET("/api/v1/visitors", {
+        // The whole point of this page is seeing what will print, and the QR is
+        // the half of a badge nobody can check by eye. See the comment above.
+        params: { query: { with_tokens: true } },
+        signal,
+      });
       if (error) throw new ApiError("The visitor list could not be loaded.");
       return data;
     },
@@ -232,6 +240,7 @@ export default function BadgesPage() {
                 visitor={visitor}
                 checked={selected.has(visitor.id)}
                 onToggle={() => toggle(visitor.id)}
+                token={visitor.badge_token}
               />
             </li>
           ))}
@@ -280,7 +289,7 @@ function SelectableCard({
   visitor: Visitor;
   checked: boolean;
   onToggle: () => void;
-  /** Present only after a reissue on this page. Draws the real QR. */
+  /** The badge's real code, from `?with_tokens=true`. Draws a scannable QR. */
   token?: string;
 }) {
   // A real checkbox, hidden but focusable: this is a multi-select, and a button
@@ -315,11 +324,7 @@ function SelectableCard({
       </div>
 
       <span className="mono mt-2 block px-1 text-[11px] text-ink-3">
-        {token
-          ? "QR live · on screen only"
-          : checked
-            ? "On the sheet"
-            : "Not printing"}
+        {checked ? "On the sheet" : "Not printing"}
       </span>
     </label>
   );
