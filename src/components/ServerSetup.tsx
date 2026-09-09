@@ -8,6 +8,7 @@
  * It never saves an address that did not answer. An address that looks accepted
  * and fails at the next badge is worse than an honest error here.
  */
+import { useRichT, useT } from "@/i18n";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -36,6 +37,8 @@ export function ServerSetup({
   onRetry: () => void;
   searching: boolean;
 }) {
+  const t = useT();
+  const rich = useRichT();
   const [value, setValue] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +54,7 @@ export function ServerSetup({
 
     if (!ok) {
       setError(
-        "Nothing answered there. Check the address, and that the server is on and " +
-          "this phone is on the same Wi-Fi.",
+        t("server.nothingAnswered"),
       );
     }
   }
@@ -68,18 +70,20 @@ export function ServerSetup({
           keyboardShouldPersistTaps="handled"
         >
           <View>
-            <Text style={styles.eyebrow}>CANNOT REACH THE SERVER</Text>
-            <Text style={styles.title}>Where is the server?</Text>
+            <Text style={styles.eyebrow}>{t("server.cannotReach")}</Text>
+            <Text style={styles.title}>{t("server.whereIsIt")}</Text>
             <Text style={styles.body}>
-              Ask whoever set up the laptop for its IP address, or run{" "}
-              <Text style={styles.code}>ipconfig</Text> on it. The port is almost
-              always 8000.
+              {rich("setup.hint", {
+                cmd: <Text style={styles.code}>ipconfig</Text>,
+              })}
             </Text>
           </View>
 
           {attempted.length > 0 ? (
             <View style={styles.tried}>
-              <Text style={styles.triedLabel}>Already tried</Text>
+              <Text style={styles.triedLabel}>
+                {t("server.alreadyTried")}
+              </Text>
               {attempted.map((origin) => (
                 <Text key={origin} style={styles.triedItem}>
                   {origin}
@@ -89,7 +93,7 @@ export function ServerSetup({
           ) : null}
 
           <View style={styles.field}>
-            <Text style={styles.label}>Server address</Text>
+            <Text style={styles.label}>{t("server.address")}</Text>
             <TextInput
               value={value}
               onChangeText={(next) => {
@@ -104,7 +108,7 @@ export function ServerSetup({
               returnKeyType="go"
               onSubmitEditing={submit}
               style={styles.input}
-              accessibilityLabel="Server IP address and port"
+              accessibilityLabel={t("server.addressA11y")}
             />
             <Text style={styles.hint}>
               A bare IP is fine — http:// and the port are filled in for you.
@@ -130,13 +134,13 @@ export function ServerSetup({
             {checking ? (
               <ActivityIndicator color={colors.onAccent} />
             ) : (
-              <Text style={styles.buttonLabel}>Connect</Text>
+              <Text style={styles.buttonLabel}>{t("server.connect")}</Text>
             )}
           </Pressable>
 
           <Pressable onPress={onRetry} disabled={searching} accessibilityRole="button">
             <Text style={styles.retry}>
-              {searching ? "Searching…" : "Try the saved addresses again"}
+              {searching ? t("server.searching") : t("server.retrySaved")}
             </Text>
           </Pressable>
         </ScrollView>
