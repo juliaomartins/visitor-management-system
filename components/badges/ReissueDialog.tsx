@@ -3,21 +3,24 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Confirm before reprinting anything.
+ * Confirm the one thing left that deserves a confirmation.
  *
- * Printing a badge that already exists is not a reprint — it cannot be. The raw
- * token behind the QR was never stored, so the server has nothing to redraw and
- * the only thing it can do is mint a new one. The card the visitor is currently
- * wearing stops scanning the instant this runs.
+ * THIS DIALOG USED TO GUARD PRINTING, AND THEN REPLACING, AND NOW GUARDS
+ * NEITHER. Badge tokens were once random and unrecoverable, so putting a QR on
+ * a sheet meant minting a new one and killing the card the visitor was wearing.
+ * Tokens are derived now: printing redraws what is already on the card, so the
+ * print button asks nothing and simply produces the file.
  *
- * That is a genuinely surprising consequence of a button labelled "print", so it
- * gets a dialog that says it in plain words rather than a tooltip nobody reads.
+ * The "replace" case went with it. A badge is issued once at registration and
+ * stays valid until the visitor is revoked or deleted, so the dashboard has no
+ * control that rotates a token and this dialog no longer warns about one.
+ *
+ * What is left is custody, not breakage: the export writes working credentials
+ * into a file that leaves the building.
  */
 export function ReissueDialog({
   open,
   count,
-  name,
-  output = "sheet",
   pending,
   error,
   onConfirm,
@@ -25,10 +28,6 @@ export function ReissueDialog({
 }: {
   open: boolean;
   count: number;
-  /** Set when reissuing exactly one visitor, so the copy can name them. */
-  name?: string;
-  /** What comes back. A spreadsheet leaves the building; a print sheet usually does not. */
-  output?: "sheet" | "spreadsheet";
   pending: boolean;
   error?: string;
   onConfirm: () => void;
@@ -43,8 +42,7 @@ export function ReissueDialog({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  const subject = name ?? `${count} ${count === 1 ? "visitor" : "visitors"}`;
-  const isFile = output === "spreadsheet";
+  const subject = `${count} ${count === 1 ? "visitor" : "visitors"}`;
 
   return (
     <dialog
@@ -59,42 +57,30 @@ export function ReissueDialog({
     >
       <div className="px-6 py-6">
         <h2 id="reissue-title" className="text-lg font-semibold tracking-tight">
-          {isFile
-            ? `Export new badges for ${subject}?`
-            : `Print a new badge for ${subject}?`}
+          {`Export badge codes for ${subject}?`}
         </h2>
 
         <p className="mt-2 text-sm text-ink-2">
-          This issues a{" "}
-          <span className="font-medium text-ink">brand new badge token</span>.
-          Any card already printed — including one they are wearing right now —
-          stops working the moment you confirm.
+          This file contains a{" "}
+          <span className="font-medium text-ink">working QR code</span> for every
+          visitor in it. Nothing is changed by exporting &mdash; the codes are the
+          ones already on their cards &mdash; but anyone holding the file can
+          produce a badge that scans.
         </p>
 
         <ul className="mt-4 space-y-1.5 text-sm text-ink-3">
           <li>
-            The old QR is dead immediately. Collect and destroy the old card, or
-            it will show red at the door.
+            Send it the way you would send the printed cards, not the way you
+            would send a guest list.
           </li>
           <li>
-            This is not a choice the system makes. Only the digest of a badge
-            token is stored, so an existing card can never be reprinted — only
-            replaced.
+            Exporting again later produces an identical file. Losing this one
+            costs nothing but the time to export it again.
           </li>
           <li>
-            The visitor, their serial and their scan history are unchanged.
+            To stop a specific badge, revoke it from that visitor&apos;s page.
+            Deleting the file does not stop anything.
           </li>
-          {isFile ? (
-            <li className="text-ink-2">
-              <span className="font-medium text-ink">
-                The file will be the only copy of these tokens.
-              </span>{" "}
-              The server keeps a hash and cannot produce them again — lose the
-              file and every badge in it has to be reissued a second time.
-              Anyone holding it can make a working badge, so send it the way you
-              would send the printed cards.
-            </li>
-          ) : null}
         </ul>
 
         {error ? (
@@ -121,11 +107,7 @@ export function ReissueDialog({
             disabled={pending}
             className="btn btn-primary disabled:opacity-70"
           >
-            {pending
-              ? isFile
-                ? "Building…"
-                : "Rendering…"
-              : "Reissue and download"}
+            {pending ? "Building…" : "Export and download"}
           </button>
         </div>
       </div>
