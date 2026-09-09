@@ -22,6 +22,7 @@ from .models import Visitor, VisitorCategory
 from .serializers import (
     VisitorDetailSerializer,
     VisitorIssuedSerializer,
+    VisitorListSerializer,
     VisitorPurgedSerializer,
     VisitorSerializer,
     VisitorWithTokenSerializer,
@@ -65,6 +66,7 @@ FALSE_VALUES = {"0", "false", "no", "off"}
                 ),
             ),
         ],
+        responses={200: VisitorListSerializer(many=True)},
     ),
     retrieve=extend_schema(summary="Visitor detail, with scan history"),
     create=extend_schema(
