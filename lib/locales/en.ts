@@ -259,6 +259,46 @@ export const en = {
   "crop.applying": "Applying\u2026",
   "crop.use": "Use this photo",
   "crop.changeImage": "Change image",
+
+  // -------------------------------------------------------------- badges --
+  "badges.title": "Badge printing",
+  "badges.subtitle": "Nine to an A4 sheet, with cut marks",
+  "badges.loadFailed": "The visitor list could not be loaded.",
+  "badges.safeTitle": "Printing is safe to repeat",
+  "badges.safeBody":
+    "Every sheet carries each visitor\u2019s existing QR, so a card can be reprinted as often as you need and the ones already handed out keep working. To stop a lost card, deactivate that visitor on their own page \u2014 the QR itself never changes, so activating them again puts the same card back to work.",
+  "badges.searchPlaceholder": "Name, organisation, country or serial",
+  "badges.clearSelection": "Clear selection",
+  "badges.selectAll": "Select all {count}",
+  "badges.print": "Print",
+  "badges.printCount": "Print {count}",
+  "badges.sheetFailed": "The sheet could not be produced.",
+  "badges.export": "Export .xlsx",
+  "badges.fileFailed": "The file could not be produced.",
+  "badges.selectedOne": "{count} selected \u00b7 {sheets} A4 sheet",
+  "badges.selectedMany": "{count} selected \u00b7 {sheets} A4 sheets",
+  "badges.noMatch": "No visitors match that search.",
+  "badges.onSheet": "On the sheet",
+  "badges.notPrinting": "Not printing",
+
+  // ------------------------------------------------------- export dialog --
+  "export.titleOne": "Export badge codes for {count} visitor?",
+  "export.titleMany": "Export badge codes for {count} visitors?",
+  "export.body":
+    "This file contains a {strong} for every visitor in it. Nothing is changed by exporting \u2014 the codes are the ones already on their cards \u2014 but anyone holding the file can produce a badge that scans.",
+  "export.bodyStrong": "working QR code",
+  "export.point1":
+    "Send it the way you would send the printed cards, not the way you would send a guest list.",
+  "export.point2":
+    "Exporting again later produces an identical file. Losing this one costs nothing but the time to export it again.",
+  "export.point3":
+    "To stop a specific badge, deactivate that visitor on their page. Deleting the file does not stop anything.",
+  "export.building": "Building\u2026",
+  "export.confirm": "Export and download",
+  "card.deactivated": "Deactivated",
+  "card.qrOnCard": "on the printed card",
+  "card.qrDrawing": "drawing\u2026",
+  "card.qrFailed": "could not draw",
 } as const;
 
 /** Every message key in the dashboard. */
