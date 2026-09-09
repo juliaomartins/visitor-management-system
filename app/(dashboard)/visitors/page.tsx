@@ -18,6 +18,12 @@ import {
   TrashIcon,
 } from "@/components/visitors/RowContextMenu";
 import { api, type Visitor, type VisitorCategory } from "@/lib/api";
+import { useErrorText, useT } from "@/lib/i18n";
+import {
+  DEFAULT_LOCALE,
+  translate,
+  type MessageKey,
+} from "@/lib/locales";
 import { queryKeys } from "@/lib/query-client";
 import {
   ApiError,
@@ -28,10 +34,12 @@ import {
 
 type CategoryFilter = VisitorCategory | "all";
 
-const CATEGORY_TABS: { value: CategoryFilter; label: string }[] = [
-  { value: "all", label: "Everyone" },
-  { value: "normal", label: "Normal" },
-  { value: "vip", label: "VIP" },
+/* Keys, not words: this is a module constant built before any translator
+   exists. Same reason the nav rail holds keys -- see components/sidebar.tsx. */
+const CATEGORY_TABS: { value: CategoryFilter; labelKey: MessageKey }[] = [
+  { value: "all", labelKey: "visitors.tab.all" },
+  { value: "normal", labelKey: "visitors.tab.normal" },
+  { value: "vip", labelKey: "visitors.tab.vip" },
 ];
 
 /** Long enough to finish typing a surname, short enough to feel immediate. */
@@ -50,6 +58,8 @@ function useDebounced<T>(value: T, delay: number): T {
 
 export default function VisitorsPage() {
   const router = useRouter();
+  const t = useT();
+  const errorText = useErrorText();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const debouncedSearch = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
@@ -117,7 +127,13 @@ export default function VisitorsPage() {
         params: { query },
         signal,
       });
-      if (error) throw new Error("The server rejected that request.");
+      if (error) {
+        throw new ApiError(
+          translate(DEFAULT_LOCALE, "visitors.serverRejected"),
+          {},
+          "visitors.serverRejected",
+        );
+      }
       return data;
     },
   });
@@ -134,15 +150,15 @@ export default function VisitorsPage() {
     try {
       await downloadRoster();
     } catch {
-      setExportError("The roster could not be exported.");
+      setExportError(t("visitors.exportFailed"));
     } finally {
       setExporting(false);
     }
   }
 
   useSetPageMeta({
-    title: "Visitors",
-    subtitle: "Everyone registered for the event",
+    title: t("visitors.title"),
+    subtitle: t("visitors.subtitle"),
     count: data ? visitors.length : undefined,
   });
 
@@ -151,7 +167,7 @@ export default function VisitorsPage() {
       <div className="flex flex-wrap items-center gap-3 border-b border-line p-4">
         <div className="relative min-w-56 flex-1">
           <label htmlFor="visitor-search" className="sr-only">
-            Search visitors
+            {t("visitors.search")}
           </label>
           <input
             id="visitor-search"
@@ -162,7 +178,7 @@ export default function VisitorsPage() {
             onKeyDown={(event) => {
               if (event.key === "Escape") setSearch("");
             }}
-            placeholder="Name, organisation, country or badge serial"
+            placeholder={t("visitors.searchPlaceholder")}
             className="field pr-10"
           />
           <kbd
@@ -175,7 +191,7 @@ export default function VisitorsPage() {
 
         <div
           role="group"
-          aria-label="Filter by category"
+          aria-label={t("visitors.filterCategory")}
           className="flex rounded-lg bg-card-2 p-1"
         >
           {CATEGORY_TABS.map((tab) => (
@@ -190,7 +206,7 @@ export default function VisitorsPage() {
                   : "text-ink-2 hover:text-ink"
               }`}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -203,13 +219,13 @@ export default function VisitorsPage() {
           onClick={exportRoster}
           disabled={exporting || visitors.length === 0}
           className="btn btn-ghost disabled:opacity-60"
-          title="Spreadsheet of everyone registered. Nothing is reissued."
+          title={t("visitors.exportTitle")}
         >
-          {exporting ? "Exporting…" : "Export .xlsx"}
+          {exporting ? t("visitors.exporting") : t("visitors.export")}
         </button>
 
         <Link href="/visitors/new" className="btn btn-primary">
-          Register visitor
+          {t("visitors.register")}
         </Link>
       </div>
 
@@ -225,7 +241,7 @@ export default function VisitorsPage() {
           isFetching && !isPending ? "opacity-100" : "opacity-0"
         }`}
       >
-        Refreshing…
+        {t("visitors.refreshing")}
       </p>
 
       <div className="p-2 pt-1 sm:p-3 sm:pt-1">
@@ -233,28 +249,20 @@ export default function VisitorsPage() {
           <SkeletonRows />
         ) : isError ? (
           <Notice
-            heading="Could not load visitors"
-            body={
-              error instanceof Error
-                ? error.message
-                : "The request failed before it reached the server."
-            }
+            heading={t("visitors.loadFailed")}
+            body={errorText(error, "visitors.requestFailed")}
             tone="error"
           />
         ) : visitors.length === 0 ? (
           <Notice
-            heading={
-              filtered ? "No one matches those filters" : "No visitors yet"
-            }
-            body={
-              filtered
-                ? "Try a shorter search, or widen the category."
-                : "Register the first visitor to issue a badge."
-            }
+            heading={t(filtered ? "visitors.noneMatch" : "visitors.empty")}
+            body={t(
+              filtered ? "visitors.noneMatchBody" : "visitors.emptyBody",
+            )}
             action={
               filtered ? undefined : (
                 <Link href="/visitors/new" className="btn btn-primary mt-6">
-                  Register visitor
+                  {t("visitors.register")}
                 </Link>
               )
             }
@@ -283,13 +291,13 @@ export default function VisitorsPage() {
           onClose={() => setMenu(null)}
           items={[
             {
-              label: "Edit details",
+              label: t("visitors.menu.edit"),
               icon: <PencilIcon />,
               onSelect: () => router.push(`/visitors/${menu.visitor.id}/edit`),
             },
             menu.visitor.is_active
               ? {
-                  label: "Deactivate visitor",
+                  label: t("visitors.menu.deactivate"),
                   icon: <BanIcon />,
                   onSelect: () => setConfirming("deactivate"),
                 }
@@ -300,12 +308,12 @@ export default function VisitorsPage() {
                     the badge simply starts scanning again, and the way back is
                     the item that was in this slot a moment ago.
                   */
-                  label: "Activate visitor",
+                  label: t("visitors.menu.activate"),
                   icon: <CheckCircleIcon />,
                   onSelect: () => activate.mutate(),
                 },
             {
-              label: "Delete permanently",
+              label: t("visitors.menu.delete"),
               icon: <TrashIcon />,
               danger: true,
               onSelect: () => setConfirming("purge"),
@@ -321,8 +329,8 @@ export default function VisitorsPage() {
           badgeSerial={target.badge_serial}
           pending={deactivate.isPending}
           error={
-            deactivate.error instanceof ApiError
-              ? deactivate.error.message
+            deactivate.error
+              ? errorText(deactivate.error, "error.visitorDeactivate")
               : undefined
           }
           onConfirm={() =>
@@ -346,7 +354,9 @@ export default function VisitorsPage() {
           badgeSerial={target.badge_serial}
           pending={purge.isPending}
           error={
-            purge.error instanceof ApiError ? purge.error.message : undefined
+            purge.error
+              ? errorText(purge.error, "error.visitorDelete")
+              : undefined
           }
           onConfirm={() =>
             /* Already on the list, so nothing to navigate to -- the row simply
@@ -372,6 +382,7 @@ function VisitorRow({
   visitor: Visitor;
   onOpenMenu: (x: number, y: number) => void;
 }) {
+  const t = useT();
   const vip = visitor.category === "vip";
   const inactive = !visitor.is_active;
 
@@ -455,7 +466,7 @@ function VisitorRow({
           ) : null}
           {inactive ? (
             <span className="pill-status bg-revoked-soft text-revoked">
-              Deactivated
+              {t("visitors.status.deactivated")}
             </span>
           ) : null}
         </div>
