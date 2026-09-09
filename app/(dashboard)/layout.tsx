@@ -7,6 +7,7 @@ import { PageMetaProvider } from "@/components/page-meta";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { restoreSession } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 
 /**
  * The dashboard shell, and the gate in front of it.
@@ -18,6 +19,7 @@ import { restoreSession } from "@/lib/auth";
  */
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const t = useT();
   const [state, setState] = useState<"checking" | "ready">("checking");
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           className="mono text-xs tracking-[0.14em] text-ink-3 uppercase"
           role="status"
         >
-          Restoring session
+          {t("shell.restoringSession")}
         </p>
       </div>
     );
