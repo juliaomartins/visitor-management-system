@@ -59,6 +59,7 @@ export const tet: Messages = {
   "login.submit": "Tama",
   "login.submitting": "Tama hela\u2026",
   "login.badCredentials": "Naran uzu\u00e1riu ho liafuan-xave la hanesan.",
+  "login.failedStatus": "La konsege tama (HTTP {status}).",
   "login.unreachable":
     "La bele kontaktu servid\u00f3r. Verifika se backend la\u2019o hela.",
   "login.servingFrom": "Husi",
