@@ -2,11 +2,18 @@
 
 Two of these functions are load-bearing for the whole security model:
 
-* ``issue_badge_token`` returns the raw token exactly once. Only its SHA-256
-  digest is stored, so the printed card is the only copy that survives. The
-  badge PDF must be generated from that return value at creation time
-  (CLAUDE.md constraint #3) — phase 5 wires that in.
-* ``revoke_badge`` kills a lost card without touching its scan history.
+* ``badge_token`` derives the raw token for a visitor. It is deterministic, so
+  the same QR can be reprinted and displayed for the life of the event, and it
+  is an HMAC under a server secret, so it cannot be forged from the visitor id
+  alone (CLAUDE.md constraint #3 — the QR is still opaque, just no longer
+  irrecoverable).
+* ``rotate_badge_token`` is the only thing that changes a badge's QR. Printing
+  no longer does.
+* ``deactivate_visitor`` stops a badge scanning without touching its scan
+  history, and ``activate_visitor`` puts it back. The QR is unchanged by both:
+  the token is derived, so the same printed card resumes working.
+* ``purge_visitor`` is the only destructive path. It erases the registration for
+  real, and it is not what ``DELETE /visitors/{id}`` does.
 """
 
 import logging
@@ -15,7 +22,7 @@ import secrets
 from django.db import transaction
 from django.utils import timezone
 
-from apps.common.utils import generate_token, hash_token
+from apps.common.utils import derive_token, hash_token
 
 from .models import Visitor
 
@@ -62,17 +69,53 @@ def generate_badge_serial() -> str:
     )
 
 
-def issue_badge_token(visitor: Visitor, *, save: bool = True) -> str:
-    """Mint a fresh badge token for ``visitor`` and return the RAW value.
+def badge_token(visitor: Visitor) -> str:
+    """Return the raw token in this visitor's QR. Deterministic and repeatable.
 
-    The caller gets the only copy. Store it nowhere; print it into the QR and let
-    it go. Calling this again invalidates the previous card automatically — the
-    old digest is overwritten, so the old QR stops matching.
+    Safe to call as often as you like: the same visitor at the same
+    ``token_version`` always yields the same string, which is what makes a card
+    reprintable and lets the dashboard show a working QR at any time.
+
+    ``visitor.id`` is a UUID assigned at instantiation, so this works before the
+    row has been saved.
     """
-    raw = generate_token()
+    return derive_token(visitor.id, visitor.token_version)
+
+
+def issue_badge_token(visitor: Visitor, *, save: bool = True) -> str:
+    """Derive the badge token and make sure the stored digest matches it.
+
+    NOT A MINT. This used to generate a fresh random token on every call, which
+    is why printing in bulk silently reissued every badge on the sheet. It is now
+    idempotent: existing cards keep working no matter how often it runs.
+
+    Use ``rotate_badge_token`` when you actually want the old card to stop.
+    """
+    raw = badge_token(visitor)
+    digest = hash_token(raw)
+    if visitor.token_hash != digest:
+        visitor.token_hash = digest
+        if save:
+            visitor.save(update_fields=["token_hash", "updated_at"])
+    return raw
+
+
+def rotate_badge_token(visitor: Visitor, *, actor=None) -> str:
+    """Give ``visitor`` a new QR and stop the old one. Returns the RAW token.
+
+    The deliberate counterpart to reprinting. Bumping ``token_version`` changes
+    the HMAC input, so the previous card stops matching on the next scan while
+    every other badge at the event is untouched.
+
+    It does NOT set ``is_active = False``: that would kill the replacement card
+    as well as the lost one.
+    """
+    visitor.token_version += 1
+    raw = badge_token(visitor)
     visitor.token_hash = hash_token(raw)
-    if save:
-        visitor.save(update_fields=["token_hash", "updated_at"])
+    visitor.save(update_fields=["token_version", "token_hash", "updated_at"])
+
+    log_visitor_action(actor, "badge_rotated", visitor, version=visitor.token_version)
     return raw
 
 
@@ -101,17 +144,38 @@ def update_visitor(visitor: Visitor, validated_data: dict, *, actor=None) -> Vis
     return visitor
 
 
-def revoke_badge(visitor: Visitor, *, actor=None) -> Visitor:
-    """Kill a lost card. The next scan of it logs a `revoked` event, not a welcome.
+def deactivate_visitor(visitor: Visitor, *, actor=None) -> Visitor:
+    """Stop a badge scanning. The next scan logs `revoked`, not a welcome.
 
-    The scan history stays: the point of revoking is that you still want to see
-    where that badge turns up afterwards.
+    THE QR IS NOT TOUCHED, which is what makes this reversible. `classify()` in
+    apps/scans reads `is_active` at scan time rather than anything baked into the
+    code on the card, so the same printed badge starts working again the moment
+    `activate_visitor` runs. Nothing has to be reprinted.
+
+    The scan history stays either way: the point of deactivating a lost card is
+    that you still want to see where it turns up afterwards.
     """
     if visitor.is_active:
         visitor.is_active = False
         visitor.save(update_fields=["is_active", "updated_at"])
 
-    log_visitor_action(actor, "revoke", visitor)
+    log_visitor_action(actor, "deactivate", visitor)
+    return visitor
+
+
+def activate_visitor(visitor: Visitor, *, actor=None) -> Visitor:
+    """Put a deactivated visitor back on the door, with the card they already hold.
+
+    The counterpart to `deactivate_visitor`, and the reason a wrong click at a
+    busy desk is no longer permanent. A soft-deleted registration cannot reach
+    here: the viewset's queryset filters `deleted_at__isnull=True`, so this only
+    ever sees someone who is simply switched off.
+    """
+    if not visitor.is_active:
+        visitor.is_active = True
+        visitor.save(update_fields=["is_active", "updated_at"])
+
+    log_visitor_action(actor, "activate", visitor)
     return visitor
 
 
@@ -129,3 +193,41 @@ def soft_delete_visitor(visitor: Visitor, *, actor=None) -> Visitor:
 
     log_visitor_action(actor, "delete", visitor)
     return visitor
+
+
+@transaction.atomic
+def purge_visitor(visitor: Visitor, *, actor=None) -> int:
+    """Erase a registration for real. Returns the number of scans left orphaned.
+
+    THIS IS NOT `soft_delete_visitor` AND THE TWO ARE NOT INTERCHANGEABLE. A soft
+    delete hides a row that can be brought back by hand; this drops it, and the
+    photograph with it. It exists for registrations that should never have been
+    made -- a test entry, a duplicate, somebody typed in twice -- not for people
+    who simply are not coming.
+
+    `ScanEvent.visitor` is PROTECT, so the row cannot go while any scan points at
+    it. The scans are detached rather than deleted: `visitor` is nullable exactly
+    so a scan of an unrecognised badge still records that something was presented
+    at that door at that minute. Deleting them instead would quietly reduce the
+    entrance count and the security log, which is a worse outcome than an
+    anonymous row. The caller is told how many were affected so the dashboard can
+    say so before anybody confirms.
+
+    The photo file is removed from storage too. Leaving it would keep a visitor's
+    photograph on the server after their registration is gone, which is the one
+    thing a purge is supposed to prevent.
+    """
+    from apps.scans.models import ScanEvent
+
+    orphaned = ScanEvent.objects.filter(visitor=visitor).update(visitor=None)
+
+    # Read before the row goes, for the audit line.
+    log_visitor_action(actor, "purge", visitor, scans_orphaned=orphaned)
+
+    if visitor.photo:
+        # save=False: the row is about to be deleted, so there is nothing to save
+        # the cleared field back to.
+        visitor.photo.delete(save=False)
+
+    visitor.delete()
+    return orphaned
