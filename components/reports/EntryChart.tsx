@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
 import { useState } from "react";
 
 import type { HourBucket } from "@/lib/reports";
@@ -37,12 +38,13 @@ const SEGMENT_GAP = 3;
 const ROUND = 7;
 
 export function EntryChart({ buckets }: { buckets: HourBucket[] }) {
+  const t = useT();
   const [hovered, setHovered] = useState<number | null>(null);
 
   if (buckets.length === 0) {
     return (
       <p className="px-6 py-12 text-center text-sm text-ink-3">
-        No scans in this range, so there is nothing to plot.
+        {t("chart.noScans")}
       </p>
     );
   }
