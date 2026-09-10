@@ -58,9 +58,17 @@ export function useSyncQueue() {
   const network = useNetworkState();
 
   const refresh = useCallback(async () => {
-    const [pending, oldest] = await Promise.all([pendingCount(), oldestPendingAt()]);
-    if (!mounted.current) return;
-    setStatus((current) => ({ ...current, pending, oldestPending: oldest }));
+    // Reading the queue can fail on its own — see `withDb` in storage/queue.ts.
+    // This runs on a timer, so an unguarded throw here becomes an unhandled
+    // rejection every tick, and in development a LogBox overlay on top of the
+    // camera. The counter going stale is the honest, quiet failure.
+    try {
+      const [pending, oldest] = await Promise.all([pendingCount(), oldestPendingAt()]);
+      if (!mounted.current) return;
+      setStatus((current) => ({ ...current, pending, oldestPending: oldest }));
+    } catch {
+      /* leave the last known counts on screen */
+    }
   }, []);
 
   const sync = useCallback(async () => {
@@ -125,6 +133,23 @@ export function useSyncQueue() {
           if (cause instanceof ApiError && cause.status === 429) break;
         }
       }
+    } catch (cause) {
+      /*
+        THE QUEUE ITSELF FAILED, not a request.
+
+        `dueScans` is the first thing this does, and it talks to SQLite. When
+        that threw, nothing caught it: the rejection escaped `sync`, which is
+        driven by a 5-second interval and by AppState, so the app produced an
+        uncaught promise rejection every five seconds for the rest of its run.
+        On a dev build that is a red LogBox over the camera; on a release build
+        it is silent and the queue simply stops draining.
+
+        Storage now heals itself one layer down, so reaching here means the
+        retry failed too. Surface it and let the next tick try again.
+      */
+      const message =
+        cause instanceof Error ? cause.message : "The scan queue is unavailable.";
+      if (mounted.current) setStatus((current) => ({ ...current, lastError: message }));
     } finally {
       running.current = false;
       if (mounted.current) setStatus((current) => ({ ...current, syncing: false }));
