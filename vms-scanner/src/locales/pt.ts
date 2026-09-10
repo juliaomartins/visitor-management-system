@@ -51,8 +51,10 @@ export const pt: Messages = {
   "pair.namePlaceholder": "Porta norte",
   "pair.nameA11y": "Nome do dispositivo",
   "pair.failed": "O emparelhamento falhou. Tente de novo.",
-  "pair.noSecureStorage":
-    "Este dispositivo n\u00e3o tem armazenamento seguro, por isso n\u00e3o \u00e9 poss\u00edvel guardar um token. Use o leitor num telem\u00f3vel, n\u00e3o num navegador.",
+  "pair.noStorage":
+    "Este navegador n\u00e3o guarda nada, por isso n\u00e3o \u00e9 poss\u00edvel guardar um token. Saia da navega\u00e7\u00e3o privada, ou use o leitor num telem\u00f3vel.",
+  "pair.browserStorage":
+    "Este navegador n\u00e3o tem um cofre seguro, por isso o token fica no armazenamento comum do navegador. Serve para um posto que controla \u2014 revogue este dispositivo no painel quando o evento terminar.",
   "pair.finding": "A procurar o servidor\u2026",
   "pair.noServer": "Nenhum servidor encontrado",
 
