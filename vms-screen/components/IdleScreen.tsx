@@ -2,6 +2,7 @@
 
 import { useT } from "@/lib/i18n";
 import { EventMark, Organisers } from "@/components/Brand";
+import { TaisWave } from "@/components/TaisWave";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -70,7 +71,21 @@ export function IdleScreen({ waiting }: { waiting: boolean }) {
           suggests the display is doing something while it waits. */}
       <Halo />
 
-      <div className="relative flex flex-col items-center">
+      {/*
+        The same cloth the arrival card wears, half the current.
+
+        This is the screen the lobby actually looks at — an arrival holds the
+        wall for eight seconds and this holds it for the rest of the day — so if
+        the tais only appeared on the welcome card, almost nobody would ever see
+        it. Carrying it here is what makes the wall one thing rather than a
+        clock that occasionally shows a decorated card.
+
+        `idle` slows every drift by half and pushes the glint out to once every
+        twenty seconds. The clock has to stay the brightest thing on the panel.
+      */}
+      <TaisWave variant="idle" />
+
+      <div className="relative z-10 flex flex-col items-center">
         <RollingClock time={time} />
 
         <SecondsBar seconds={seconds} />
