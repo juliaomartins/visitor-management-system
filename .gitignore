@@ -67,3 +67,8 @@ build/
 
 # Screenshots and scratch output from verification runs
 /scratch/
+
+# draw.io writes a .$<name>.bkp autosave beside the file it is editing. It is a
+# transient copy of the diagram, not a second diagram, and it changes on every
+# keystroke -- committing it means a 55KB churn on every save.
+.$*.bkp
