@@ -88,6 +88,7 @@ needed as a standalone thing, that is where it is.
 | Background jobs | none — **no Celery** |
 | Dashboard | TypeScript, Next.js 16 (App Router), Tailwind v4, TanStack Query, `qrcode`, `react-image-crop` |
 | Scanner | TypeScript, React Native, Expo SDK 57, expo-router, expo-camera, expo-sqlite, reanimated |
+| Scanner on web | builds via `metro.config.js` (`wasm` in `assetExts`) — dev surface only, cannot pair |
 | Screen | TypeScript, Next.js 16, Tailwind v4, GSAP |
 | Desktop | Python, **PySide6** (Qt 6), packaged with PyInstaller |
 | Badge PDF | **ReportLab** + qrcode — pure Python, no native libraries |
@@ -517,7 +518,10 @@ Only `/devices/pair` is reachable without a token.
   — this app holds every visitor's photo and passport-adjacent data.
 - simplejwt: 15-minute access, rotating refresh, blacklist after rotation.
 - Rate limit `/api/v1/scans` to 30/min per device. A real guard does ~10.
-- Rate limit `/api/v1/devices/pair` to 5/hour per IP.
+- Rate limit `/api/v1/devices/pair` to **20/hour per IP, counting FAILED attempts
+  only** — a success clears the count. Not 5, and not all attempts: every device at
+  the event shares the router's address, so that budget is shared. See the comment
+  beside `DEFAULT_THROTTLE_RATES` in `settings/base.py`, which is the authority.
 - Visitor photos via signed, expiring URLs — not a public `/media/` directory.
 - Screen device tokens are read-only, scoped to one endpoint and one WS path. Assume
   extraction; the screen is physically accessible.
@@ -701,7 +705,7 @@ pairing screen at a phone that is already paired. The native splash in `app.json
 transparent in every theme so the two do not fight.
 
 - No login screen, ever. Pair once, store the device token in expo-secure-store, then
-  open straight to the camera.
+  open straight to the camera. **On web there is no keystore — see below.**
 - **Offline SQLite queue is required in v1.** Every scan writes locally first, then syncs
   with backoff, sending its own `scanned_at`. Retrofitting means rewriting every network
   call, and the router will hiccup on event day.
@@ -709,6 +713,76 @@ transparent in every theme so the two do not fight.
 - Haptics and sound matter more than the UI. Guards watch the visitor's face, not the
   phone. Green valid / red invalid / amber revoked, with distinct sounds.
 - High-contrast theme; used near doorways in variable light.
+
+### The scanner on web — it builds, and it is not a guard's phone
+
+`npx expo start --web` bundles and renders. It is a **development surface**, and
+possibly a localhost desk station. It is not a replacement for the APK, and the
+reason is not effort — it is one browser rule.
+
+**`metro.config.js` exists solely so the web bundle resolves.** `expo-sqlite` on
+web is a real implementation, not a shim: SQLite compiled to WebAssembly running
+in a worker. Its worker does
+
+```ts
+import wasmModule from './wa-sqlite/wa-sqlite.wasm';   // web/worker.ts:22
+locateFile: () => wasmModule,                          // web/worker.ts:782
+```
+
+Metro's default `assetExts` has no `wasm`, and `sourceExts` is only
+js/jsx/json/ts/tsx — so that import resolved to nothing and **every** web bundle
+failed with *"Unable to resolve module ./wa-sqlite/wa-sqlite.wasm"*. The file was
+in `node_modules` the whole time; Metro simply had no rule for it.
+
+It belongs in `assetExts`, **not** `sourceExts`. Emscripten's `locateFile` must
+return a URL the runtime then fetches, which is exactly what an asset import
+yields. As source, Metro would try to parse 600KB of WebAssembly as JavaScript.
+
+*Verified by export: the bundle builds, the `.wasm` lands in
+`assets/node_modules/expo-sqlite/web/wa-sqlite/` and the worker references that
+path.* **If that error persists after this file exists, it is the Metro cache —
+run `npx expo start --web -c` once.**
+
+**Three things do not work, and two of them are the same rule.**
+
+| | `http://localhost:8081` | `http://<lan-ip>:8081` on a phone |
+|---|---|---|
+| Camera (`getUserMedia`) | works | **`navigator.mediaDevices` is undefined** |
+| SQLite persistence (OPFS) | works | **throws; falls back to `MemoryVFS`** |
+| Device token (SecureStore) | **no web build at all** | **no web build at all** |
+
+The first two are one cause: **a secure context**. `getUserMedia` and
+`navigator.storage` are both secure-context APIs, and browsers exempt `localhost`
+only — never a LAN IP over `http://`. The library says so itself, in
+`AccessHandlePoolVFS.js:221`:
+
+> `navigator.storage not available (not supported by your browser or context is not secure)`
+
+There is a `MemoryVFS` fallback, so over LAN http the offline queue lives in RAM
+and is lost on reload — the opposite of what an offline queue is for.
+
+And **HARD CONSTRAINT 9 makes the LAN http deliberately**, because an HTTPS page
+cannot open a `ws://` socket. Serving the scanner over HTTPS to fix the camera
+cascades: the backend needs TLS, `ws://` becomes `wss://`, and every paired
+device re-pairs. That trade has not been made and should not be made casually
+three weeks out from an event.
+
+The third is separate and has nothing to do with HTTPS. `expo-secure-store`'s web
+build is literally `export default {}`, so `isAvailableAsync()` returns false.
+The app already knows: `session.tsx` carries `storageAvailable` with the comment
+*"False on web, where SecureStore has no implementation"*, and `pair.tsx` puts it
+in the `ready` condition so **the Pair button is disabled** and
+`t("pair.noSecureStorage")` is shown. That was a correct call, not an oversight.
+
+**So on web today you get a working scanner screen that cannot pair.**
+
+**OPEN DECISION — where a web build would keep its device token.** There is no
+keystore, and the Security rules above forbid `localStorage` for credentials,
+which is exactly what a device token is. The honest options are a session-only
+token held in memory (re-pair on every reload) or deciding a localhost desk
+station is a different enough threat model to relax the rule with eyes open.
+**Neither has been chosen.** Do not quietly reach for `localStorage` because it
+is the easy one; the rule exists because this app holds every visitor's photo.
 
 ---
 
@@ -1060,10 +1134,14 @@ cd vms-contracts && ./scripts/generate.sh
 cd vms-dashboard && npm run dev     # http://<lan-ip>:3000
 cd vms-screen    && npm run dev -- --port 3001
 cd vms-scanner   && npx expo start -c
+cd vms-scanner   && npx expo start --web -c    # dev surface only — see the scanner section
 ```
 
 The `-c` on Expo matters after any `.env` change: `EXPO_PUBLIC_*` is inlined at bundle
 time, so without clearing the cache the phone keeps using the previous server address.
+It matters a second time on web: the cache also holds the *resolution failure* for
+`wa-sqlite.wasm`, so a stale cache keeps reporting a bug that `metro.config.js`
+has already fixed.
 
 Formatting: `black` + `ruff` on the backend, strict TypeScript on the frontends.
 
@@ -1221,6 +1299,14 @@ is worse than no line at all.
   Jakarta Sans, Inter and JetBrains Mono.
 - `vms-screen/src/hooks/...` — the screen has no `src/`.
 - `config/settings/{base,dev,prod,test}.py` — only `base.py` and `dev.py` exist.
+- The pairing rate limit was given as `5/hour per IP`. It is `20/hour`, and it
+  counts **failed** attempts only — the code carries a comment explaining why,
+  which the document had dropped.
+- `counts_by_result` in `apps/reports/services.py` was suspected of a missing
+  `.order_by()` and flagged as a bug across two sessions. **It is not one.**
+  `Meta.ordering` stopped being folded into `GROUP BY` in Django 3.1, and this
+  runs on 6.1 — proved against a throwaway SQLite database, 7/3/2/1 in, 7/3/2/1
+  out. The advice was right for Django 2.x and is stale.
 
 **When you change a route, a serializer or a filename, change this file in the same
 commit.** Everything above was true once.
