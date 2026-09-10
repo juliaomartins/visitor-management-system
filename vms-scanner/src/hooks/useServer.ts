@@ -16,6 +16,7 @@ import {
   candidateOrigins,
   normaliseOrigin,
   storeOrigin,
+  subscribeToOriginChange,
 } from "@/storage/server";
 
 export type ServerState = {
@@ -86,9 +87,21 @@ export function useServer() {
     // render before the first has painted.
     const start = setTimeout(() => void search(), 0);
 
+    /*
+      RESOLVING ONCE ON MOUNT IS NOT ENOUGH.
+
+      Settings is a route pushed on top of this screen, so saving an address
+      there and going back does not remount anything here — the effect above
+      had already run, and the app carried on sending requests to the previous
+      address until something else happened to remount. That is what made a new
+      server IP need entering twice.
+    */
+    const unsubscribe = subscribeToOriginChange(() => void search());
+
     return () => {
       mounted.current = false;
       clearTimeout(start);
+      unsubscribe();
     };
   }, [search]);
 
