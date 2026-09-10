@@ -25,6 +25,7 @@ from __future__ import annotations
 import os
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -140,8 +141,27 @@ check(
 procs["backend"].mark_ready()
 check("mark_ready promotes RUNNING to READY", procs["backend"].state is State.READY)
 
+# STOPPING IS ASYNCHRONOUS NOW, AND THAT IS THE POINT OF THE CHANGE.
+# It used to block the GUI thread for the whole grace period on every press
+# -- measured at 6.0s -- while `terminate()` did nothing at all to a console
+# child. It now issues a tree kill as its own child process and returns.
+began = time.monotonic()
 for proc in procs.values():
     proc.stop()
+blocked = time.monotonic() - began
+
+check(
+    "stop() returns without blocking the GUI thread",
+    blocked < 1.0,
+    f"stop() blocked for {blocked:.1f}s",
+)
+check(
+    "all three report STOPPING immediately",
+    all(p.state is State.STOPPING for p in procs.values()),
+    str({k: p.state.value for k, p in procs.items()}),
+)
+
+pump(5000)
 check(
     "all three stop cleanly",
     all(p.state is State.STOPPED for p in procs.values()),
