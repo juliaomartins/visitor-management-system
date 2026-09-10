@@ -143,13 +143,26 @@ M = [
     ("pair.failed", "Pairing failed. Try again.",
      "O emparelhamento falhou. Tente de novo.",
      "Pareia falla. Koko fali."),
-    ("pair.noSecureStorage",
-     "This device has no secure storage, so a token cannot be kept. Run the "
-     "scanner on a phone, not in a browser.",
-     "Este dispositivo não tem armazenamento seguro, por isso não é possível "
-     "guardar um token. Use o leitor num telemóvel, não num navegador.",
-     "Aparellu ne\u2019e laiha armazenamentu seguru, tan ne\u2019e la bele rai "
-     "token. Uza leitór iha telemóvel, la\u2019ós iha navegadór."),
+    # Kept, but now only for a browser that refuses storage outright -- a
+    # private window, or storage blocked. That genuinely cannot pair.
+    ("pair.noStorage",
+     "This browser will not store anything, so a token cannot be kept. "
+     "Leave private browsing, or run the scanner on a phone.",
+     "Este navegador não guarda nada, por isso não é possível guardar um "
+     "token. Saia da navegação privada, ou use o leitor num telemóvel.",
+     "Navegadór ne\u2019e la rai buat ida, tan ne\u2019e la bele rai token. "
+     "Sai husi navegasaun privada, ka uza leitór iha telemóvel."),
+    # The web case: pairing works, and the operator is told what it means.
+    ("pair.browserStorage",
+     "This browser has no secure keystore, so the token is kept in ordinary "
+     "browser storage. Fine for a check-in desk you control — revoke this "
+     "device from the dashboard when the event is over.",
+     "Este navegador não tem um cofre seguro, por isso o token fica no "
+     "armazenamento comum do navegador. Serve para um posto que controla — "
+     "revogue este dispositivo no painel quando o evento terminar.",
+     "Navegadór ne\u2019e laiha kofre seguru, tan ne\u2019e token rai iha "
+     "armazenamentu baibain. Di\u2019ak ba postu ne\u2019ebé ita kontrola — "
+     "revoga aparellu ne\u2019e iha painél bainhira eventu remata."),
     ("pair.finding", "Finding the server\u2026", "A procurar o servidor\u2026",
      "Buka servidór hela\u2026"),
     ("pair.noServer", "No server found", "Nenhum servidor encontrado",
