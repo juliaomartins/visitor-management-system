@@ -49,7 +49,8 @@ import preflight  # noqa: E402
 from config import Mode, service_environment, service_specs  # noqa: E402
 from i18n import t  # noqa: E402
 from launcher import Orchestrator  # noqa: E402
-from network import detect_lan_ip  # noqa: E402
+from network import detect_lan_ip, port_in_use  # noqa: E402
+from processes import kill_tree  # noqa: E402
 from services import ServiceRegistry, State  # noqa: E402
 from widgets import icons, theme  # noqa: E402
 from widgets.log_viewer import LogViewer  # noqa: E402
@@ -604,12 +605,7 @@ class ControlCenter(QMainWindow):
         self._logs.app(preflight.format_report(report))
 
         if not report.ok:
-            first = report.failures[0]
-            QMessageBox.critical(
-                self,
-                t("dlg.cannotStart"),
-                f"{first.label}\n\n{first.detail}\n\n{t('dlg.nothingStarted')}",
-            )
+            self._show_preflight_failure(report)
             return
 
         self._flash_busy()
@@ -617,6 +613,91 @@ class ControlCenter(QMainWindow):
         self._network.set_address(self._lan_ip)
         self._run_all.setEnabled(False)
         self._orchestrator.start_all(self._lan_ip, include_scanner=include_scanner)
+
+    def _show_preflight_failure(self, report: preflight.Report) -> None:
+        """The refusal, plus a way out of the one failure that has a way out.
+
+        A BUSY PORT IS THE ONLY PREFLIGHT FAILURE A PERSON CAN FIX FROM HERE,
+        and until now the dialog did not even say which process held it. It
+        still refuses to free anything on its own -- `preflight.port_check`
+        deliberately reports rather than acts -- but reporting a pid and an
+        image name with no button beside it just moves Task Manager into the
+        operator's head at the worst moment of the day.
+
+        Nothing is killed by showing this. The button opens a second dialog
+        that names the process, and only a click there kills anything.
+        """
+        first = report.failures[0]
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Critical)
+        box.setWindowTitle(t("dlg.cannotStart"))
+        box.setText(first.label)
+        box.setInformativeText(f"{first.detail}\n\n{t('dlg.nothingStarted')}")
+
+        # One button per busy port we can actually name an owner for. A port
+        # that is busy with no identifiable holder gets no button: there is
+        # nothing to offer to stop.
+        freeable = {}
+        for check in report.failures:
+            if check.port is not None and check.owners:
+                button = box.addButton(
+                    t("dlg.freePort", port=check.port),
+                    QMessageBox.ButtonRole.ActionRole,
+                )
+                freeable[button] = check
+
+        box.addButton(QMessageBox.StandardButton.Close)
+        box.exec()
+
+        chosen = freeable.get(box.clickedButton())
+        if chosen is not None:
+            self._free_port(chosen)
+
+    def _free_port(self, check: preflight.Check) -> None:
+        """Kill the named holders of one port, and only on an explicit yes.
+
+        THE PIDS COME FROM THE CHECK, NOT FROM A FRESH LOOKUP. Between the
+        preflight and this click the port may have changed hands, and killing
+        whatever holds it *now* would kill a process nobody was shown and
+        nobody agreed to.
+        """
+        port = check.port
+        assert port is not None  # only port checks reach here
+
+        who = "\n".join(f"  {owner}" for owner in check.owners)
+        answer = QMessageBox.question(
+            self,
+            t("dlg.freePortTitle", port=port),
+            t("dlg.freePortBody", who=who),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,  # never the default
+        )
+        if answer is not QMessageBox.StandardButton.Yes:
+            return
+
+        # EVERY KILL IS LOGGED, with what was killed and what came back. This
+        # is the one place the launcher stops something it did not start, so
+        # the log is the only record that it happened at all.
+        self._logs.app(t("msg.freeingPort", port=port, who=", ".join(str(o) for o in check.owners)))
+        for owner in check.owners:
+            result = kill_tree(int(owner.pid))
+            if result.ok:
+                self._logs.app(f"  {owner}: {result.message or 'stopped'}")
+            else:
+                self._logs.app(
+                    t(
+                        "msg.portKillFailed",
+                        who=str(owner),
+                        reason=result.message or f"exit code {result.returncode}",
+                    )
+                )
+
+        self._logs.app(
+            t("msg.portFreed", port=port)
+            if not port_in_use(port)
+            else t("msg.portStillHeld", port=port)
+        )
 
     def _on_stop_all(self) -> None:
         self._flash_busy()
