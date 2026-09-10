@@ -1116,6 +1116,7 @@ vms-desktop/
 ├── network.py              LAN address detection
 ├── preflight.py            venv / node / npm / ports / directories
 ├── services.py             QProcess lifecycle, one model for all four
+├── processes.py            stopping a tree on Windows; who holds a port
 ├── launcher.py             Run All sequencing and readiness probes
 ├── i18n.py                 the translator; QSettings keeps the choice
 ├── locales/{en,pt,tet}.py  GENERATED — see the languages section
@@ -1136,7 +1137,13 @@ vms-desktop/
    how somebody meets a connection error and concludes the app is broken.
 
 2. **It never blocks the GUI thread.** `QProcess`, not `subprocess`; `QTimer`,
-   never `time.sleep`. The children run for the length of a conference.
+   never `time.sleep`. The children run for the length of a conference. Stop is
+   asynchronous for this reason — see below, where it used to freeze the window
+   for six seconds a press and not stop anything.
+
+   The one exception is `force_stop()` on application exit: the window is going
+   away, there is no next event loop turn to come back on, and an orphaned Node
+   server would outlive the launcher and hold its port against the next run.
 
 3. **It reads the repository rather than duplicating it.** Commands come from
    CLAUDE.md and each project's `package.json` — including `--workers 1`, which
@@ -1156,6 +1163,59 @@ then shortens their labels to a code and an icon. Every one of those decisions i
 **measured, not a pixel threshold** — the widths are asked of the widgets, because
 a number tuned on English clips Portuguese, and a number tuned before the buttons
 had icons clips them afterwards.
+
+**STOPPING A SERVICE ON WINDOWS TAKES A TREE KILL, and `terminate()` does
+nothing at all.** This was measured against both process shapes the launcher
+starts, not reasoned about:
+
+```
+terminate() ended it?        NO      (both shapes)
+waitForFinished blocked for  6.0s    (the full grace period, every press)
+port free after kill()?      NO -- held by ['9980']
+```
+
+Two Windows facts, stacked:
+
+* `QProcess.terminate()` posts `WM_CLOSE` to the child's top-level windows. A
+  console program has none and none of these services runs a Qt event loop, so
+  the message lands nowhere. Qt's own docs say console applications on Windows
+  "can only be terminated by calling `kill()`".
+* `kill()` is `TerminateProcess`, and it ends **one** process. `npm.cmd` is a
+  batch file, so the process we started is `cmd.exe` and the Node server holding
+  port 3000 is its grandchild. Killing the parent orphans the child, which keeps
+  listening. That is the whole of "I pressed Stop and the port is still busy".
+
+So `stop()` runs `taskkill /PID <our pid> /T /F` as its own `QProcess`. `/T` is
+the flag usually left off and the only one that matters; without it this is
+`kill()` with extra steps. Ownership is never in question because `/T` walks
+down from a pid this launcher started.
+
+**Ctrl+C is not available and it is not an oversight.** It works when you press
+it in cmd because your terminal and the server share a console. A GUI process
+has none, and `GenerateConsoleCtrlEvent` can only signal within the *caller's*
+console. Giving each child its own console would flash a terminal per service
+and still leave us unable to signal into it.
+
+**STOPPED is not claimed until the port is free.** `_on_finished` starts a
+`QTimer` that polls `network.port_in_use` and only then sets `STOPPED`; if the
+port is still held after 8 seconds it names the owner via `processes.port_owners`
+and goes `ERROR`. It does **not** kill whatever holds it —
+`preflight.describe_port_conflict` refuses the same thing for the same reason,
+and `port_owners` exists to report, never to target.
+
+`port_owners` parses `netstat -ano` on the local address's final `:<port>` plus
+the LISTENING state. The obvious `findstr 8000` is a trap: it also matches port
+18000, any foreign address containing those digits, and pid 8000 itself.
+
+**The scanner cannot be stopped by port**, because it has none —
+`scanner_spec()` sets `port=None` and Expo picks its own. The tree kill reaches
+it anyway, which is the other reason the tree is the primary mechanism.
+
+**`/F` gives uvicorn no clean shutdown, and nothing is lost by that.** An
+in-flight request is dropped rather than completed: Postgres rolls back an
+uncommitted transaction, the channel layer is in-memory with nothing to flush,
+and a dropped scan `POST` is retried by the scanner's offline queue under the
+same `client_uuid`. The visible cost is a connection reset in someone's browser.
 
 **Icons are painted, not shipped as files** (`widgets/icons.py`), the same call
 the dashboard made. They take a colour, so a theme switch redraws them; and they
