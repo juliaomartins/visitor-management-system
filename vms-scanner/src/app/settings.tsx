@@ -29,7 +29,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { type ReachResult, testConnection } from "@/api/client";
+import { type ReachResult, setApiOrigin, testConnection } from "@/api/client";
 import {
   BUILD_DEFAULT_ORIGIN,
   clearManualOrigin,
@@ -105,6 +105,16 @@ export default function SettingsScreen() {
     if (!passed || busy) return;
     setBusy(true);
     await storeManualOrigin(candidate);
+
+    /*
+      Told to the client directly, not left for the next probe to discover.
+
+      `storeManualOrigin` announces the change and `useServer` re-resolves, but
+      that is a round trip over the network before it takes effect. This address
+      has just passed a test on this screen -- it is known good, and there is no
+      reason to leave requests pointed at the old one for the length of a probe.
+    */
+    setApiOrigin(candidate);
     setBusy(false);
     router.back();
   }
