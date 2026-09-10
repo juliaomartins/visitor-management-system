@@ -17,6 +17,7 @@ onto a connection error.
 
 from __future__ import annotations
 
+import os
 from enum import Enum
 
 from PySide6.QtCore import (
@@ -29,7 +30,7 @@ from PySide6.QtCore import (
 
 from config import ServiceSpec
 from network import port_in_use
-from processes import kill_tree_command, kill_tree_now, port_owners
+from processes import kill_tree, kill_tree_command, port_owners, summarize_output
 
 
 class State(str, Enum):
@@ -62,6 +63,32 @@ PORT_RELEASE_TIMEOUT_MS = 8_000
 #: test with a 0.35s timeout, so this is not a tight loop.
 PORT_POLL_MS = 250
 
+#: How long after issuing the tree kill to check that the child actually went.
+#: `taskkill /F` is `TerminateProcess`, which is immediate when it is allowed at
+#: all, so this is not a grace period -- it is the moment to notice a REFUSAL.
+#: "Access is denied" against a service started by another user leaves the
+#: child alive, and without this the card sits at STOPPING for the rest of the
+#: event with nothing on screen to say why.
+KILL_REPORT_MS = 2_000
+
+
+def _own_process_group() -> None:
+    """Put the child in its own process group. POSIX only.
+
+    `kill_tree_command` signals the NEGATED pid on POSIX, which addresses the
+    process group with that id -- and a group with that id only exists if the
+    child leads one. QProcess children otherwise inherit the launcher's group,
+    so the signal would find no such group, or worse, a real one that belongs
+    to something else entirely.
+
+    Runs in the forked child between `fork` and `exec`, so it must not raise:
+    an exception here escapes into a half-built process.
+    """
+    try:
+        os.setpgid(0, 0)
+    except OSError:
+        pass
+
 
 class ServiceProcess(QObject):
     """A single managed child process.
@@ -91,6 +118,11 @@ class ServiceProcess(QObject):
         self._process.started.connect(self._on_started)
         self._process.errorOccurred.connect(self._on_error)
         self._process.finished.connect(self._on_finished)
+
+        # POSIX only, and absent from the Windows build of PySide6 entirely --
+        # there is no fork there to modify. Windows gets its tree by `/T`.
+        if hasattr(self._process, "setChildProcessModifier"):
+            self._process.setChildProcessModifier(_own_process_group)
 
     # ---------------------------------------------------------------- state --
 
@@ -182,8 +214,69 @@ class ServiceProcess(QObject):
 
         killer = QProcess(self)
         killer.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
-        killer.finished.connect(lambda *_: killer.deleteLater())
+        killer.finished.connect(
+            lambda code, _status: self._on_kill_finished(killer, code)
+        )
+        killer.errorOccurred.connect(lambda error: self._on_kill_error(killer, error))
         killer.start(program, arguments)
+
+        # THE KILL IS NOT THE PROOF. Ask again in a moment whether the child is
+        # actually gone, because a refused `taskkill` otherwise ends here in
+        # silence: `finished` never fires for a process that did not die.
+        QTimer.singleShot(KILL_REPORT_MS, self._report_if_still_running)
+
+    def _on_kill_finished(self, killer: QProcess, code: int) -> None:
+        """Say what the tree kill did, and never let a failure pass as success."""
+        merged = bytes(killer.readAllStandardOutput()).decode("utf-8", errors="replace")
+        killer.deleteLater()
+
+        # Both streams are merged onto one channel above, so this carries
+        # `taskkill`'s SUCCESS line and its ERROR line alike.
+        message = summarize_output(merged, None)
+
+        if code == 0:
+            if message:
+                self.output.emit(self.spec.key, f"{message}\n")
+            return
+
+        self.output.emit(
+            self.spec.key,
+            f"The stop command exited with code {code}"
+            + (f": {message}" if message else " and said nothing")
+            + "\n",
+        )
+
+    def _on_kill_error(self, killer: QProcess, error: QProcess.ProcessError) -> None:
+        """The killer itself failing to run. Rare, and invisible without this."""
+        if error is QProcess.ProcessError.FailedToStart:
+            program = killer.program()
+            self.output.emit(
+                self.spec.key,
+                f"Could not run `{program}` to stop this service. "
+                "It is still running.\n",
+            )
+            self._set_state(State.ERROR)
+
+    def _report_if_still_running(self) -> None:
+        """The watchdog: after the kill, is the child actually gone?
+
+        Only the process WE started is checked here. Whether the port came free
+        is a separate question with a separate answer, and `_await_port_release`
+        asks it once this one is satisfied.
+        """
+        if not self._stopping:
+            return
+        if self._process.state() is QProcess.ProcessState.NotRunning:
+            return
+
+        self.output.emit(
+            self.spec.key,
+            f"This service is still running {KILL_REPORT_MS // 1000}s after being "
+            "asked to stop, so the stop command did not take.\n"
+            "The usual cause is that it was started by a different user, or "
+            "with privileges this launcher does not have.\n",
+        )
+        self._set_state(State.ERROR)
 
     def force_stop(self) -> None:
         """Used on application exit, where there is no time to be polite.
@@ -198,7 +291,17 @@ class ServiceProcess(QObject):
         self._stopping = True
         pid = int(self._process.processId())
         if pid > 0:
-            kill_tree_now(pid)
+            result = kill_tree(pid)
+            # Nobody is looking at the log by now, but this run's log file and
+            # anyone watching a console still get the reason -- and a failure
+            # here is exactly the one that leaves a node holding 3000 against
+            # the next launch.
+            if not result.ok:
+                self.output.emit(
+                    self.spec.key,
+                    f"Tree kill on exit failed (code {result.returncode}): "
+                    f"{result.message or 'no output'}\n",
+                )
         self._process.kill()
         self._process.waitForFinished(2_000)
 
