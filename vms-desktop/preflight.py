@@ -12,6 +12,7 @@ to do about it.
 from __future__ import annotations
 
 import shutil
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +32,7 @@ from config import (
     VENV_UVICORN,
 )
 from network import detect_lan_ip, is_lan_address, port_in_use
+from processes import PortOwner, port_owners
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,16 @@ class Check:
     detail: str = ""
     #: A failed non-blocking check is a warning: Run All still proceeds.
     blocking: bool = True
+    #: Set only by the port checks. The window offers to free a busy port, and
+    #: it needs the number to do it -- parsing it back out of `label` would be
+    #: a second place for the two to disagree.
+    port: int | None = None
+    #: Who is holding that port, already resolved. Carried on the check rather
+    #: than looked up again at the moment of display, so the pid named in the
+    #: dialog is the pid the check actually found: `netstat` a second later can
+    #: report a different process, and offering to kill THAT one is how a
+    #: launcher shoots something it never saw.
+    owners: tuple[PortOwner, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -108,29 +120,56 @@ def _virtualenv_checks() -> list[Check]:
     ]
 
 
-def _port_check(label: str, port: int) -> Check:
-    """A busy port is blocking, and this does NOT try to free it.
+def port_check(label: str, port: int) -> Check:
+    """A busy port is blocking, and this still does NOT free it.
 
     Killing whatever holds a port is the kind of helpfulness that ends a
     conference: the process could be the backend somebody started by hand five
     minutes ago with a room full of delegates arriving. Report it; let a person
     decide.
+
+    WHAT CHANGED IS THAT IT NOW SAYS WHO. "Port 3000 is already in use" leaves
+    the person at the desk with nothing to act on, so the window offered them
+    no choice but to guess. The pid and the image name turn that into a
+    decision they can actually make -- and the decision stays theirs: the kill
+    is behind a button and a confirmation, never on this path.
     """
     busy = port_in_use(port)
+    owners = tuple(port_owners(port)) if busy else ()
     return Check(
         label=f"{label} port {port}",
         ok=not busy,
-        detail=describe_port_conflict(label, port) if busy else "",
+        detail=describe_port_conflict(label, port, owners) if busy else "",
+        port=port,
+        owners=owners,
     )
 
 
-def describe_port_conflict(label: str, port: int) -> str:
+def describe_port_conflict(
+    label: str, port: int, owners: Sequence[PortOwner] = ()
+) -> str:
+    """The conflict as a sentence, naming the holder when one can be found.
+
+    `owners` can be empty on a genuinely busy port: `netstat` needs no
+    privilege but the process may be gone by the time it runs, and on a
+    non-Windows machine the lookup returns nothing at all. The text degrades to
+    the old wording rather than claiming a process it cannot name.
+    """
+    if owners:
+        held = "\n".join(f"  - {owner}" for owner in owners)
+        who = f"It is held by:\n{held}\n\n"
+    else:
+        who = (
+            "The holding process could not be identified.\n\n"
+            "Most likely one of:\n"
+            f"  - a VMS {label.lower()} that is already running (check the "
+            "taskbar for a terminal window);\n"
+            "  - another application using the same port.\n\n"
+        )
+
     return (
         f"Port {port} is already in use, so {label} cannot bind it.\n\n"
-        "Most likely one of:\n"
-        f"  - a VMS {label.lower()} that is already running (check the taskbar "
-        "for a terminal window);\n"
-        "  - another application using the same port.\n\n"
+        f"{who}"
         "Nothing has been stopped automatically. Close the other process, or "
         "use the service that is already running."
     )
@@ -165,9 +204,9 @@ def run(*, include_scanner: bool) -> Report:
         _directory("vms-dashboard", DASHBOARD_DIR),
         _directory("vms-screen", SCREEN_DIR),
         _directory("vms-scanner", SCANNER_DIR),
-        _port_check("Backend", BACKEND_PORT),
-        _port_check("Dashboard", DASHBOARD_PORT),
-        _port_check("Lobby Screen", SCREEN_PORT),
+        port_check("Backend", BACKEND_PORT),
+        port_check("Dashboard", DASHBOARD_PORT),
+        port_check("Lobby Screen", SCREEN_PORT),
         Check(
             "LAN address",
             is_lan_address(lan_ip),
