@@ -983,6 +983,29 @@ package root — the opposite of `vms-scanner`, where everything is under `src/`
 - `EventSplash` shows the event mark and both organiser seals while the hall is quiet;
   `IdleScreen` takes over between arrival waves. GSAP drives them — `useGSAP`, SplitText
   and Physics2D, all free tier.
+- **The foot of the screen is a real tais, not an SVG swoosh.** `components/TaisWave.tsx`
+  draws two layers of photographed Timorese cloth — a darkened base and a lit ribbon
+  crossing it — drifting against each other at 128s and 91s. It carries the accent the
+  swoosh used to: each layer's `drop-shadow` is `var(--accent)`, so the crest is lit blue
+  for a visitor and gold for a VIP, keeping the four-cue rule intact. Both the arrival
+  stage and `IdleScreen` use it.
+  - `art/tais-wave-{1,2}.svg` are the supplied sources — 1983x793 PNGs inside a base64
+    SVG wrapper, 5MB the pair. They are **not** in `public/`, so Next never ships them.
+  - `public/brand/tais-wave-{1,2}.webp` are what the browser loads, built by
+    `scripts/build-tais-tiles.py` (`..\..\.venv\Scripts\python.exe`). Each is the frame
+    plus its own **mirror**, which is what lets it repeat across a wall with no seam —
+    the artwork is 2.5:1 and the band is nearer 7:1, so one copy cannot span the screen
+    without a 3x horizontal stretch that flattens the weave. 1MB the pair.
+  - **`--tais-band`, `--tais-ribbon`, `--tais-ribbon-drop` and `--tais-clear` all live in
+    `globals.css`,** and the arrival stage's bottom padding is `--tais-clear`, derived
+    from the ribbon's own proportions. Written as separate numbers, the content lands on
+    the cloth. The band is `calc(24vh - 46px)`, not a plain `vh`: at 667x375 the
+    difference between 56px and 77px of clearance is a 36-character name setting on two
+    lines versus FitText falling to its floor and wrapping to four, off the screen.
+  - **There is deliberately no sheen on the cloth**, and the component says why at
+    length. `mix-blend-mode` cannot work here — both tracks are promoted to their own
+    compositing layers by `filter` + `will-change`, so a blended sibling has no backdrop
+    and renders as a flat grey slab across the wall.
 - `FitText` auto-fits names and organisations. It exists because a 40-character name at
   a fixed 72px overflows a 1366×768 screen, and the lobby display is the one surface
   nobody can fix during the event.
