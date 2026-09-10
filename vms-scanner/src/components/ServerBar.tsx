@@ -14,7 +14,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { probeServer } from "@/api/client";
+import { getApiOrigin, probeServer } from "@/api/client";
 import { candidateOrigins } from "@/storage/server";
 import { colors, HIT_SIZE, radius, spacing } from "@/theme";
 
@@ -37,15 +37,29 @@ function useServerStatus(): Status {
 
       void (async () => {
         setStatus("checking");
-        const [first] = await candidateOrigins();
+
+        /*
+          THE DOT DESCRIBES THE ADDRESS THE APP IS ACTUALLY USING.
+
+          It used to probe the first stored candidate instead, which is not the
+          same thing: after a change in Settings the stored address was the new
+          one while the client was still sending to the old one, so the bar went
+          green at the exact moment scans were going nowhere. A status light
+          that reports on something other than the live connection is worse than
+          no status light -- it is the one thing on screen a guard would trust.
+
+          Storage is still the fallback, for the moment before the first probe
+          has resolved anything.
+        */
+        const target = getApiOrigin() || (await candidateOrigins())[0];
         if (!alive.current) return;
 
-        if (!first) {
+        if (!target) {
           setStatus("offline");
           return;
         }
 
-        const health = await probeServer(first);
+        const health = await probeServer(target);
         if (!alive.current) return;
         setStatus(health ? "online" : "offline");
       })();
