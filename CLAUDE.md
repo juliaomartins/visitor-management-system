@@ -783,6 +783,56 @@ different addresses at exactly the wrong moment, and a status dot reporting on
 something other than the live connection is worse than no dot — it is the one
 thing on screen a guard would trust.
 
+**`adopt()` writes BOTH address keys**, and the manual one is the point. It used
+to write only the stored key, which made a stale Settings override a one-way
+trip: `candidateOrigins` returns a manual address *and nothing else*, so the
+address a guard typed at the door went into a key the manual one outranks. The
+rescue worked for that session and was thrown away at the next launch — the same
+phone broken every morning with nothing on screen to explain it. Somebody typing
+an address at a door is making the same deliberate choice Settings is for, so it
+is recorded as one; that also keeps the gear icon honest, since `settings.tsx`
+displays the manual address.
+
+### A production APK has NO baked-in server address
+
+`EXPO_PUBLIC_API_URL` is inlined at build time, so the obvious worry is an APK
+carrying a stale IP. For **EAS builds that is not the failure**, because the
+variable is not set at all:
+
+```bash
+npx eas env:list --environment production    # No variables found
+npx eas env:list --environment preview       # No variables found
+npx eas env:list --environment development   # No variables found
+```
+
+There is no `.easignore`, so EAS falls back to `.gitignore`, and `.env` is
+ignored there — it is never uploaded. `BUILD_DEFAULT_ORIGIN` is therefore `""`,
+`candidateOrigins()` returns `[]`, and a freshly installed EAS APK goes straight
+to the "Where is the server?" screen on first launch. That is the failover
+working, not a crash, but it means **a new phone cannot find the server on its
+own until somebody types an address**.
+
+A **local** build (`expo run:android`, prebuild) does read `.env`, and that one
+does carry a frozen IP.
+
+So the address precedence, proved rather than assumed:
+
+| manual | stored | build default | tried, in order |
+|---|---|---|---|
+| — | — | — | `[]` |
+| — | new | old | `[new, old]` |
+| new | old | old | `[new]` |
+| **stale** | new | new | `[stale]` — manual is exclusive |
+
+A manual address is not first among candidates; it is the *only* candidate.
+
+**What survives an IP change:** the device token. It lives under
+`vms.device.token`, nothing in the address path touches it, and unpairing needs
+either the guard's own Unpair button or a real HTTP 401. An unreachable server
+throws in `fetch` and becomes a `NetworkError` — no response, no 401, no unpair.
+Queued scans stay on disk and sync once the address is fixed. **A moved server
+never costs you a re-pair.**
+
 ### The scanner on web — it builds, and it is not a guard's phone
 
 `npx expo start --web` bundles and renders. It is a **development surface**, and
