@@ -19,9 +19,17 @@ from __future__ import annotations
 
 from enum import Enum
 
-from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, Signal
+from PySide6.QtCore import (
+    QObject,
+    QProcess,
+    QProcessEnvironment,
+    QTimer,
+    Signal,
+)
 
 from config import ServiceSpec
+from network import port_in_use
+from processes import kill_tree_command, kill_tree_now, port_owners
 
 
 class State(str, Enum):
@@ -43,9 +51,16 @@ class State(str, Enum):
     ERROR = "ERROR"
 
 
-#: How long a service gets to exit politely before it is killed. Next dev
-#: servers take a moment to release their port; uvicorn goes almost at once.
-GRACE_MS = 6_000
+#: How long to keep checking that a stopped service actually let its port go.
+#: Next dev servers hold theirs for a moment after the process is gone; uvicorn
+#: releases almost at once. Generous, because the cost of waiting is a card that
+#: says STOPPING for a second longer, and the cost of giving up early is a card
+#: that says STOPPED above a port nobody can bind.
+PORT_RELEASE_TIMEOUT_MS = 8_000
+
+#: Poll interval while waiting for that. `network.port_in_use` is a connect
+#: test with a 0.35s timeout, so this is not a tight loop.
+PORT_POLL_MS = 250
 
 
 class ServiceProcess(QObject):
@@ -129,34 +144,63 @@ class ServiceProcess(QObject):
         self._process.start(self.spec.program, list(self.spec.arguments))
 
     def stop(self) -> None:
-        """Ask politely, then insist.
+        """Kill the tree we started, then prove the port is actually free.
 
-        `terminate()` is a real request the child can act on — uvicorn closes
-        its sockets, Next tears its watcher down. `kill()` is the fallback, and
-        only after the grace period, because killing a Next dev server outright
-        can leave its port held for a while afterwards.
+        THIS USED TO CALL `terminate()` AND WAIT, AND IT DID NEITHER THING IT
+        LOOKED LIKE IT DID. Measured against both process shapes this app
+        starts:
+
+            terminate() ended it?        NO
+            waitForFinished blocked for  6.0s
+            port free after kill()?      NO -- held by ['9980']
+
+        So every Stop press froze the window for the full grace period, and
+        then left the port occupied anyway. `processes.py` carries the two
+        Windows facts behind that; the short version is that a console child
+        never receives `WM_CLOSE`, and `npm.cmd` means the process we started
+        is `cmd.exe` rather than the Node server holding the port.
+
+        Nothing here blocks. The kill runs as its own child process and the
+        port check runs on a timer, because these services are stopped from a
+        window somebody is looking at.
         """
         if not self.is_active:
             return
 
         self._stopping = True
         self._set_state(State.STOPPING)
-        self._process.terminate()
 
-        if not self._process.waitForFinished(GRACE_MS):
-            self.output.emit(
-                self.spec.key,
-                "Did not exit within the grace period; killing it.\n",
-            )
+        pid = int(self._process.processId())
+        if pid <= 0:
+            # Asked to stop between `start()` and the OS confirming a pid.
+            # There is no tree to kill yet; kill() reaches the one process.
             self._process.kill()
-            self._process.waitForFinished(2_000)
+            return
+
+        program, arguments = kill_tree_command(pid)
+        self.output.emit(self.spec.key, f"$ {program} {' '.join(arguments)}\n")
+
+        killer = QProcess(self)
+        killer.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
+        killer.finished.connect(lambda *_: killer.deleteLater())
+        killer.start(program, arguments)
 
     def force_stop(self) -> None:
-        """Used on application exit, where there is no time to be polite."""
-        if self._process.state() != QProcess.ProcessState.NotRunning:
-            self._stopping = True
-            self._process.kill()
-            self._process.waitForFinished(2_000)
+        """Used on application exit, where there is no time to be polite.
+
+        The one place a blocking call is right: the window is closing, so there
+        is no event loop turn left to come back on, and an orphaned Node server
+        would outlive the launcher and hold its port against the next run.
+        """
+        if self._process.state() == QProcess.ProcessState.NotRunning:
+            return
+
+        self._stopping = True
+        pid = int(self._process.processId())
+        if pid > 0:
+            kill_tree_now(pid)
+        self._process.kill()
+        self._process.waitForFinished(2_000)
 
     # --------------------------------------------------------------- plumbing --
 
@@ -181,6 +225,52 @@ class ServiceProcess(QObject):
         # byte take the launcher down with a decode error.
         self.output.emit(self.spec.key, raw.decode("utf-8", errors="replace"))
 
+    def _await_port_release(self) -> None:
+        """Poll until the port is free, then say STOPPED -- or name who holds it.
+
+        On a timer rather than a wait, because this runs while somebody is
+        looking at the window.
+
+        IT DOES NOT KILL WHATEVER STILL HOLDS THE PORT. Nothing here can show
+        that process was started by this launcher, and
+        `preflight.describe_port_conflict` already refuses the same thing for
+        the same reason: freeing a port by force is how somebody discovers, at
+        the worst possible moment, that the launcher shot something else.
+        """
+        port = self.spec.port
+        assert port is not None  # the caller checked
+
+        elapsed = 0
+
+        def check() -> None:
+            nonlocal elapsed
+
+            if not port_in_use(port):
+                timer.stop()
+                self.output.emit(self.spec.key, f"Stopped. Port {port} released.\n")
+                self._set_state(State.STOPPED)
+                return
+
+            elapsed += PORT_POLL_MS
+            if elapsed < PORT_RELEASE_TIMEOUT_MS:
+                return
+
+            timer.stop()
+            owners = port_owners(port)
+            held = ", ".join(str(owner) for owner in owners) if owners else "something"
+            self.output.emit(
+                self.spec.key,
+                f"The process was stopped, but port {port} is still held by "
+                f"{held}.\n"
+                "It was left alone: this launcher only stops what it started.\n",
+            )
+            self._set_state(State.ERROR)
+
+        timer = QTimer(self)
+        timer.setInterval(PORT_POLL_MS)
+        timer.timeout.connect(check)
+        timer.start()
+
     def _on_started(self) -> None:
         self._set_state(State.RUNNING)
 
@@ -204,8 +294,15 @@ class ServiceProcess(QObject):
         self._drain()
 
         if self._stopping:
-            self.output.emit(self.spec.key, "Stopped.\n")
-            self._set_state(State.STOPPED)
+            # OUR PROCESS IS GONE, WHICH IS NOT THE SAME AS THE SERVICE
+            # BEING GONE -- conflating those is the whole of this bug. The
+            # pid we held for a Next app was `cmd.exe`; the Node server that
+            # owns the port is its child. Say STOPPED once the port agrees.
+            if self.spec.port is None:
+                self.output.emit(self.spec.key, "Stopped.\n")
+                self._set_state(State.STOPPED)
+            else:
+                self._await_port_release()
             return
 
         # Nobody asked for this. Say so loudly: a service that dies three
