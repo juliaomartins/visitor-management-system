@@ -10,6 +10,7 @@ import { FitText } from "@/components/FitText";
 import { SealRing } from "@/components/SealRing";
 import { SparkEmitter } from "@/components/SparkEmitter";
 import { SprinkleField } from "@/components/SprinkleField";
+import { TaisWave } from "@/components/TaisWave";
 import { gsap, prefersReducedMotion, SplitText, useGSAP } from "@/lib/gsap";
 import { clampPx, useViewport } from "@/hooks/useViewport";
 import type { ScreenEvent } from "@/lib/api";
@@ -139,7 +140,7 @@ export function ArrivalStage({
           columns, defined in globals.css, otherwise stacked with the queue
           underneath.
         */
-        className={`relative z-10 grid min-h-0 gap-[clamp(0.5rem,2vw,2.5rem)] px-[clamp(0.75rem,2.5vw,3rem)] pb-[clamp(52px,15vh,210px)] ${
+        className={`relative z-10 grid min-h-0 gap-[clamp(0.5rem,2vw,2.5rem)] px-[clamp(0.75rem,2.5vw,3rem)] pb-(--tais-clear) ${
           hasQueue
             ? "grid-rows-[minmax(0,1.55fr)_minmax(0,1fr)] wall:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] wall:grid-rows-1"
             : "grid-cols-1"
@@ -280,7 +281,7 @@ export function ArrivalStage({
         {hasQueue ? <ArrivalQueue queued={queued} /> : null}
       </div>
 
-      <Wave />
+      <TaisWave />
     </div>
   );
 }
@@ -307,39 +308,6 @@ function Header({ event }: { event: ScreenEvent }) {
           {formatArrived(event.scanned_at)}
         </span>
       </div>
-    </div>
-  );
-}
-
-/**
- * The wave at the foot.
- *
- * Two layers at different opacities so the crest reads as depth rather than as a
- * single flat shape, and `preserveAspectRatio="none"` so it stretches to any
- * panel width instead of cropping.
- */
-function Wave() {
-  return (
-    <div
-      aria-hidden
-      data-wave
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[clamp(44px,13vh,190px)]"
-    >
-      <svg
-        viewBox="0 0 1440 200"
-        preserveAspectRatio="none"
-        className="h-full w-full"
-      >
-        <path
-          d="M0 96 C 240 24, 480 168, 720 116 S 1200 20, 1440 74 L1440 200 L0 200 Z"
-          fill="var(--accent)"
-          opacity="0.28"
-        />
-        <path
-          d="M0 134 C 260 70, 520 196, 780 148 S 1230 74, 1440 122 L1440 200 L0 200 Z"
-          fill="var(--accent)"
-        />
-      </svg>
     </div>
   );
 }
