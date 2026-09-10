@@ -715,6 +715,74 @@ transparent in every theme so the two do not fight.
   phone. Green valid / red invalid / amber revoked, with distinct sounds.
 - High-contrast theme; used near doorways in variable light.
 
+### The SQLite handle dies while the app is running, and it must heal itself
+
+`SQLiteDatabase` is an expo-modules **shared object**: the JS value is a handle
+onto something the native side owns, and the native side can let go while JS
+still holds its half. Android reclaiming the activity behind a locked screen is
+the ordinary way it happens — which is to say, a guard putting the phone in a
+pocket between arrival waves.
+
+On Android the failure arrives as a three-line chain, and the middle line is a
+lie worth recognising:
+
+```
+Call to function 'NativeDatabase.prepareAsync' has been rejected.
+ -> Caused by: The 2nd argument cannot be cast to type class
+    expo.modules.sqlite.NativeStatement (received class java.lang.Integer)
+ -> Caused by: Cannot use shared object that was already released
+```
+
+Nothing passed an Integer. The registry lost the object and handed back its id
+instead; only the last line says what happened.
+
+`storage/queue.ts` used to cache the database in a module variable that was
+never invalidated, so **one release broke every scan, count and cache lookup for
+the life of the process** — and the only cure was force-closing the app. Two
+rules now keep that from coming back:
+
+1. **Every statement goes through `withDb`**, which reopens once and retries
+   when it recognises a released handle. Add a function to that file and it
+   goes through `withDb` too.
+2. **The handle is cached as a promise, not as a database.** Caching the
+   database itself had a race: the variable was assigned when `openDatabaseAsync`
+   resolved, while `CREATE TABLE` was still running, so a caller arriving in that
+   window queried tables that did not exist yet.
+
+Two consequences worth keeping. `enqueueScan` inserts `ON CONFLICT(client_uuid)
+DO NOTHING`, because the retry may replay it and the same uuid is the same scan.
+And **queue bookkeeping may never change a verdict**: `markSynced` and
+`cacheVisitor` run after the server has already answered, so a storage failure
+there used to surface a badge the server had *accepted* as "Something went
+wrong". They are wrapped for that reason — see `useScanner.submit`.
+
+`useSyncQueue.sync()` also catches storage failures now. It is driven by a
+5-second interval, so an escaping rejection was an uncaught promise **every five
+seconds** — a red LogBox over the camera in development, and silence with a
+queue that never drains in a release build.
+
+### The resolved server address lives in ONE place, and writers must announce
+
+`api/client.ts` holds the live origin in a module variable. Its only writer was
+`useServer`, which resolves on mount — and Settings is a route pushed *on top of*
+the screen, so coming back from it remounts nothing. Saving a new server IP wrote
+it to storage and left every request pointed at the old address.
+
+**That is why a new IP had to be entered twice.** The first save was correct and
+silently ineffective; the second only worked because something had remounted in
+between.
+
+So `storeManualOrigin`, `clearManualOrigin` and `clearStoredOrigin` call
+`announceOriginChange()`, `useServer` subscribes and re-resolves, and Settings
+additionally calls `setApiOrigin` directly for the address it has just tested.
+`storeOrigin` deliberately does **not** announce — `useServer` is its only caller
+and has already updated itself.
+
+`ServerBar` probes `getApiOrigin()`, not the first stored candidate. Those are
+different addresses at exactly the wrong moment, and a status dot reporting on
+something other than the live connection is worse than no dot — it is the one
+thing on screen a guard would trust.
+
 ### The scanner on web — it builds, and it is not a guard's phone
 
 `npx expo start --web` bundles and renders. It is a **development surface**, and
