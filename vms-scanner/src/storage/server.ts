@@ -74,6 +74,40 @@ const store = {
   },
 };
 
+/*
+  A CHANGE OF ADDRESS HAS TO REACH THE CLIENT, NOT JUST THE DISK.
+
+  Settings used to write the manual address and navigate back, and that was the
+  whole of it. But the address the app actually sends requests to is a module
+  variable in `api/client.ts`, and its only writer was `useServer`, which
+  resolves once on mount. Coming back from Settings does not remount the screen
+  underneath -- it was never unmounted -- so nothing re-read the new address.
+
+  The result was a server address that needed entering twice: the first attempt
+  saved correctly and then failed against the OLD address, and the second worked
+  only because something else had remounted in between. Worse, the status dot
+  probed storage rather than the client, so it went green for an address the app
+  was not using.
+
+  So a write announces itself, and whoever holds the resolved address listens.
+*/
+type OriginListener = () => void;
+
+const listeners = new Set<OriginListener>();
+
+/** Returns its own unsubscribe, for a `useEffect` cleanup. */
+export function subscribeToOriginChange(listener: OriginListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function announceOriginChange(): void {
+  // Copied before iterating: a listener may unsubscribe itself as it runs.
+  for (const listener of [...listeners]) listener();
+}
+
 /** What the failover last found to work by itself. */
 const SERVER_KEY = "vms.server.origin";
 
@@ -133,15 +167,18 @@ export async function storeManualOrigin(origin: string): Promise<void> {
   const normalised = normaliseOrigin(origin);
   if (!normalised) return;
   await store.set(MANUAL_KEY, normalised);
+  announceOriginChange();
 }
 
 /** Hands control back to the built-in default and the failover. */
 export async function clearManualOrigin(): Promise<void> {
   await store.remove(MANUAL_KEY);
+  announceOriginChange();
 }
 
 export async function clearStoredOrigin(): Promise<void> {
   await store.remove(SERVER_KEY);
+  announceOriginChange();
 }
 
 /**
