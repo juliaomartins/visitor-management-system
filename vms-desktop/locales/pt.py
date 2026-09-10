@@ -83,4 +83,15 @@ MESSAGES = {
     "dlg.cannotStart": "N\u00e3o \u00e9 poss\u00edvel iniciar o VMS",
     "dlg.nothingStarted":
         "Nada foi iniciado. O registo da Aplica\u00e7\u00e3o lista todas as verifica\u00e7\u00f5es.",
+    "dlg.freePort": "Libertar a porta {port}",
+    "dlg.freePortTitle": "Libertar a porta {port}?",
+    "dlg.freePortBody":
+        "Isto vai parar o seguinte, e tudo o que tenha iniciado:\n\n{who}\n\nO centro de controlo n\u00e3o os iniciou. Se algum for outra coisa que esteja a usar, feche isto e pare-o voc\u00ea mesmo.",
+
+    # ---------------------------------------------- freeing a port --
+    "msg.freeingPort": "A libertar a porta {port}: a parar {who}.",
+    "msg.portFreed": "A porta {port} est\u00e1 livre.",
+    "msg.portKillFailed": "N\u00e3o foi poss\u00edvel parar {who}: {reason}",
+    "msg.portStillHeld":
+        "A porta {port} continua ocupada. Pode precisar de direitos de Administrador, ou o processo pode pertencer a outro utilizador.",
 }

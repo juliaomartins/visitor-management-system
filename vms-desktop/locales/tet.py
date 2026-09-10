@@ -81,4 +81,15 @@ MESSAGES = {
     "dlg.cannotStart": "La bele hah\u00fa VMS",
     "dlg.nothingStarted":
         "Laiha buat ida hah\u00fa. Rejistu Aplikasaun hatudu verifikasaun hotu.",
+    "dlg.freePort": "Libera porta {port}",
+    "dlg.freePortTitle": "Libera porta {port}?",
+    "dlg.freePortBody":
+        "Ida ne'e sei para tuir mai, no buat hotu ne'eb\u00e9 sira hah\u00fa:\n\n{who}\n\nSentru kontrolu la hah\u00fa sira. Se ida husi sira mak buat seluk ne'eb\u00e9 Ita uza hela, taka ida ne'e no para rasik.",
+
+    # ---------------------------------------------- freeing a port --
+    "msg.freeingPort": "Libera porta {port}: para {who}.",
+    "msg.portFreed": "Porta {port} livre ona.",
+    "msg.portKillFailed": "La bele para {who}: {reason}",
+    "msg.portStillHeld":
+        "Porta {port} nafatin okupadu. Karik presiza direitu Administrad\u00f3r, ka prosesu ne'e pertense ba utilizad\u00f3r seluk.",
 }

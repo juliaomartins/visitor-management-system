@@ -80,4 +80,15 @@ MESSAGES = {
     "dlg.cannotStart": "Cannot start VMS",
     "dlg.nothingStarted":
         "Nothing has been started. The Application log lists every check.",
+    "dlg.freePort": "Free port {port}",
+    "dlg.freePortTitle": "Free port {port}?",
+    "dlg.freePortBody":
+        "This will stop the following, and anything they started:\n\n{who}\n\nThe control centre did not start them. If one of these is something else you are using, close this and stop it yourself.",
+
+    # ---------------------------------------------- freeing a port --
+    "msg.freeingPort": "Freeing port {port}: stopping {who}.",
+    "msg.portFreed": "Port {port} is free.",
+    "msg.portKillFailed": "Could not stop {who}: {reason}",
+    "msg.portStillHeld":
+        "Port {port} is still held. It may need Administrator rights, or the process may belong to another user.",
 }

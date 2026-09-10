@@ -147,16 +147,65 @@ M = [
      "Nada foi iniciado. O registo da Aplicação lista todas as "
      "verificações.",
      "Laiha buat ida hahú. Rejistu Aplikasaun hatudu verifikasaun hotu."),
+    ("dlg.freePort", "Free port {port}", "Libertar a porta {port}",
+     "Libera porta {port}"),
+    ("dlg.freePortTitle", "Free port {port}?", "Libertar a porta {port}?",
+     "Libera porta {port}?"),
+    # Deliberately blunt. This launcher did not start whatever holds the port,
+    # so the person clicking is the only one who can know whether it matters.
+    ("dlg.freePortBody",
+     "This will stop the following, and anything they started:\n\n{who}\n\n"
+     "The control centre did not start them. If one of these is something "
+     "else you are using, close this and stop it yourself.",
+     "Isto vai parar o seguinte, e tudo o que tenha iniciado:\n\n{who}\n\n"
+     "O centro de controlo não os iniciou. Se algum for outra coisa que "
+     "esteja a usar, feche isto e pare-o você mesmo.",
+     "Ida ne'e sei para tuir mai, no buat hotu ne'ebé sira hahú:\n\n{who}\n\n"
+     "Sentru kontrolu la hahú sira. Se ida husi sira mak buat seluk ne'ebé "
+     "Ita uza hela, taka ida ne'e no para rasik."),
+
+    ("//", "freeing a port", "", ""),
+    ("msg.freeingPort", "Freeing port {port}: stopping {who}.",
+     "A libertar a porta {port}: a parar {who}.",
+     "Libera porta {port}: para {who}."),
+    ("msg.portFreed", "Port {port} is free.", "A porta {port} está livre.",
+     "Porta {port} livre ona."),
+    ("msg.portKillFailed", "Could not stop {who}: {reason}",
+     "Não foi possível parar {who}: {reason}",
+     "La bele para {who}: {reason}"),
+    ("msg.portStillHeld",
+     "Port {port} is still held. It may need Administrator rights, or the "
+     "process may belong to another user.",
+     "A porta {port} continua ocupada. Pode precisar de direitos de "
+     "Administrador, ou o processo pode pertencer a outro utilizador.",
+     "Porta {port} nafatin okupadu. Karik presiza direitu Administradór, ka "
+     "prosesu ne'e pertense ba utilizadór seluk."),
 ]
 
 
 def literal(text: str) -> str:
+    """One message as a single-quoted, single-line, pure-ASCII Python string.
+
+    NEWLINES ARE ESCAPED, NOT EMITTED. A message containing a real newline used
+    to be written straight through into a one-line string literal, and the
+    generated file then failed to import with `unterminated string literal` --
+    a syntax error in a file nobody is allowed to hand-edit, blamed on the
+    dictionary rather than on the generator that wrote it. Multi-line messages
+    are ordinary now (a confirmation dialog listing processes), so this handles
+    them rather than forbidding them.
+    """
     out = []
     for ch in text:
         if ch == '"':
             out.append('\\"')
         elif ch == "\\":
             out.append("\\\\")
+        elif ch == "\n":
+            out.append("\\n")
+        elif ch == "\r":
+            out.append("\\r")
+        elif ch == "\t":
+            out.append("\\t")
         elif ord(ch) < 128:
             out.append(ch)
         else:
