@@ -769,20 +769,51 @@ three weeks out from an event.
 
 The third is separate and has nothing to do with HTTPS. `expo-secure-store`'s web
 build is literally `export default {}`, so `isAvailableAsync()` returns false.
-The app already knows: `session.tsx` carries `storageAvailable` with the comment
-*"False on web, where SecureStore has no implementation"*, and `pair.tsx` puts it
-in the `ready` condition so **the Pair button is disabled** and
-`t("pair.noSecureStorage")` is shown. That was a correct call, not an oversight.
 
-**So on web today you get a working scanner screen that cannot pair.**
+**RESOLVED: on web the device token goes to `localStorage`.** This is a
+deliberate exception to "never localStorage" above, and it was made only after
+checking what this particular credential can reach:
 
-**OPEN DECISION — where a web build would keep its device token.** There is no
-keystore, and the Security rules above forbid `localStorage` for credentials,
-which is exactly what a device token is. The honest options are a session-only
-token held in memory (re-pair on every reload) or deciding a localhost desk
-station is a different enough threat model to relax the rule with eyes open.
-**Neither has been chosen.** Do not quietly reach for `localStorage` because it
-is the easy one; the rule exists because this app holds every visitor's photo.
+- `IsScannerDevice` narrows a scanner token to **one endpoint**, `POST /api/v1/scans`.
+- The scan response returns a visitor only for a badge token the caller is
+  **already physically holding**. It cannot enumerate visitors, read the roster
+  or export photographs.
+- It is revocable in one click from the dashboard's device list.
+
+So the worst a stolen web token buys is logging false arrivals — noisy,
+attributable to a named device, and revocable. That is a different order of thing
+from the admin JWT and the passport-adjacent data the rule exists to protect.
+**The rule still stands for the admin session and for visitor photos.**
+
+`session.tsx` now asks **two different questions**, and conflating them is what
+blocked web pairing entirely:
+
+| | asks | web answer | effect on the pairing screen |
+|---|---|---|---|
+| `canStoreSession()` | can anything be kept? | yes | pairing is allowed |
+| `isSecureStorageAvailable()` | is it a real keystore? | no | an amber warning, not a block |
+
+Only a browser that refuses storage outright — a private window — still blocks,
+with `pair.noStorage`. The ordinary web case shows `pair.browserStorage`, which
+tells the operator this profile now holds a credential and to revoke the device
+when the event is over.
+
+The web write in `secure.ts` is deliberately **not** wrapped in try/catch: if the
+browser refuses to keep the token, pairing has not really succeeded, and the
+operator must see that rather than reach a camera that 401s on its first scan.
+
+**Pairing on web therefore works. The camera still will not, over LAN http** —
+that is the secure-context rule above and no amount of storage fixes it. To scan
+in a browser you need one of:
+
+1. **`http://localhost:8081` on the machine running Expo** — localhost is a
+   secure context, so camera and OPFS both work. This is the check-in desk case.
+2. **Chrome's insecure-origin allowlist, per device.** In `chrome://flags`, set
+   *"Insecure origins treated as secure"* to `http://<lan-ip>:8081` and enable it.
+   A device-configuration change, not a code change, and it must be repeated on
+   every phone. Reasonable for a controlled event device; not something to ship.
+3. **HTTPS**, which cascades into `wss://`, TLS on the backend and re-pairing
+   every device. See HARD CONSTRAINT 9 before going here.
 
 ---
 
