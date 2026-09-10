@@ -44,6 +44,24 @@ const VALID_DISMISS_MS = 2200;
 const DUPLICATE_DISMISS_MS = 1600;
 
 /**
+ * Queue bookkeeping, on a path where a second failure must not become the story.
+ *
+ * `submit` is launched with `void` from the camera callback, so anything that
+ * escapes it is an uncaught rejection rather than a handled error. The calls
+ * this wraps are already inside a failure path — recording a backoff, dropping
+ * a dead row — and the guard is about to be told what happened by the code
+ * underneath. Losing the bookkeeping is a missed retry; losing the message is a
+ * person left standing at a door with no answer on the screen.
+ */
+async function bookkeep(work: () => Promise<unknown>): Promise<void> {
+  try {
+    await work();
+  } catch {
+    /* the queue will be re-read on the next tick */
+  }
+}
+
+/**
  * A queued scan does NOT auto-dismiss. It is the one state where the guard has to
  * make the call themselves, so it waits for a deliberate tap.
  */
@@ -121,14 +139,36 @@ export function useScanner(onQueueChanged?: () => void) {
         return null;
       }
 
+      // Pulled out of `queued` here because the closures below capture it, and
+      // TypeScript drops the not-null narrowing of a `let` across a closure.
+      const { clientUuid } = queued;
+
       try {
         const response = await recordScan(badgeToken, {
           scannedAt,
-          clientUuid: queued.clientUuid,
+          clientUuid,
         });
 
-        await markSynced(queued.clientUuid);
-        if (response.visitor) await cacheVisitor(badgeToken, response.visitor);
+        /*
+          THE SERVER HAS ALREADY ANSWERED. Nothing below may change the verdict.
+
+          These two are local bookkeeping — drop the row, remember the face —
+          and they used to sit unguarded inside this try. So when SQLite failed
+          (a released handle, see storage/queue.ts) the throw landed in the catch
+          below, matched neither NetworkError nor ApiError, and a badge the
+          server had just accepted was shown to the guard as "Something went
+          wrong". A verdict on a person must come from the server's answer and
+          from nowhere else.
+
+          The cost of swallowing: the row stays queued and syncs again later.
+          `client_uuid` makes that a no-op on the server.
+        */
+        try {
+          await markSynced(clientUuid);
+          if (response.visitor) await cacheVisitor(badgeToken, response.visitor);
+        } catch {
+          /* the queue keeps the row; the arrival is already recorded upstream */
+        }
         onQueueChanged?.();
 
         move({ phase: "result", response });
@@ -144,7 +184,7 @@ export function useScanner(onQueueChanged?: () => void) {
         if (cause instanceof NetworkError) {
           // The row stays queued. Show whoever this phone remembers, clearly
           // labelled as a memory rather than a check.
-          await markFailed(queued.clientUuid, cause.message);
+          await bookkeep(() => markFailed(clientUuid, cause.message));
           onQueueChanged?.();
 
           const cached = await lookupCachedVisitor(badgeToken).catch(() => null);
@@ -155,8 +195,8 @@ export function useScanner(onQueueChanged?: () => void) {
         if (cause instanceof ApiError) {
           // 400 is the badge, not the network — it will never succeed, so it must
           // not sit in the queue forever.
-          if (cause.status === 400) await discard(queued.clientUuid);
-          else await markFailed(queued.clientUuid, cause.message);
+          if (cause.status === 400) await bookkeep(() => discard(clientUuid));
+          else await bookkeep(() => markFailed(clientUuid, cause.message));
           onQueueChanged?.();
 
           move({
@@ -173,7 +213,7 @@ export function useScanner(onQueueChanged?: () => void) {
           return null;
         }
 
-        await markFailed(queued.clientUuid, "Unknown error");
+        await bookkeep(() => markFailed(clientUuid, "Unknown error"));
         onQueueChanged?.();
         move({ phase: "error", message: "Something went wrong.", recoverable: true });
         return null;
