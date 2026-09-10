@@ -19,6 +19,7 @@ import {
 import { setDeviceRevokedHandler, setDeviceToken } from "@/api/client";
 import {
   clearDeviceSession,
+  canStoreSession,
   isSecureStorageAvailable,
   loadDeviceSession,
   saveDeviceSession,
@@ -29,8 +30,16 @@ type SessionState = {
   /** True until the keystore has been read. Nothing should route before then. */
   loading: boolean;
   device: DeviceSession | null;
-  /** False on web, where SecureStore has no implementation. */
+  /**
+   * Whether a token can be kept AT ALL. False only if the browser refuses to
+   * store anything -- a private window, or storage blocked. This gates pairing.
+   */
   storageAvailable: boolean;
+  /**
+   * Whether that store is a hardened OS keystore. False on web even when
+   * pairing works, so the pairing screen can WARN instead of BLOCK.
+   */
+  storageIsSecure: boolean;
   adopt: (session: DeviceSession) => Promise<void>;
   forget: () => Promise<void>;
 };
@@ -41,16 +50,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [device, setDevice] = useState<DeviceSession | null>(null);
   const [storageAvailable, setStorageAvailable] = useState(true);
+  const [storageIsSecure, setStorageIsSecure] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      const available = await isSecureStorageAvailable();
+      // TWO DIFFERENT QUESTIONS, and conflating them is what blocked web
+      // pairing entirely. `canStoreSession` asks whether anything can be kept;
+      // `isSecureStorageAvailable` asks whether the store is a real keystore.
+      // Web answers yes to the first and no to the second.
+      const [available, secure] = await Promise.all([
+        canStoreSession(),
+        isSecureStorageAvailable(),
+      ]);
       const stored = available ? await loadDeviceSession() : null;
 
       if (cancelled) return;
       setStorageAvailable(available);
+      setStorageIsSecure(secure);
       setDevice(stored);
       setDeviceToken(stored?.token ?? null);
       setLoading(false);
@@ -90,8 +108,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [forget]);
 
   const value = useMemo<SessionState>(
-    () => ({ loading, device, storageAvailable, adopt, forget }),
-    [loading, device, storageAvailable, adopt, forget],
+    () => ({ loading, device, storageAvailable, storageIsSecure, adopt, forget }),
+    [loading, device, storageAvailable, storageIsSecure, adopt, forget],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
