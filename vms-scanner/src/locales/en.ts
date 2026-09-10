@@ -55,8 +55,10 @@ export const en = {
   "pair.namePlaceholder": "North door",
   "pair.nameA11y": "Device name",
   "pair.failed": "Pairing failed. Try again.",
-  "pair.noSecureStorage":
-    "This device has no secure storage, so a token cannot be kept. Run the scanner on a phone, not in a browser.",
+  "pair.noStorage":
+    "This browser will not store anything, so a token cannot be kept. Leave private browsing, or run the scanner on a phone.",
+  "pair.browserStorage":
+    "This browser has no secure keystore, so the token is kept in ordinary browser storage. Fine for a check-in desk you control \u2014 revoke this device from the dashboard when the event is over.",
   "pair.finding": "Finding the server\u2026",
   "pair.noServer": "No server found",
 
