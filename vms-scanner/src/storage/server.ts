@@ -5,7 +5,9 @@
  * is served BY the server and can just look at its own URL. So the phone stores
  * an address, and that address has to survive the server's IP moving.
  *
- * Kept in SecureStore beside the device token rather than in a separate store.
+ * Kept in SecureStore beside the device token on a phone. On web there is no
+ * SecureStore at all, so it falls back to localStorage -- see `store` below for
+ * why that is acceptable here and is NOT acceptable for the device token.
  *
  * TWO ADDRESSES, TWO KEYS, and the split matters. `vms.server.manual` is a
  * deliberate human decision made in Settings. `vms.server.origin` is whatever
@@ -18,7 +20,59 @@
  * server was. That is deliberate for an event where phones are re-paired all
  * day, but it is worth knowing before one leaves the building.
  */
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+
+/**
+ * One tiny store, two backends.
+ *
+ * SecureStore has no web build -- its module is literally `export default {}`,
+ * so `SecureStore.setItemAsync` on web is not a function and throws. The reads
+ * below were already wrapped in try/catch and quietly returned null; the WRITES
+ * were not, which is why typing a server address in the browser crashed with
+ * `ExpoSecureStore.default.setValueWithKeyAsync is not a function` rather than
+ * failing gracefully. Guarding every path is half the fix.
+ *
+ * THE OTHER HALF IS localStorage, AND ONLY FOR THIS. A server address is not a
+ * credential: it is the IP already showing in the browser's own URL bar, listed
+ * on the control centre's network card, and handed out by `/api/v1/health`
+ * without authentication. Writing it down grants nobody anything.
+ *
+ * THE DEVICE TOKEN IS A DIFFERENT MATTER AND MUST NOT COME HERE. That one is a
+ * working credential, and the Security rules in CLAUDE.md forbid localStorage
+ * for exactly that reason. Where a web build would keep it is still an open
+ * decision -- do not resolve it by copying this pattern.
+ */
+const store = {
+  async get(key: string): Promise<string | null> {
+    try {
+      if (Platform.OS === "web") return globalThis.localStorage?.getItem(key) ?? null;
+      return await SecureStore.getItemAsync(key);
+    } catch {
+      // A locked-down browser, a private window, or a reset keychain. The app
+      // still works; it simply does not remember the address.
+      return null;
+    }
+  },
+
+  async set(key: string, value: string): Promise<void> {
+    try {
+      if (Platform.OS === "web") globalThis.localStorage?.setItem(key, value);
+      else await SecureStore.setItemAsync(key, value);
+    } catch {
+      /* not remembered, but the address is still in use for this session */
+    }
+  },
+
+  async remove(key: string): Promise<void> {
+    try {
+      if (Platform.OS === "web") globalThis.localStorage?.removeItem(key);
+      else await SecureStore.deleteItemAsync(key);
+    } catch {
+      /* nothing to undo */
+    }
+  },
+};
 
 /** What the failover last found to work by itself. */
 const SERVER_KEY = "vms.server.origin";
@@ -56,17 +110,13 @@ export function normaliseOrigin(input: string): string {
 }
 
 export async function getStoredOrigin(): Promise<string | null> {
-  try {
-    return await SecureStore.getItemAsync(SERVER_KEY);
-  } catch {
-    return null;
-  }
+  return store.get(SERVER_KEY);
 }
 
 export async function storeOrigin(origin: string): Promise<void> {
   const normalised = normaliseOrigin(origin);
   if (!normalised) return;
-  await SecureStore.setItemAsync(SERVER_KEY, normalised);
+  await store.set(SERVER_KEY, normalised);
 }
 
 /**
@@ -76,34 +126,22 @@ export async function storeOrigin(origin: string): Promise<void> {
  * the next probe without restarting the app.
  */
 export async function getManualOrigin(): Promise<string | null> {
-  try {
-    return await SecureStore.getItemAsync(MANUAL_KEY);
-  } catch {
-    return null;
-  }
+  return store.get(MANUAL_KEY);
 }
 
 export async function storeManualOrigin(origin: string): Promise<void> {
   const normalised = normaliseOrigin(origin);
   if (!normalised) return;
-  await SecureStore.setItemAsync(MANUAL_KEY, normalised);
+  await store.set(MANUAL_KEY, normalised);
 }
 
 /** Hands control back to the built-in default and the failover. */
 export async function clearManualOrigin(): Promise<void> {
-  try {
-    await SecureStore.deleteItemAsync(MANUAL_KEY);
-  } catch {
-    /* nothing to undo */
-  }
+  await store.remove(MANUAL_KEY);
 }
 
 export async function clearStoredOrigin(): Promise<void> {
-  try {
-    await SecureStore.deleteItemAsync(SERVER_KEY);
-  } catch {
-    /* nothing to undo */
-  }
+  await store.remove(SERVER_KEY);
 }
 
 /**
