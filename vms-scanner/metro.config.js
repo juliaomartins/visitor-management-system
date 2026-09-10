@@ -1,6 +1,14 @@
 // Metro configuration for vms-scanner.
 //
-// THIS FILE EXISTS FOR ONE REASON: `.wasm`.
+// A SAFETY NET NOW, NOT A REQUIREMENT.
+//
+// The web build no longer imports any `.wasm`: `storage/queue.web.ts` backs the
+// offline queue with localStorage, so expo-sqlite is not bundled for web at all
+// and its WebAssembly worker never loads. This config is kept because the
+// failure it prevents is so unhelpful -- see below -- and because anything that
+// pulls a `.wasm` back in would hit it again with no clue why.
+//
+// THE ORIGINAL REASON: `.wasm`.
 //
 // `expo-sqlite` on web is a real implementation, not a shim -- it runs SQLite
 // compiled to WebAssembly (wa-sqlite) inside a worker. Its worker does:
