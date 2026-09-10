@@ -168,6 +168,34 @@ check(
     str({k: p.state.value for k, p in procs.items()}),
 )
 
+# A TREE KILL THAT FAILS MUST NOT BE SILENT. `taskkill` refuses on stderr with
+# a non-zero code, and the version of this that threw both away left a card
+# saying STOPPING forever with nothing in the log to explain it.
+backend_log = "".join(outputs["backend"])
+check(
+    "the tree kill reports its outcome to the service log",
+    # `taskkill`'s OWN words, not the echoed command line -- the echo was
+    # already there while the result was being thrown away, so asserting on
+    # "taskkill" would pass against the bug.
+    "terminated" in backend_log.lower() or "code" in backend_log.lower(),
+    backend_log[-300:],
+)
+check(
+    "the tree kill reached the descendants, not just the child",
+    backend_log.lower().count("terminated") >= 2,
+    backend_log[-300:],
+)
+check(
+    "a kill that worked is not reported as a failure",
+    "could not be stopped" not in backend_log.lower(),
+    backend_log[-300:],
+)
+check(
+    "a clean stop raises no watchdog complaint",
+    "still running" not in backend_log.lower(),
+    backend_log[-300:],
+)
+
 # =============================================================== restarting ==
 print("\nStopping a service and starting another afterwards")
 
