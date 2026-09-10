@@ -16,6 +16,7 @@ explicit about not pretending otherwise.
 
 from __future__ import annotations
 
+import os
 import socket
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config  # noqa: E402
 import network  # noqa: E402
 import preflight  # noqa: E402
+import processes  # noqa: E402
 
 failures: list[str] = []
 
@@ -130,6 +132,67 @@ check(
     not by_label["LAN address"].blocking,
 )
 check("the report renders", "Preflight check" in preflight.format_report(report))
+
+print("\nprocesses — a failed tree kill must not look like a success")
+# A pid that cannot exist. Real `taskkill`, real exit code, no mock: the entire
+# point is that the launcher notices when the kill did not happen.
+dead = processes.kill_tree(999999)
+check("a failed tree kill does not report ok", not dead.ok)
+check("it carries the exit code", dead.returncode != 0, str(dead.returncode))
+check("it carries the killer's own words", "999999" in dead.message, repr(dead.message))
+check("it renders as a single log line", "\n" not in dead.message.strip(), repr(dead.message))
+
+print("\nprocesses — netstat is parsed precisely, not searched for digits")
+# Every trap `findstr 8000` falls into, in one sample: a longer port ending in
+# the same digits, a foreign address carrying them, a pid that is literally
+# 8000, and a row that is not LISTENING.
+sample = """
+  Proto  Local Address          Foreign Address        State           PID
+  TCP    0.0.0.0:8000           0.0.0.0:0              LISTENING       4242
+  TCP    0.0.0.0:38000          0.0.0.0:0              LISTENING       111
+  TCP    127.0.0.1:9999         127.0.0.1:8000         ESTABLISHED     222
+  TCP    0.0.0.0:1234           0.0.0.0:0              LISTENING       8000
+  TCP    0.0.0.0:8000           0.0.0.0:0              TIME_WAIT       333
+  TCP    [::]:8000              [::]:0                 LISTENING       4242
+"""
+pids = processes.listening_pids(sample, 8000)
+check("finds the real listener", pids == ["4242"], str(pids))
+check("port 38000 is not port 8000", "111" not in pids)
+check("a foreign address is not a local one", "222" not in pids)
+check("a pid that looks like a port is not a port", "8000" not in pids)
+check("only LISTENING counts", "333" not in pids)
+check("the IPv4 and IPv6 rows of one process are one owner", len(pids) == 1, str(pids))
+
+print("\nprocesses — the holder of a real port is found and named")
+mine = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+mine.bind(("127.0.0.1", 0))
+mine.listen(1)
+mine_port = mine.getsockname()[1]
+owners = processes.port_owners(mine_port)
+check(
+    f"this process is named as the holder of {mine_port}",
+    any(o.pid == str(os.getpid()) for o in owners),
+    str([str(o) for o in owners]),
+)
+check(
+    "the holder is named by image, not only by pid",
+    any("python" in o.image.lower() for o in owners),
+    str([str(o) for o in owners]),
+)
+
+print("\npreflight — a busy port says WHO holds it")
+busy = preflight.port_check("Dashboard", mine_port)
+check("the check fails", not busy.ok)
+check("the detail names the pid", str(os.getpid()) in busy.detail, busy.detail)
+check("the detail names the image", "python" in busy.detail.lower(), busy.detail)
+check("the check carries the port, so the UI can offer to free it", busy.port == mine_port)
+check(
+    "the check carries the owners, so nothing has to re-parse netstat",
+    any(o.pid == str(os.getpid()) for o in busy.owners),
+    str([str(o) for o in busy.owners]),
+)
+mine.close()
+check("a free port carries no owners", preflight.port_check("Dashboard", mine_port).owners == ())
 
 print("\n" + "=" * 62)
 if failures:
