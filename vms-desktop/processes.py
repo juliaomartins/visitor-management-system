@@ -66,24 +66,66 @@ def kill_tree_command(pid: int) -> tuple[str, list[str]]:
     return ("kill", ["-KILL", f"-{pid}"])
 
 
-def kill_tree_now(pid: int, timeout: float = 3.0) -> bool:
-    """Blocking tree kill, for application exit only.
+@dataclass(frozen=True)
+class KillResult:
+    """What the tree kill actually did, in a form worth logging.
 
-    Everywhere else this belongs on `QProcess`. On the way out there is no
-    window left to keep responsive and no next event loop turn to wait for, so
-    blocking briefly is the honest thing to do.
+    A KILL THAT FAILED MUST NOT LOOK LIKE ONE THAT WORKED. `taskkill` reports
+    refusal on stderr with a non-zero code -- "Access is denied", "The process
+    ... not found" -- and a caller that throws both away leaves the launcher
+    saying STOPPING forever with nothing on screen to explain it. That was the
+    shape of this bug the first time, and dropping the exit code is how it
+    comes back.
+    """
+
+    returncode: int
+    message: str
+
+    @property
+    def ok(self) -> bool:
+        return self.returncode == 0
+
+
+def kill_tree(pid: int, timeout: float = 3.0) -> KillResult:
+    """Blocking tree kill, reporting what happened.
+
+    For application exit and for the explicit "free this port" click -- the two
+    places with no next event loop turn to come back on. The ordinary Stop
+    drives `kill_tree_command` through `QProcess` instead, so the window keeps
+    painting; see `services.ServiceProcess.stop`.
     """
     program, arguments = kill_tree_command(pid)
     try:
         completed = subprocess.run(
             [program, *arguments],
             capture_output=True,
+            text=True,
             timeout=timeout,
             creationflags=_NO_WINDOW if WINDOWS else 0,
         )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return completed.returncode == 0
+    except OSError as error:
+        return KillResult(returncode=-1, message=f"{program} could not be run: {error}")
+    except subprocess.TimeoutExpired:
+        return KillResult(
+            returncode=-1, message=f"{program} did not answer within {timeout:g}s"
+        )
+
+    return KillResult(
+        returncode=completed.returncode,
+        message=summarize_output(completed.stdout, completed.stderr),
+    )
+
+
+def summarize_output(stdout: str | None, stderr: str | None) -> str:
+    """Both streams as ONE log line.
+
+    `taskkill` writes success to stdout and refusal to stderr, so a caller that
+    reads only one of them is blind half the time. Folded onto a single line
+    because this lands in a service log beside the child's own output, where a
+    three-line block from the launcher reads as if the service printed it.
+    """
+    joined = " ".join(part.strip() for part in (stdout, stderr) if part and part.strip())
+    return " ".join(joined.split())
 
 
 @dataclass(frozen=True)
@@ -129,8 +171,18 @@ def port_owners(port: int) -> list[PortOwner]:
     except (OSError, subprocess.TimeoutExpired):
         return []
 
+    return [PortOwner(pid=pid, image=_image_name(pid)) for pid in listening_pids(netstat, port)]
+
+
+def listening_pids(netstat_output: str, port: int) -> list[str]:
+    """The pids LISTENING on `port`, from `netstat -ano` output.
+
+    Split out from `port_owners` so the parsing can be tested against the traps
+    rather than trusted -- see `selftest.py`, which feeds it a sample carrying
+    every one of them at once.
+    """
     pids: list[str] = []
-    for line in netstat.splitlines():
+    for line in netstat_output.splitlines():
         parts = line.split()
         if len(parts) < 5 or parts[0].upper() != "TCP":
             continue
@@ -139,8 +191,7 @@ def port_owners(port: int) -> list[PortOwner]:
             continue
         if pid not in pids:
             pids.append(pid)
-
-    return [PortOwner(pid=pid, image=_image_name(pid)) for pid in pids]
+    return pids
 
 
 def _image_name(pid: str) -> str:
