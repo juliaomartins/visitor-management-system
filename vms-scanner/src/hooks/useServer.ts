@@ -15,6 +15,7 @@ import { probeServer, setApiOrigin } from "@/api/client";
 import {
   candidateOrigins,
   normaliseOrigin,
+  storeManualOrigin,
   storeOrigin,
   subscribeToOriginChange,
 } from "@/storage/server";
@@ -118,8 +119,27 @@ export function useServer() {
     const health = await probeServer(origin);
     if (!health) return false;
 
+    /*
+      WRITTEN TO BOTH KEYS, AND THE MANUAL ONE IS THE POINT.
+
+      This used to write only the stored address, which made a stale Settings
+      override a one-way trip: `candidateOrigins` returns a manual address and
+      nothing else, so the address typed here went into a key that the manual
+      one outranks. The rescue worked for the session and was silently thrown
+      away at the next launch -- a guard fixing the same phone every morning
+      with nothing on screen to explain why.
+
+      Somebody typing an address at a door is making the same deliberate choice
+      Settings is for, so it is recorded as one. That also keeps the gear icon
+      honest: `settings.tsx` displays the manual address, so writing anywhere
+      else would leave it showing a different server than the app is using.
+
+      The stored key is written too, as the last-known-good for the day someone
+      taps "Use the built-in address again" and hands control back to failover.
+    */
     await storeOrigin(origin);
     setApiOrigin(origin);
+    await storeManualOrigin(origin);
 
     if (mounted.current) {
       setState({
