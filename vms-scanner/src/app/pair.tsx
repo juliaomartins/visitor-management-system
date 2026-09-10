@@ -48,7 +48,7 @@ import { colors, HIT_SIZE, radius, spacing } from "@/theme";
 
 export default function PairScreen() {
   const t = useT();
-  const { adopt, storageAvailable } = useSession();
+  const { adopt, storageAvailable, storageIsSecure } = useSession();
   const server = useServer();
   const [code, setCode] = useState("");
   const [name, setName] = useState(suggestedDeviceName());
@@ -182,10 +182,16 @@ export default function PairScreen() {
             />
           </View>
 
+          {/*
+            A WARNING, NOT A BLOCK, when the store simply is not hardened.
+            Pairing in a browser works and is useful for a desk station; the
+            operator just needs to know this profile now holds a credential.
+            Only a browser that refuses storage outright still blocks.
+          */}
           {!storageAvailable ? (
-            <Text style={styles.error}>
-              {t("pair.noSecureStorage")}
-            </Text>
+            <Text style={styles.error}>{t("pair.noStorage")}</Text>
+          ) : !storageIsSecure ? (
+            <Text style={styles.warning}>{t("pair.browserStorage")}</Text>
           ) : null}
 
           {error ? (
@@ -361,6 +367,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     backgroundColor: "#2A1116",
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+
+  /* Amber, not red: pairing here works. The operator is being told what this
+     browser is about to hold, not stopped from doing it. */
+  warning: {
+    color: colors.revoked,
+    fontSize: 15,
+    lineHeight: 22,
+    backgroundColor: "#2A2110",
     borderRadius: radius.md,
     padding: spacing.md,
   },
