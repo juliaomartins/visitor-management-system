@@ -88,7 +88,7 @@ needed as a standalone thing, that is where it is.
 | Background jobs | none — **no Celery** |
 | Dashboard | TypeScript, Next.js 16 (App Router), Tailwind v4, TanStack Query, `qrcode`, `react-image-crop` |
 | Scanner | TypeScript, React Native, Expo SDK 57, expo-router, expo-camera, expo-sqlite, reanimated |
-| Scanner on web | builds via `metro.config.js` (`wasm` in `assetExts`) — dev surface only, cannot pair |
+| Scanner on web | localStorage for the queue AND the token — pairs; the camera needs a secure context |
 | Screen | TypeScript, Next.js 16, Tailwind v4, GSAP |
 | Desktop | Python, **PySide6** (Qt 6), packaged with PyInstaller |
 | Badge PDF | **ReportLab** + qrcode — pure Python, no native libraries |
@@ -708,7 +708,8 @@ transparent in every theme so the two do not fight.
   open straight to the camera. **On web there is no keystore — see below.**
 - **Offline SQLite queue is required in v1.** Every scan writes locally first, then syncs
   with backoff, sending its own `scanned_at`. Retrofitting means rewriting every network
-  call, and the router will hiccup on event day.
+  call, and the router will hiccup on event day. **On web the same queue is backed by
+  `localStorage` — `src/storage/queue.web.ts`, see below.**
 - Debounce the camera — one QR in frame must not fire repeated requests.
 - Haptics and sound matter more than the UI. Guards watch the visitor's face, not the
   phone. Green valid / red invalid / amber revoked, with distinct sounds.
@@ -720,46 +721,67 @@ transparent in every theme so the two do not fight.
 possibly a localhost desk station. It is not a replacement for the APK, and the
 reason is not effort — it is one browser rule.
 
-**`metro.config.js` exists solely so the web bundle resolves.** `expo-sqlite` on
-web is a real implementation, not a shim: SQLite compiled to WebAssembly running
-in a worker. Its worker does
+**THE OFFLINE QUEUE ON WEB IS `localStorage`, NOT SQLITE.**
+`src/storage/queue.web.ts` is a second implementation of the same 16-symbol
+surface as `queue.ts`, and Metro picks it for web automatically by the `.web.ts`
+extension — **no caller changes and no `Platform.OS` branch anywhere**, and
+`queue.ts` keeps its SQLite implementation untouched for the phones that ship.
+If you add an export to one, add it to the other; nothing enforces that but a
+crash at runtime on whichever platform you forgot.
 
-```ts
-import wasmModule from './wa-sqlite/wa-sqlite.wasm';   // web/worker.ts:22
-locateFile: () => wasmModule,                          // web/worker.ts:782
-```
+`expo-sqlite` does have a real web build — SQLite compiled to WebAssembly in a
+worker — and it did not survive contact with a phone browser: `Uncaught Error:
+Unknown` out of `expo-sqlite/web/WorkerChannel.ts:64`, thrown before any query
+ran. Its persistent VFS wants OPFS, which is secure-context-only (below) and
+fussy about running inside a worker the page spawned. Chasing that buys a
+WebAssembly dependency to store a few hundred rows.
 
-Metro's default `assetExts` has no `wasm`, and `sourceExts` is only
-js/jsx/json/ts/tsx — so that import resolved to nothing and **every** web bundle
-failed with *"Unable to resolve module ./wa-sqlite/wa-sqlite.wasm"*. The file was
-in `node_modules` the whole time; Metro simply had no rule for it.
+What is lost is worth stating: localStorage is origin-scoped and ~5MB — thousands
+of queued scans, so size is not the concern — but **clearing site data clears the
+queue**, where a phone's SQLite file would survive. The two collections mirror
+the two tables exactly, including the rule that matters: `vms.queue.scans` holds
+raw badge tokens and rows are deleted the moment the server accepts them, while
+`vms.queue.visitors` is keyed on a digest and never holds a raw token. Both
+`crypto.subtle` and `crypto.randomUUID` are secure-context-only, so that file
+carries deterministic fallbacks — FNV-1a for the cache key, a `Math.random` v4
+for the idempotency key. Neither is a security boundary; read the comments there
+before "upgrading" either one.
 
-It belongs in `assetExts`, **not** `sourceExts`. Emscripten's `locateFile` must
-return a URL the runtime then fetches, which is exactly what an asset import
-yields. As source, Metro would try to parse 600KB of WebAssembly as JavaScript.
+*Verified by `npx expo export --platform web`: no `.wasm` is emitted, the 139KB
+`worker-*.js` bundle is gone, `wa-sqlite` and `WorkerChannel` appear zero times,
+and `vms.queue.scans` / `vms.queue.visitors` appear in the bundle.*
 
-*Verified by export: the bundle builds, the `.wasm` lands in
-`assets/node_modules/expo-sqlite/web/wa-sqlite/` and the worker references that
-path.* **If that error persists after this file exists, it is the Metro cache —
-run `npx expo start --web -c` once.**
+**`metro.config.js` is a safety net now, not a requirement.** It puts `wasm` in
+`assetExts` because Metro's default has no rule for it — `sourceExts` is only
+js/jsx/json/ts/tsx — and every web bundle used to fail with *"Unable to resolve
+module ./wa-sqlite/wa-sqlite.wasm"* while the file sat in `node_modules` the
+whole time. Nothing imports a `.wasm` any more, so it does nothing today; it is
+kept because that error names a missing file that is not missing, and anything
+that pulls WebAssembly back in would hit it again with no clue why. It belongs in
+`assetExts` and **not** `sourceExts`: Emscripten's `locateFile` must return a URL
+the runtime then fetches, which is what an asset import yields, whereas source
+would try to parse 600KB of WebAssembly as JavaScript.
 
-**Three things do not work, and two of them are the same rule.**
+**ONE thing still does not work over LAN `http://`, and it is the camera.**
 
 | | `http://localhost:8081` | `http://<lan-ip>:8081` on a phone |
 |---|---|---|
 | Camera (`getUserMedia`) | works | **`navigator.mediaDevices` is undefined** |
-| SQLite persistence (OPFS) | works | **throws; falls back to `MemoryVFS`** |
-| Device token (SecureStore) | **no web build at all** | **no web build at all** |
+| Offline queue | localStorage — works | localStorage — works |
+| Device token | localStorage — works | localStorage — works |
 
-The first two are one cause: **a secure context**. `getUserMedia` and
-`navigator.storage` are both secure-context APIs, and browsers exempt `localhost`
-only — never a LAN IP over `http://`. The library says so itself, in
-`AccessHandlePoolVFS.js:221`:
+The bottom two rows used to be failures and are not any more, for the two reasons
+below. The camera is the one that no amount of storage design fixes.
+
+**A secure context** is the rule behind all of it. `getUserMedia`,
+`navigator.storage` (OPFS), `crypto.subtle` and `crypto.randomUUID` are all
+secure-context APIs, and browsers exempt `localhost` only — never a LAN IP over
+`http://`. wa-sqlite said so itself, in `AccessHandlePoolVFS.js:221`:
 
 > `navigator.storage not available (not supported by your browser or context is not secure)`
 
-There is a `MemoryVFS` fallback, so over LAN http the offline queue lives in RAM
-and is lost on reload — the opposite of what an offline queue is for.
+`localStorage` is deliberately *not* on that list: it works on a plain-http LAN
+origin, which is the whole reason both the queue and the token now use it.
 
 And **HARD CONSTRAINT 9 makes the LAN http deliberately**, because an HTTPS page
 cannot open a `ws://` socket. Serving the scanner over HTTPS to fix the camera
@@ -807,7 +829,7 @@ that is the secure-context rule above and no amount of storage fixes it. To scan
 in a browser you need one of:
 
 1. **`http://localhost:8081` on the machine running Expo** — localhost is a
-   secure context, so camera and OPFS both work. This is the check-in desk case.
+   secure context, so `getUserMedia` works there. This is the check-in desk case.
 2. **Chrome's insecure-origin allowlist, per device.** In `chrome://flags`, set
    *"Insecure origins treated as secure"* to `http://<lan-ip>:8081` and enable it.
    A device-configuration change, not a code change, and it must be repeated on
@@ -860,7 +882,7 @@ package, because `vms-contracts` is generated and nothing hand-written goes in i
 |---|---|---|---|
 | `vms-dashboard` | `lib/locales/{en,pt,tet}.ts` — 365 keys | `lib/i18n.tsx` | cookie `vms.locale` |
 | `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 29 keys | `lib/i18n.tsx` | cookie `vms.screen.locale` |
-| `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 72 keys | `src/i18n.tsx` | SecureStore `vms.locale` |
+| `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 72 keys | `src/i18n.tsx` | SecureStore `vms.locale` (native only — see below) |
 | `vms-desktop` | `locales/{en,pt,tet}.py` — 53 keys | `i18n.py` | `QSettings` (registry) |
 
 The desktop app uses **no `QTranslator` and no gettext**. Qt's own machinery
@@ -904,6 +926,12 @@ reader consults to choose a voice.
 The scanner has no server render and no cookie, so it reads SecureStore
 asynchronously and the launch screen holds until that lands — the same gate the
 device token already uses.
+
+**On web the scanner's language does not persist.** `locale.ts` guards its
+SecureStore calls rather than crashing, so the switcher works for the session and
+the choice is forgotten on reload. The device token was worth a `localStorage`
+exception; a language preference on a dev surface is not, and the switcher is on
+the first screen either way.
 
 **3. Tetum has no CLDR data in any browser.** `Intl.DateTimeFormat("tet")`
 silently falls back to the host locale, which on a kiosk is whatever Windows was
@@ -1170,9 +1198,9 @@ cd vms-scanner   && npx expo start --web -c    # dev surface only — see the sc
 
 The `-c` on Expo matters after any `.env` change: `EXPO_PUBLIC_*` is inlined at bundle
 time, so without clearing the cache the phone keeps using the previous server address.
-It matters a second time on web: the cache also holds the *resolution failure* for
-`wa-sqlite.wasm`, so a stale cache keeps reporting a bug that `metro.config.js`
-has already fixed.
+It matters a second time on web, where the cache holds *resolution* decisions:
+after a `.web.ts` file is added or a dependency drops off the web path, a stale
+cache keeps serving — and keeps reporting — the previous bundle's errors.
 
 Formatting: `black` + `ruff` on the backend, strict TypeScript on the frontends.
 
