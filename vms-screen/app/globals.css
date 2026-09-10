@@ -114,10 +114,65 @@
 
   --color-expo: #00309c;
   --color-expo-deep: #e5eaf5;
+
+  /* See the note beside the dark value: on white the back layer recedes by
+     fading, not by darkening. */
+  --tais-back: opacity(0.42) brightness(1.05);
 }
 
 :root {
   color-scheme: dark;
+
+  /*
+   * THE TAIS'S GEOMETRY, AND THE ROOM THE STAGE LEAVES IT. All four here.
+   *
+   * `components/TaisWave.tsx` draws from these and the arrival stage pads with
+   * `--tais-clear`, so the cloth and the clearance cannot drift apart and leave
+   * a name sitting on the weave. That is not hypothetical: the first cut of
+   * this pass wrote the clearance as its own guess and put "Ministry of Foreign
+   * Affairs and Cooperation" straight across the crest.
+   *
+   * `24vh - 46px` RATHER THAN A PLAIN `24vh`, and the subtraction is the whole
+   * point. The band has to be a quarter of a wall — the tile is 5:1, so
+   * anything shallower crops the wave's shape away or stretches the weave
+   * sideways — and it has to be almost nothing on a 375px-tall landscape phone,
+   * where a quarter of the height plus its clearance is more than the layout
+   * owns. A fixed `vh` cannot be both. Subtracting a constant makes the share
+   * grow with the panel: 44px of a phone, 213px of 1080p, 330px of anything
+   * taller than about 1550.
+   *
+   * That cliff is real and it is sharp. At 667x375 the difference between 56px
+   * and 77px of clearance is the difference between a 36-character name setting
+   * on two lines and FitText falling to its floor and wrapping to four, over the
+   * header and off the bottom of the screen. Measured, both ways.
+   */
+  --tais-band: clamp(44px, calc(24vh - 46px), 330px);
+
+  /* The ribbon, as multiples of the band: how much taller it is, and how far
+     below the band it hangs. It breaks out of the band on purpose — a front
+     layer that stops where the back one does is a stripe, not a second piece
+     of cloth. */
+  --tais-ribbon: 1.34;
+  --tais-ribbon-drop: 0.07;
+
+  /* Where the content has to stop: the ribbon's own top edge, plus a little.
+     Derived from the two above rather than written as a number, so moving the
+     ribbon moves the clearance with it. */
+  --tais-clear: calc(
+    var(--tais-band) * (var(--tais-ribbon) - var(--tais-ribbon-drop) + 0.04)
+  );
+
+  /*
+   * How the tais's back layer is held behind its front one.
+   *
+   * On the dark stage "further away" is darker, so the base cloth is halved and
+   * the lit ribbon crosses in front of it. On white that reading inverts —
+   * a half-brightness photograph on a white ground is the most contrasted thing
+   * in the room, and the layer meant to recede jumps forward instead. So light
+   * mode fades it rather than darkening it. Same two layers, same depth, and
+   * the component does not have to know which mode it is in.
+   */
+  --tais-back: brightness(0.5);
 }
 
 .light {
