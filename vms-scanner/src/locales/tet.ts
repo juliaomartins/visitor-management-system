@@ -54,8 +54,10 @@ export const tet: Messages = {
   "pair.namePlaceholder": "Odamatan norte",
   "pair.nameA11y": "Aparellu naran",
   "pair.failed": "Pareia falla. Koko fali.",
-  "pair.noSecureStorage":
-    "Aparellu ne\u2019e laiha armazenamentu seguru, tan ne\u2019e la bele rai token. Uza leit\u00f3r iha telem\u00f3vel, la\u2019\u00f3s iha navegad\u00f3r.",
+  "pair.noStorage":
+    "Navegad\u00f3r ne\u2019e la rai buat ida, tan ne\u2019e la bele rai token. Sai husi navegasaun privada, ka uza leit\u00f3r iha telem\u00f3vel.",
+  "pair.browserStorage":
+    "Navegad\u00f3r ne\u2019e laiha kofre seguru, tan ne\u2019e token rai iha armazenamentu baibain. Di\u2019ak ba postu ne\u2019eb\u00e9 ita kontrola \u2014 revoga aparellu ne\u2019e iha pain\u00e9l bainhira eventu remata.",
   "pair.finding": "Buka servid\u00f3r hela\u2026",
   "pair.noServer": "La hetan servid\u00f3r",
 
