@@ -271,28 +271,41 @@ class BadgeRosterExportView(APIView):
 
 
 class BadgeCredentialExportView(APIView):
-    """The visitor list WITH a scannable QR per row — by reissuing every one.
+    """The card producer's sheet: every registered field, the photo, and the QR.
 
-    This is the file a card producer needs, and the reason it is destructive is
-    the reason the system is safe: the raw token exists only on the printed card
-    and in the response that created it. To put a working QR in a spreadsheet the
-    server has to mint a new one, which retires the card the visitor is holding.
+    NOT DESTRUCTIVE, AND THIS DOCSTRING SAID THE OPPOSITE FOR LONGER THAN IT
+    SHOULD HAVE. It read "by reissuing every one", on the old reasoning that a
+    raw token existed only on the printed card so a spreadsheet QR had to be
+    freshly minted. Tokens are derived now: `collect_badge_tokens` recomputes
+    the code already on the card, `issue_badge_token` is idempotent, and
+    exporting retires nothing.
+
+    That stale claim reached three places — here, the schema description below,
+    and the workbook's own "Read me" tab, which instructed the reader to
+    "collect and destroy the old cards". Only the dashboard's confirmation
+    dialog had been corrected. All four now agree.
+
+    Same banner and layout as `roster.xlsx`, plus the two columns only whoever
+    prints the cards needs: the badge serial and the QR payload as text.
     """
 
     permission_classes = [IsAdmin]
 
     @extend_schema(
         operation_id="badges_export_create",
-        summary="Reissue badges and export them as .xlsx with QR codes",
+        summary="Export badges as .xlsx with photos and QR codes",
         description=(
-            "DESTRUCTIVE. Every visitor in the file is given a NEW badge token, "
-            "which invalidates the QR on any card already printed for them.\n\n"
-            "This is not a choice the endpoint makes: the raw token is stored "
-            "nowhere, so a scannable QR can be minted but never recovered.\n\n"
-            "The workbook carries the QR as an image and the exact payload as "
-            "text, so a card producer can re-render it at their own size. A "
-            "second sheet spells out what the file is, because a spreadsheet "
-            "outlives the click that made it.\n\n"
+            "NON-DESTRUCTIVE. Every QR in the file is the code ALREADY on that "
+            "visitor's card, recomputed from the derived token, so nothing is "
+            "reissued and no printed card stops scanning. Exporting twice "
+            "produces an identical file.\n\n"
+            "A printing worklist: a title banner naming the event, then No. / "
+            "Name / Country / Organization / Category / Badge Serial / Photo / "
+            "QR Code / Registered / QR payload from row 5, with the banner "
+            "frozen. The payload is the exact string the QR encodes, so a card "
+            "producer can re-render it at their own size.\n\n"
+            "It therefore contains working credentials, and a second sheet says "
+            "so, because a spreadsheet outlives the click that made it.\n\n"
             "Omit `visitor_ids` to take every visitor who has not been deleted."
         ),
         request=BadgeExportRequestSerializer,

@@ -466,7 +466,7 @@ DELETE /api/v1/visitors/{id}/permanent       erase for good        [admin]
 POST   /api/v1/badges/card                   one card PDF, from a raw token
 POST   /api/v1/badges/reissue-sheet          A4 sheet PDF. Non-destructive.
 GET    /api/v1/badges/roster.xlsx            badge printing worklist
-POST   /api/v1/badges/export                 .xlsx WITH working QR codes
+POST   /api/v1/badges/export                 worklist + photo + QR + payload
 POST   /api/v1/badges/reissue                ROTATES TOKENS. No client calls it.
 
 POST   /api/v1/devices/pairing-code          generate setup code   [admin]
@@ -586,9 +586,32 @@ Two things about that sheet that will bite whoever edits it next:
   every image in the wrong cell, silently, in a file nobody opens until the
   morning they print from it.
 
-`build_credential_workbook` deliberately does **not** share this banner. It
-still uses `_write_header`, a single heading row at row 1, so the two exports no
-longer look alike — only the roster was asked for.
+**BOTH exports share that banner now**, and the paragraph here said the
+opposite for one session: `build_credential_workbook` was asked to match, so
+`_write_header` and its two graphite constants are gone and `_write_banner` has
+two callers. `POST /badges/export` carries the wider table — `No. | Name |
+Country | Organization | Category | Badge Serial | Photo | QR Code | Registered
+| QR payload` — because it is the card producer's sheet: the serial is printed
+on the card, the category decides the amber VIP ring, and the payload is the
+exact string the QR encodes so it can be re-rendered at another size.
+
+**`POST /badges/export` IS NOT DESTRUCTIVE, and three separate places said it
+was.** `collect_badge_tokens` recomputes the derived token and
+`issue_badge_token` is idempotent — its own docstring says "NOT A MINT" — so
+exporting retires nothing and exporting twice produces an identical file. The
+stale claim had reached:
+
+| where | said |
+|---|---|
+| `BadgeCredentialExportView` docstring | "by reissuing every one" |
+| its `@extend_schema` description, **so `openapi.yaml` too** | "DESTRUCTIVE… invalidates the QR on any card already printed" |
+| the workbook's own "Read me" tab | *"collect and destroy the old cards"* |
+| the dashboard's export dialog | "Nothing is changed by exporting" — the only correct one |
+
+The tab is the one that mattered: it instructed whoever opened the file to
+destroy 250 working badges, on the strength of a sentence nobody revisited after
+tokens became derived. All four now agree, and the tab keeps the warning that IS
+true — anyone holding the file can produce a badge that scans.
 
 Only `/devices/pair` is reachable without a token.
 

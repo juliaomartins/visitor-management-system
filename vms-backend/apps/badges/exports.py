@@ -68,8 +68,6 @@ WHEN_FONT = Font(italic=True, size=10, color="4A5560")
 COLUMN_FILL = PatternFill("solid", fgColor="CFD9F0")
 COLUMN_FONT = Font(color="00309C", bold=True, size=10)
 
-HEADER_FILL = PatternFill("solid", fgColor="111827")
-HEADER_FONT = Font(color="FFFFFF", bold=True, size=10)
 VIP_FILL = PatternFill("solid", fgColor="FDF5E3")
 BODY_FONT = Font(size=10)
 MONO_FONT = Font(name="Consolas", size=10)
@@ -141,10 +139,11 @@ def _write_banner(sheet, columns: list[tuple[str, int]]) -> None:
     in, and a printing worklist that looks like every other list on the desk is
     one nobody has to be taught to read.
 
-    `_write_header` below stays as it was and is NOT reused here: it writes a
-    single heading row at row 1 and the credential export still wants exactly
-    that. The two sheets therefore no longer look alike, which is deliberate --
-    only the roster was asked for.
+    BOTH workbooks use this. The credential export had its own single heading
+    row at row 1 until it was asked to match; `_write_header` and the two
+    graphite constants it used went with it, because one banner writer with two
+    callers is the whole point and a second unused one is just somewhere for the
+    next change to go wrong.
     """
     span = f"A{{row}}:{get_column_letter(len(columns))}{{row}}"
 
@@ -183,18 +182,6 @@ def _write_banner(sheet, columns: list[tuple[str, int]]) -> None:
     sheet.row_dimensions[4].height = 22
     # Keep the banner and the headings visible through 250 rows.
     sheet.freeze_panes = f"A{FIRST_DATA_ROW}"
-
-
-def _write_header(sheet, columns: list[tuple[str, int]]) -> None:
-    for index, (label, width) in enumerate(columns, start=1):
-        cell = sheet.cell(row=1, column=index, value=label)
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-        cell.alignment = Alignment(vertical="center", horizontal="left")
-        sheet.column_dimensions[get_column_letter(index)].width = width
-    sheet.row_dimensions[1].height = 24
-    # Keep the header visible while somebody scrolls 250 rows.
-    sheet.freeze_panes = "A2"
 
 
 def _local_day(value: datetime) -> str:
@@ -236,20 +223,21 @@ ROSTER_COLUMNS = [
 ]
 
 
-def _roster_column(label: str) -> int:
-    """1-based index of a roster column, looked up by its heading.
+def _column_index(columns: list[tuple[str, int]], label: str) -> int:
+    """1-based index of a column, looked up by its heading.
 
     Derived rather than written twice. Photo and QR moved three places to the
-    right when this sheet was reshaped, and nothing had to change here: an
-    anchor written as a literal would have dropped every image into the wrong
-    cell, silently, in a file nobody opens until the morning they print from it.
+    right when the roster was reshaped and again when the credential sheet
+    gained a photo, and nothing had to change at either call site: an anchor
+    written as a literal would have dropped every image into the wrong cell,
+    silently, in a file nobody opens until the morning they print from it.
     """
-    return 1 + [heading for heading, _ in ROSTER_COLUMNS].index(label)
+    return 1 + [heading for heading, _ in columns].index(label)
 
 
-ROSTER_NAME_COLUMN = _roster_column("Name")
-ROSTER_PHOTO_COLUMN = _roster_column("Photo")
-ROSTER_QR_COLUMN = _roster_column("QR Code")
+ROSTER_NAME_COLUMN = _column_index(ROSTER_COLUMNS, "Name")
+ROSTER_PHOTO_COLUMN = _column_index(ROSTER_COLUMNS, "Photo")
+ROSTER_QR_COLUMN = _column_index(ROSTER_COLUMNS, "QR Code")
 
 
 def _photo_buffer(visitor: Visitor) -> io.BytesIO | None:
@@ -338,44 +326,66 @@ def build_roster_workbook(visitors: list[Visitor]) -> bytes:
     return _save(workbook)
 
 
+# Everything a visitor has once they are registered, in the order somebody
+# printing cards reads it: who, where from, which kind of badge, the serial that
+# goes on the card, the two things that get printed, when they registered, and
+# the payload last because it is for a machine rather than a person.
+#
+# Same headings and spelling as the roster, so the two sheets can sit beside
+# each other on the same desk without a second reading.
 CREDENTIAL_COLUMNS = [
-    ("Badge serial", 18),
-    ("Full name", 30),
-    ("Country", 20),
-    ("Organisation", 30),
+    ("No.", 6),
+    ("Name", 30),
+    ("Country", 18),
+    ("Organization", 28),
     ("Category", 12),
+    ("Badge Serial", 18),
+    ("Photo", 11),
+    ("QR Code", 14),
     ("Registered", 20),
-    ("QR code", 16),
     ("QR payload", 46),
 ]
 
+CREDENTIAL_NAME_COLUMN = _column_index(CREDENTIAL_COLUMNS, "Name")
+CREDENTIAL_SERIAL_COLUMN = _column_index(CREDENTIAL_COLUMNS, "Badge Serial")
+CREDENTIAL_PHOTO_COLUMN = _column_index(CREDENTIAL_COLUMNS, "Photo")
+CREDENTIAL_QR_COLUMN = _column_index(CREDENTIAL_COLUMNS, "QR Code")
+CREDENTIAL_PAYLOAD_COLUMN = _column_index(CREDENTIAL_COLUMNS, "QR payload")
+
 
 def build_credential_workbook(issued: list[tuple[Visitor, str]]) -> bytes:
-    """The roster plus a scannable QR per row.
+    """Every registered field, the photograph, and a scannable QR per row.
 
-    `issued` is (visitor, RAW token) as returned by `reissue_badges`. Each QR is
-    the raw token and nothing else — no JSON, no envelope, no id — so a scanner
+    The card producer's sheet: the same banner and layout as the roster, plus
+    the two columns only whoever prints the cards needs — the badge serial that
+    goes on the card, and the QR payload as text.
+
+    `issued` is (visitor, RAW token) from `collect_badge_tokens`. Each QR is the
+    raw token and nothing else — no JSON, no envelope, no id — so a scanner
     posts back exactly what it read.
 
     The payload is written out as text beside the image on purpose. A card
     producer working from this file needs the string to re-render the QR at their
     own size and error-correction level; a picture alone would force them to
     scan the picture to find out what it says.
+
+    NOTHING HERE IS REISSUED, and this docstring used to say otherwise. See
+    `collect_badge_tokens`: the token is derived, so this recomputes the code
+    already on the card. Export the same visitor ten times and every sheet
+    carries the same working QR.
     """
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = _sheet_title(len(issued), with_qr=True)
 
-    _write_header(sheet, CREDENTIAL_COLUMNS)
-
-    qr_column = len(CREDENTIAL_COLUMNS) - 1  # 1-based index of the "QR code" column
+    _write_banner(sheet, CREDENTIAL_COLUMNS)
 
     # openpyxl reads each image lazily when the workbook is saved, so the buffers
     # have to outlive this loop.
     buffers = []
 
     for offset, (visitor, raw_token) in enumerate(issued):
-        row = offset + 2
+        row = offset + FIRST_DATA_ROW
         sheet.row_dimensions[row].height = QR_ROW_HEIGHT
 
         _write_row(
@@ -383,24 +393,43 @@ def build_credential_workbook(issued: list[tuple[Visitor, str]]) -> bytes:
             row,
             visitor,
             [
-                visitor.badge_serial,
+                offset + 1,  # the sheet's own numbering, not an id of anything
                 visitor.full_name,
                 visitor.country,
                 visitor.organization or "",
                 _category_label(visitor),
+                visitor.badge_serial,
+                "",  # the photo sits in this cell
+                "",  # and the QR in this one
                 _local_day(visitor.created_at),
-                "",  # the image sits in this cell
                 raw_token,
             ],
         )
 
-        buffer = _qr_buffer(raw_token)
-        buffers.append(buffer)
-        sheet.add_image(_anchored(buffer, qr_column, row, (QR_PIXELS, QR_PIXELS)))
+        number = sheet.cell(row=row, column=1)
+        number.alignment = Alignment(vertical="center", horizontal="center")
 
-    payload_column = get_column_letter(len(CREDENTIAL_COLUMNS))
-    for row in range(2, len(issued) + 2):
-        sheet[f"{payload_column}{row}"].font = MONO_FONT
+        # Machine-issued strings, set in mono so O and 0 stay apart. The serial
+        # is read aloud at a desk and the payload is retyped into a card
+        # template; both are worth the font.
+        sheet.cell(row=row, column=CREDENTIAL_SERIAL_COLUMN).font = MONO_FONT
+        sheet.cell(row=row, column=CREDENTIAL_PAYLOAD_COLUMN).font = MONO_FONT
+
+        if not visitor.is_active:
+            sheet.cell(row=row, column=CREDENTIAL_NAME_COLUMN).font = DIM_FONT
+
+        photo = _photo_buffer(visitor)
+        if photo is not None:
+            buffers.append(photo)
+            sheet.add_image(
+                _anchored(photo, CREDENTIAL_PHOTO_COLUMN, row, PHOTO_DISPLAY)
+            )
+
+        qr = _qr_buffer(raw_token)
+        buffers.append(qr)
+        sheet.add_image(
+            _anchored(qr, CREDENTIAL_QR_COLUMN, row, (QR_PIXELS, QR_PIXELS))
+        )
 
     _add_warning_sheet(workbook, len(issued))
     return _save(workbook)
@@ -410,40 +439,61 @@ def _add_warning_sheet(workbook: Workbook, count: int) -> None:
     """A second tab saying what this file is, because the file outlives the click.
 
     A spreadsheet gets forwarded, renamed and opened weeks later by somebody who
-    was not in the room. The warning has to travel with it.
+    was not in the room, so what it is has to travel with it.
+
+    THIS TAB USED TO BE WRONG IN THE MOST EXPENSIVE DIRECTION. It said every
+    token had been newly issued and instructed the reader to "collect and
+    destroy the old cards" -- which, once tokens became derived, meant telling
+    somebody to destroy 250 working badges on the strength of a sentence nobody
+    had revisited. The endpoint stopped reissuing; this tab did not notice.
     """
     sheet = workbook.create_sheet("Read me")
     sheet.column_dimensions["A"].width = 100
 
     lines = [
-        ("READ THIS BEFORE USING THE FILE", True),
+        ("WHAT THIS FILE IS", True),
         ("", False),
         (
-            f"Every one of these {count} badge tokens was newly issued when this file "
-            "was generated.",
-            False,
-        ),
-        (
-            "Any card printed for these visitors BEFORE that moment no longer scans. "
-            "Collect and destroy the old cards.",
+            f"A printing worklist for {count} visitor badges: every registered "
+            "field, the photograph, and the QR code that goes on the card.",
             False,
         ),
         ("", False),
+        ("NOTHING WAS REISSUED TO MAKE IT.", True),
         (
-            "The QR payload column is the exact string each QR encodes. Print it as-is: "
-            "no JSON, no prefix, no URL.",
+            "The QR beside each name is the code ALREADY on that visitor's card. "
+            "Exporting changed nothing, and every card printed before this file "
+            "was made still scans. Do not collect or destroy anything.",
             False,
         ),
         (
-            "This file is the ONLY copy of these tokens. The server keeps a hash and "
-            "cannot reproduce them — if the file is lost, the badges must be reissued "
-            "again.",
+            "Exporting again later produces an identical file, so losing this one "
+            "costs nothing but the time to export it again.",
             False,
         ),
         ("", False),
         (
-            "Treat it like the printed cards themselves: anyone holding this file can "
-            "make a working badge.",
+            "The QR payload column is the exact string each QR encodes. Print it "
+            "as-is: no JSON, no prefix, no URL.",
+            False,
+        ),
+        ("", False),
+        ("BUT TREAT IT LIKE THE PRINTED CARDS THEMSELVES.", True),
+        (
+            "Anyone holding this file can produce a badge that scans. Send it the "
+            "way you would send the cards, not the way you would send a guest "
+            "list.",
+            False,
+        ),
+        (
+            "To stop one badge, deactivate that visitor in the dashboard. "
+            "Deleting this file does not stop anything.",
+            False,
+        ),
+        ("", False),
+        (
+            "A name set in grey italics is a visitor who is already deactivated: "
+            "their QR will not scan, so there is no point printing that card.",
             False,
         ),
     ]

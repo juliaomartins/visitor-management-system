@@ -102,12 +102,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reissue badges and export them as .xlsx with QR codes
-         * @description DESTRUCTIVE. Every visitor in the file is given a NEW badge token, which invalidates the QR on any card already printed for them.
+         * Export badges as .xlsx with photos and QR codes
+         * @description NON-DESTRUCTIVE. Every QR in the file is the code ALREADY on that visitor's card, recomputed from the derived token, so nothing is reissued and no printed card stops scanning. Exporting twice produces an identical file.
          *
-         *     This is not a choice the endpoint makes: the raw token is stored nowhere, so a scannable QR can be minted but never recovered.
+         *     A printing worklist: a title banner naming the event, then No. / Name / Country / Organization / Category / Badge Serial / Photo / QR Code / Registered / QR payload from row 5, with the banner frozen. The payload is the exact string the QR encodes, so a card producer can re-render it at their own size.
          *
-         *     The workbook carries the QR as an image and the exact payload as text, so a card producer can re-render it at their own size. A second sheet spells out what the file is, because a spreadsheet outlives the click that made it.
+         *     It therefore contains working credentials, and a second sheet says so, because a spreadsheet outlives the click that made it.
          *
          *     Omit `visitor_ids` to take every visitor who has not been deleted.
          */

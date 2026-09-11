@@ -140,9 +140,19 @@ export async function downloadRoster(): Promise<void> {
 }
 
 /**
- * DESTRUCTIVE. A spreadsheet with a scannable QR beside every visitor, which is
- * only possible by minting each of them a new token — so every card already
- * printed for the people in this file stops working.
+ * The card producer's sheet: every registered field, the photograph, the QR and
+ * its payload as text, laid out with the same banner as the roster.
+ *
+ * NOT DESTRUCTIVE, and this comment said it was — four lines under a header on
+ * this same file announcing that every endpoint here is non-destructive. The
+ * token is derived, so `collect_badge_tokens` recomputes the code already on
+ * the card; exporting retires nothing and exporting twice gives an identical
+ * file. `POST /badges/reissue` is still the only thing that rotates, and it is
+ * still deliberately not wrapped here.
+ *
+ * It does hand over working credentials, which is what the confirmation dialog
+ * in front of it is for — and that dialog already said the right thing while
+ * this comment did not.
  *
  * Omit `visitorIds` to take everyone still registered.
  */
