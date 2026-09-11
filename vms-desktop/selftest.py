@@ -78,8 +78,26 @@ for spec in (config.dashboard_spec(config.Mode.DEV), config.screen_spec(config.M
     check(f"{spec.name}: correct port", str(spec.port) in spec.arguments)
     check(f"{spec.name}: dev script", "dev" in spec.arguments)
 
-prod = config.dashboard_spec(config.Mode.PROD)
-check("production uses `npm start`", "start" in prod.arguments and "dev" not in prod.arguments)
+print("\nconfig — production runs Next through node, never a .cmd shim")
+# MEASURED, not preferred. `npm run start` and `npx next start` are both FOUR
+# processes deep on Windows -- cmd -> node -> cmd -> node -- because both are
+# batch shims. `node <next bin>` is ONE. That is the difference between the pid
+# this launcher holds being the server that owns the port, and it being a
+# cmd.exe whose grandchild owns the port and outlives the kill.
+for spec, port in (
+    (config.dashboard_spec(config.Mode.PROD), 3000),
+    (config.screen_spec(config.Mode.PROD), 3001),
+):
+    line = " ".join([spec.program, *spec.arguments])
+    check(f"{spec.name}: runs node directly", spec.program == "node", spec.program)
+    check(f"{spec.name}: points at next's own bin", spec.arguments[0].endswith("next"), spec.arguments[0])
+    check(f"{spec.name}: the next bin exists", Path(spec.arguments[0]).is_file(), spec.arguments[0])
+    check(f"{spec.name}: starts, does not dev", "start" in spec.arguments and "dev" not in spec.arguments)
+    check(f"{spec.name}: binds every interface", "-H" in spec.arguments and spec.arguments[spec.arguments.index("-H") + 1] == "0.0.0.0")
+    check(f"{spec.name}: port {port}", "-p" in spec.arguments and spec.arguments[spec.arguments.index("-p") + 1] == str(port))
+    check(f"{spec.name}: no npm or npx shim", "npm" not in line and "npx" not in line, line)
+
+check("dev is untouched and still npm run dev", config.dashboard_spec(config.Mode.DEV).program == config.NPM)
 check("production build command is `npm run build`", config.build_args() == ["run", "build"])
 
 print("\nconfig — the scanner is optional and has no assumed port")
@@ -165,6 +183,28 @@ broken = preflight.interpreter_check(impostor)
 check("a file that exists but cannot run fails too", not broken.ok, broken.detail)
 check("and it is not reported as merely missing", "Not found" not in broken.detail, broken.detail)
 impostor.unlink()
+
+print("\npreflight — production refuses to start an app that was never built")
+# `next start` with no build prints "Ready in 341ms" to stdout and THEN fails
+# with exit 1. Measured. That is the same shape as the uvicorn.exe bug: a card
+# that flicks RUNNING and dies, above a log whose last cheerful line says the
+# opposite. Checking for .next/BUILD_ID turns it into a refusal.
+built = preflight.build_check("Dashboard", config.DASHBOARD_DIR)
+check("a built app passes", built.ok, built.detail)
+
+unbuilt = preflight.build_check("Dashboard", Path(os.environ.get("TEMP", ".")))
+check("an unbuilt app fails", not unbuilt.ok)
+check("and the failure names the build command", "npm run build" in unbuilt.detail, unbuilt.detail)
+check("and it is blocking", unbuilt.blocking)
+
+check(
+    "dev mode does not ask for a build",
+    all("built" not in c.label.lower() for c in preflight.run(include_scanner=False, mode=config.Mode.DEV).checks),
+)
+check(
+    "production mode does",
+    any("built" in c.label.lower() for c in preflight.run(include_scanner=False, mode=config.Mode.PROD).checks),
+)
 
 print("\nprocesses — a failed tree kill must not look like a success")
 # A pid that cannot exist. Real `taskkill`, real exit code, no mock: the entire
