@@ -743,16 +743,26 @@ number beside every figure — never colour alone.
 with it, so the `fill` was invalid, SVG fell back to black, and duplicates
 rendered identical to refused. A legend claiming three series showed two.
 
-**Motion on the dashboard is one CSS rise on the hero block, and that is a
-correction.** The figure used to count up on `requestAnimationFrame`, which
+**THE STAT CARDS ARE FOUR EQUAL TILES, AND THAT IS A DECISION — DO NOT
+"IMPROVE" IT INTO A HIERARCHY.** A redesign replaced them with one large
+"Arrived" figure over a banded strip, on the reasoning that four identical
+cards give "Registered" the same weight as "Arrived" and read as a grid of
+widgets. The owner of this system looked at both and chose the four cards, for
+`/dashboard` and for the report recap alike. `components/dashboard/StatTile.tsx`
+is that original, restored from git rather than rewritten, sparklines included.
+The argument for a hierarchy is written down here so nobody has to rediscover
+it — and so nobody mistakes the flat layout for something nobody thought about.
+
+**There is no entrance animation on the dashboard, and that is the second
+correction.** The hero figure counted up on `requestAnimationFrame`, which
 renders a number that is briefly **wrong** — headless screenshots caught it at
 0 and at 75 where the truth was 220, and Chrome throttles rAF in background
-tabs, which this repo already documents for the kiosk. The arrivals line also
-used to draw itself in from a dash pattern, which means the line is invisible
-until the animation finishes; screenshots caught that frozen partway with no
-line at all. **A mark whose visibility depends on an animation completing is a
-mark that is sometimes missing.** Both are gone. `.vms-rise` animates opacity
-and transform only, and cannot display a value that is not true.
+tabs, which this repo already documents for the kiosk. The arrivals line drew
+itself in from a dash pattern, which means the line is invisible until the
+animation finishes; screenshots caught that frozen partway with no line at all.
+**A mark whose visibility depends on an animation completing is a mark that is
+sometimes missing.** Both are gone, and the `.vms-rise` keyframe went with the
+hero it was written for.
 
 **Verifying these panels needs no backend.** They are driven entirely by props,
 so a throwaway route rendering them with fixed data can be photographed with

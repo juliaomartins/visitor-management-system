@@ -226,3 +226,24 @@ offending elements. The narrow layout was verified properly through a 400px
 The padding fix in `useMeasuredWidth` was kept on its own merits: `clientWidth`
 includes padding while `contentRect.width` does not, and the initial read was
 40px too wide for a `px-5` container. It was not the overflow it was reached for.
+
+---
+
+## The card hierarchy was reverted (same day, by the owner)
+
+**Everything above about the hero figure and the banded strip is a record of
+what was built, not a description of what ships.** Shown both, the owner chose
+the original four equal cards -- for `/dashboard` and for the report recap --
+and `StatTile.tsx` was restored from git rather than rewritten, sparklines
+included.
+
+The argument for a hierarchy is still the one written above, and it is still
+worth reading before anyone proposes it again: four identical cards give
+"Registered" the same weight as "Arrived". It was weighed and declined. The
+flat layout is a decision, not an oversight.
+
+**Everything else in this document stands and is live:** the
+`counts_by_result` fix, the shared chart system, geometry in measured pixels,
+the validated outcome palette with its hatch on revoked, the four `EntryChart`
+defects, and the removal of both entrance animations. Those were the
+statistics, and the statistics were kept.

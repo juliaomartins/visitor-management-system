@@ -1,6 +1,5 @@
 "use client";
 
-import { StatStrip, type StatCell } from "@/components/dashboard/StatStrip";
 import { useFormat, useT } from "@/lib/i18n";
 import type { EntryReport } from "@/lib/reports";
 
@@ -88,88 +87,46 @@ export function Recap({ report }: { report: EntryReport }) {
     );
   }
 
-  /*
-    The three figures that support the headline. Same band the dashboard uses,
-    so a reader moving between the two pages is reading the same instrument.
-  */
-  const cells: StatCell[] = [
-    {
-      key: "scans",
-      label: t("recap.scansLogged"),
-      value: format.number(summary.total),
-      note: t("recap.repeatNote", { count: insights.repeat_people }),
-    },
-    {
-      key: "busiest",
-      label: t("recap.busiestHour"),
-      value: insights.peak_hour ? formatHour(insights.peak_hour) : "—",
-      note: insights.peak_hour
-        ? t("recap.peakNote", {
-            total: insights.peak_total,
-            share: insights.peak_share,
-          })
-        : t("recap.noArrivals"),
-    },
-    {
-      key: "refused",
-      label: t("recap.refused"),
-      value: String(insights.refused),
-      note:
-        insights.refused > 0
-          ? t("recap.refusalNote", { rate: insights.refusal_rate })
-          : t("recap.noneTurnedAway"),
-      tone: insights.refused > 0 ? "alert" : "good",
-    },
-  ];
-
   return (
     <section className="space-y-4">
-      {/*
-        ATTENDANCE IS THE REPORT'S HEADLINE and it used to be one of four equal
-        cards. It is the figure somebody asks for by name -- "how many came?" --
-        so it gets the size, and the other three sit under it in a band.
-      */}
-      <div className="card p-6 sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-          <div className="min-w-0">
-            <h2 className="text-sm font-medium tracking-wide text-ink-3">
-              {t("recap.attendance")}
-            </h2>
-            <p
-              className="display mt-1 leading-[0.85] font-semibold text-accent tabular-nums"
-              style={{ fontSize: "clamp(3rem, 10vw, 6.5rem)" }}
-            >
-              {insights.attendance_rate}%
-            </p>
-          </div>
-          <p className="max-w-xs text-sm leading-relaxed text-ink-2">
-            {t("recap.attendanceNote", {
-              arrived: insights.arrived,
-              registered: insights.registered,
-            })}
-          </p>
-        </div>
-
-        <div
-          className="mt-6 h-3 overflow-hidden rounded-full bg-card-2"
-          role="progressbar"
-          aria-valuenow={insights.arrived}
-          aria-valuemin={0}
-          aria-valuemax={insights.registered}
-          aria-label={t("recap.attendance")}
-        >
-          <div
-            className="h-full rounded-full bg-accent"
-            style={{
-              width: `${Math.min(insights.attendance_rate, 100)}%`,
-              backgroundImage:
-                "repeating-linear-gradient(90deg, rgb(255 255 255 / 0.22) 0 1px, transparent 1px 6px)",
-            }}
-          />
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Figure
+          label={t("recap.attendance")}
+          value={`${insights.attendance_rate}%`}
+          note={t("recap.attendanceNote", {
+            arrived: insights.arrived,
+            registered: insights.registered,
+          })}
+          tone="accent"
+        />
+        <Figure
+          label={t("recap.scansLogged")}
+          value={format.number(summary.total)}
+          note={t("recap.repeatNote", { count: insights.repeat_people })}
+        />
+        <Figure
+          label={t("recap.busiestHour")}
+          value={insights.peak_hour ? formatHour(insights.peak_hour) : "—"}
+          note={
+            insights.peak_hour
+              ? t("recap.peakNote", {
+                  total: insights.peak_total,
+                  share: insights.peak_share,
+                })
+              : t("recap.noArrivals")
+          }
+        />
+        <Figure
+          label={t("recap.refused")}
+          value={String(insights.refused)}
+          note={
+            insights.refused > 0
+              ? t("recap.refusalNote", { rate: insights.refusal_rate })
+              : t("recap.noneTurnedAway")
+          }
+          tone={insights.refused > 0 ? "alert" : "good"}
+        />
       </div>
-
-      <StatStrip cells={cells} />
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
         {/* The report in sentences. Written server-side so the PDF says the

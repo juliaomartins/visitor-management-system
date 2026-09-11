@@ -610,36 +610,3 @@ body {
   height: 44px;
   transform: translate(-50%, -50%);
 }
-
-/*
-  The dashboard's one orchestrated entrance: the headline figure rises into
-  place. On the BLOCK, never on the number -- see the note in `ArrivalHero`.
-  A transform and an opacity cannot render a wrong value, which a count-up can
-  and did.
-
-  There was a `vms-draw` keyframe here that revealed the arrivals line from a
-  dash pattern. It is gone: a stroke that is invisible until an animation
-  finishes is a stroke that is missing whenever the animation does not, and
-  screenshots caught exactly that.
-*/
-@keyframes vms-rise {
-  from {
-    opacity: 0;
-    transform: translateY(0.25em);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.vms-rise {
-  animation: vms-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* Anyone who asked for less motion gets the figure, plainly and at once. */
-@media (prefers-reduced-motion: reduce) {
-  .vms-rise {
-    animation: none;
-  }
-}
