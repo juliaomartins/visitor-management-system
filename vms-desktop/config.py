@@ -187,28 +187,30 @@ def backend_spec() -> ServiceSpec:
 
 
 def dashboard_spec(mode: str) -> ServiceSpec:
+    program, arguments = _next_command(mode, DASHBOARD_DIR, DASHBOARD_PORT)
     return ServiceSpec(
         key="dashboard",
         name="Dashboard",
         name_key="svc.dashboard",
         technology="Next.js 16",
         directory=DASHBOARD_DIR,
-        program=NPM,
-        arguments=_next_args(mode, DASHBOARD_PORT),
+        program=program,
+        arguments=arguments,
         port=DASHBOARD_PORT,
         opens_in_browser=True,
     )
 
 
 def screen_spec(mode: str) -> ServiceSpec:
+    program, arguments = _next_command(mode, SCREEN_DIR, SCREEN_PORT)
     return ServiceSpec(
         key="screen",
         name="Lobby Screen",
         name_key="svc.screen",
         technology="Next.js 16",
         directory=SCREEN_DIR,
-        program=NPM,
-        arguments=_next_args(mode, SCREEN_PORT),
+        program=program,
+        arguments=arguments,
         port=SCREEN_PORT,
         opens_in_browser=True,
     )
@@ -231,14 +233,50 @@ def scanner_spec() -> ServiceSpec:
     )
 
 
-def _next_args(mode: str, port: int) -> list[str]:
-    """`npm run dev` / `npm start`, bound to every interface.
+#: Next's own entry point, relative to an app directory.
+#:
+#: PRODUCTION RUNS THIS THROUGH `node`, NOT THROUGH npm OR npx, and the reason
+#: was measured rather than argued. Both of those are `.cmd` batch shims on
+#: Windows, so both produce the same four-process chain:
+#:
+#:     npm run start    cmd.exe -> node.exe -> cmd.exe -> node.exe   (4 deep)
+#:     npx next start   cmd.exe -> node.exe -> cmd.exe -> node.exe   (4 deep)
+#:     node <this>      node.exe                                     (1)
+#:
+#: At four deep the pid this launcher holds is a `cmd.exe` whose great-grandchild
+#: owns port 3000 -- which is the whole reason `processes.py` needs a tree kill,
+#: why a failed stop leaves the port held, and why the exit code the launcher
+#: reads belongs to npm rather than to Next. At one, the process we start IS the
+#: server, and every one of those problems is gone.
+#:
+#: npx has a second failure mode that matters on event day: when it cannot
+#: resolve a package locally it reaches for the registry, and the event LAN has
+#: no internet.
+NEXT_BIN = Path("node_modules") / "next" / "dist" / "bin" / "next"
 
-    `--` separates npm's own arguments from the script's. Next 16 accepts
-    `--hostname` and `--port` on both `dev` and `start`.
+
+def next_bin(directory: Path) -> Path:
+    """Next's entry point inside one app. Absolute, so cwd cannot matter."""
+    return directory / NEXT_BIN
+
+
+def _next_command(mode: str, directory: Path, port: int) -> tuple[str, list[str]]:
+    """How to run one Next app, which is a different shape in each mode.
+
+    DEV keeps `npm run dev` exactly as it was: the dev server is for editing,
+    npm is how its script is named, and the extra processes cost nothing there
+    because the tree kill already handles them.
+
+    PRODUCTION goes straight to node -- see `NEXT_BIN`. `-H 0.0.0.0` is already
+    `next start`'s default in Next 16 and is still written out, because that
+    default has changed before and when it is wrong the failure reads as "the
+    network is down" rather than as a bound interface.
     """
-    script = "dev" if mode == Mode.DEV else "start"
-    return ["run", script, "--", "--hostname", "0.0.0.0", "--port", str(port)]
+    if mode == Mode.PROD:
+        return "node", [str(next_bin(directory)), "start", "-H", "0.0.0.0", "-p", str(port)]
+
+    # `--` separates npm's own arguments from the script's.
+    return NPM, ["run", "dev", "--", "--hostname", "0.0.0.0", "--port", str(port)]
 
 
 def build_args() -> list[str]:
