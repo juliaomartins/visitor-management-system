@@ -43,6 +43,31 @@ from apps.visitors.services import badge_token
 
 from .services import qr_image
 
+# The event this roster is printed for. One event, one fixed set of dates, both
+# already in CLAUDE.md -- so these are constants rather than settings. A second
+# event would be a second deployment, not a configuration change.
+#
+# NOT TRANSLATED, and for the same reason the printed badge is not: this sheet
+# is a printing worklist that goes to whoever runs the card printer, and
+# `services.py` draws the card itself in English. A Tetun worklist against an
+# English card would be a sheet that disagrees with what comes out.
+SHEET_TITLE = "VISITOR BADGE & QR CODE PRINTING LIST"
+EVENT_NAME = "DRCC AND MINISTERIAL DIALOGUE 2026"
+EVENT_WHEN = "2–3 OCTOBER 2026 · DÍLI, TIMOR-LESTE"
+
+# The event's own blue, sampled from the RDTL and SECoop logos -- the same
+# `--color-brand-blue` the dashboard, the badge and the lobby screen use. The
+# reference this layout copies used a brighter royal blue; matching the palette
+# matters more than matching one spreadsheet.
+BANNER_FILL = PatternFill("solid", fgColor="00309C")
+BANNER_FONT = Font(color="FFFFFF", bold=True, size=14)
+EVENT_FONT = Font(bold=True, italic=True, size=11)
+WHEN_FONT = Font(italic=True, size=10, color="4A5560")
+# A tint of the same blue, so the column headings read as part of the banner
+# rather than as a second, competing bar.
+COLUMN_FILL = PatternFill("solid", fgColor="CFD9F0")
+COLUMN_FONT = Font(color="00309C", bold=True, size=10)
+
 HEADER_FILL = PatternFill("solid", fgColor="111827")
 HEADER_FONT = Font(color="FFFFFF", bold=True, size=10)
 VIP_FILL = PatternFill("solid", fgColor="FDF5E3")
@@ -105,6 +130,61 @@ def _sheet_title(count: int, *, with_qr: bool) -> str:
     return f"{kind} ({count})"
 
 
+#: Rows 1-3 are the banner, row 4 the column headings, so data starts here.
+FIRST_DATA_ROW = 5
+
+
+def _write_banner(sheet, columns: list[tuple[str, int]]) -> None:
+    """Three merged title rows over the column headings.
+
+    This is the shape the organisers already circulate their committee lists
+    in, and a printing worklist that looks like every other list on the desk is
+    one nobody has to be taught to read.
+
+    `_write_header` below stays as it was and is NOT reused here: it writes a
+    single heading row at row 1 and the credential export still wants exactly
+    that. The two sheets therefore no longer look alike, which is deliberate --
+    only the roster was asked for.
+    """
+    span = f"A{{row}}:{get_column_letter(len(columns))}{{row}}"
+
+    for row, (text, font, height) in enumerate(
+        [
+            (SHEET_TITLE, BANNER_FONT, 30),
+            (EVENT_NAME, EVENT_FONT, 20),
+            (EVENT_WHEN, WHEN_FONT, 18),
+        ],
+        start=1,
+    ):
+        sheet.merge_cells(span.format(row=row))
+
+        # STYLE ONLY THE ANCHOR, and painting the other six would be wasted
+        # work rather than thoroughness. `Worksheet._clean_merge_range` replaces
+        # every cell but the top-left with a fresh `MergedCell` and its
+        # `format()` restores BORDERS only -- deliberately, because Excel draws
+        # a merged range using the top-left cell's fill, font and alignment but
+        # does not carry its border around the outside. Fills written to the
+        # others are discarded on merge whichever order you write them in.
+        cell = sheet.cell(row=row, column=1, value=text)
+        cell.font = font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        if row == 1:
+            cell.fill = BANNER_FILL
+        sheet.row_dimensions[row].height = height
+
+    for index, (label, width) in enumerate(columns, start=1):
+        cell = sheet.cell(row=4, column=index, value=label)
+        cell.fill = COLUMN_FILL
+        cell.font = COLUMN_FONT
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = CELL_BORDER
+        sheet.column_dimensions[get_column_letter(index)].width = width
+
+    sheet.row_dimensions[4].height = 22
+    # Keep the banner and the headings visible through 250 rows.
+    sheet.freeze_panes = f"A{FIRST_DATA_ROW}"
+
+
 def _write_header(sheet, columns: list[tuple[str, int]]) -> None:
     for index, (label, width) in enumerate(columns, start=1):
         cell = sheet.cell(row=1, column=index, value=label)
@@ -141,21 +221,35 @@ def _write_row(sheet, row: int, visitor: Visitor, values: list) -> None:
     sheet.cell(row=row, column=1).font = MONO_FONT
 
 
+# Reading order: who, then where they are from, then the two things that get
+# printed, then when they registered. "Organization" rather than the British
+# spelling used elsewhere in this file, because that is what the organisers'
+# own lists say and this sheet sits beside them.
 ROSTER_COLUMNS = [
     ("No.", 6),
+    ("Name", 30),
+    ("Country", 18),
+    ("Organization", 28),
     ("Photo", 11),
-    ("Full name", 30),
-    ("QR code", 14),
-    ("Country", 20),
-    ("Organisation", 30),
+    ("QR Code", 14),
     ("Registered", 20),
 ]
 
-# 1-based, to match openpyxl and the anchors below. Derived from the table rather
-# than written twice, because a column inserted above either of these would
-# otherwise drop its image one cell to the left with nothing to catch it.
-ROSTER_PHOTO_COLUMN = 1 + [label for label, _ in ROSTER_COLUMNS].index("Photo")
-ROSTER_QR_COLUMN = 1 + [label for label, _ in ROSTER_COLUMNS].index("QR code")
+
+def _roster_column(label: str) -> int:
+    """1-based index of a roster column, looked up by its heading.
+
+    Derived rather than written twice. Photo and QR moved three places to the
+    right when this sheet was reshaped, and nothing had to change here: an
+    anchor written as a literal would have dropped every image into the wrong
+    cell, silently, in a file nobody opens until the morning they print from it.
+    """
+    return 1 + [heading for heading, _ in ROSTER_COLUMNS].index(label)
+
+
+ROSTER_NAME_COLUMN = _roster_column("Name")
+ROSTER_PHOTO_COLUMN = _roster_column("Photo")
+ROSTER_QR_COLUMN = _roster_column("QR Code")
 
 
 def _photo_buffer(visitor: Visitor) -> io.BytesIO | None:
@@ -197,14 +291,14 @@ def build_roster_workbook(visitors: list[Visitor]) -> bytes:
     sheet = workbook.active
     sheet.title = _sheet_title(len(visitors), with_qr=False)
 
-    _write_header(sheet, ROSTER_COLUMNS)
+    _write_banner(sheet, ROSTER_COLUMNS)
 
     # openpyxl reads each image lazily when the workbook is saved, so every
     # buffer has to outlive the loop that made it.
     buffers = []
 
     for offset, visitor in enumerate(visitors):
-        row = offset + 2
+        row = offset + FIRST_DATA_ROW
         sheet.row_dimensions[row].height = QR_ROW_HEIGHT
 
         _write_row(
@@ -213,11 +307,11 @@ def build_roster_workbook(visitors: list[Visitor]) -> bytes:
             visitor,
             [
                 offset + 1,  # the sheet's own numbering, not an id of anything
-                "",  # the photo sits in this cell
                 visitor.full_name,
-                "",  # and the QR in this one
                 visitor.country,
                 visitor.organization or "",
+                "",  # the photo sits in this cell
+                "",  # and the QR in this one
                 _local_day(visitor.created_at),
             ],
         )
@@ -226,7 +320,7 @@ def build_roster_workbook(visitors: list[Visitor]) -> bytes:
         number.alignment = Alignment(vertical="center", horizontal="center")
 
         if not visitor.is_active:
-            sheet.cell(row=row, column=3).font = DIM_FONT
+            sheet.cell(row=row, column=ROSTER_NAME_COLUMN).font = DIM_FONT
 
         photo = _photo_buffer(visitor)
         if photo is not None:

@@ -244,8 +244,9 @@ class BadgeRosterExportView(APIView):
         operation_id="badges_roster_export_retrieve",
         summary="Export the visitor roster as .xlsx",
         description=(
-            "Who is registered, as a spreadsheet: row number, photograph, "
-            "name, badge QR, country, organisation and registration time.\n\n"
+            "Who is registered, as a printing worklist: a title banner naming "
+            "the event, then No. / Name / Country / Organization / Photo / "
+            "QR Code / Registered from row 5, with the banner frozen.\n\n"
             "NON-DESTRUCTIVE. Nothing is reissued and no card stops working. "
             "Each QR is the visitor's existing badge token, derived rather "
             "than stored, so the code drawn here is the code already on "

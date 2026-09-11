@@ -465,7 +465,7 @@ DELETE /api/v1/visitors/{id}/permanent       erase for good        [admin]
 
 POST   /api/v1/badges/card                   one card PDF, from a raw token
 POST   /api/v1/badges/reissue-sheet          A4 sheet PDF. Non-destructive.
-GET    /api/v1/badges/roster.xlsx            roster + photo + live QR
+GET    /api/v1/badges/roster.xlsx            badge printing worklist
 POST   /api/v1/badges/export                 .xlsx WITH working QR codes
 POST   /api/v1/badges/reissue                ROTATES TOKENS. No client calls it.
 
@@ -552,8 +552,11 @@ the same codes, so the boundary it crosses is convenience, not secrecy — but d
 sprinkle it onto other callers for tidiness.
 
 **`roster.xlsx` now crosses that same boundary, and it used to be the one export
-that did not.** Its columns are `No. | Photo | Full name | QR code | Country |
-Organisation | Registered`, so the file is a set of working badges — one click
+that did not.** It is laid out as the printing worklist the organisers already
+circulate: a merged navy banner over rows 1-3 (`SHEET_TITLE`, `EVENT_NAME`,
+`EVENT_WHEN` in `exports.py`), column headings on row 4, data from row 5, frozen
+at `A5`. Columns are `No. | Name | Country | Organization | Photo | QR Code |
+Registered` — so the file is a set of working badges — one click
 from `/visitors`, with no confirmation in front of it. Two things make that
 defensible and it is worth knowing which: the QR is `badge_token(visitor)`, the
 code **already** on that person's card, so exporting reissues nothing and breaks
@@ -567,6 +570,25 @@ deactivated visitor is therefore shown with a QR that will not scan, and the onl
 cue is that their name is set grey and italic — `DIM_FONT` in `exports.py`. If
 somebody asks why a badge in the spreadsheet was refused at the door, that is
 the answer.
+
+Two things about that sheet that will bite whoever edits it next:
+
+- **Style the merged banner's ANCHOR cell only.** `Worksheet._clean_merge_range`
+  replaces every cell but the top-left with a fresh `MergedCell` and its
+  `format()` restores *borders* and nothing else — because Excel draws a merged
+  range from the top-left cell's fill, font and alignment, but does not carry its
+  border around the outside. A fill written to the other six is discarded on
+  merge whichever order you write it in, so painting them is wasted work, and a
+  test that asserts G1 is navy is asserting the wrong thing.
+- **Image anchors are looked up by heading, not written as letters**
+  (`_roster_column`). Photo and QR moved three columns right when this layout
+  was reshaped and nothing else had to change; a literal anchor would have put
+  every image in the wrong cell, silently, in a file nobody opens until the
+  morning they print from it.
+
+`build_credential_workbook` deliberately does **not** share this banner. It
+still uses `_write_header`, a single heading row at row 1, so the two exports no
+longer look alike — only the roster was asked for.
 
 Only `/devices/pair` is reachable without a token.
 
