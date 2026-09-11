@@ -13,6 +13,8 @@ because it only reads.
 
 from django.db import transaction
 from django.http import HttpResponse
+from django.utils import timezone
+from django.utils.text import slugify
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.exceptions import APIException, NotFound, ValidationError
@@ -57,6 +59,43 @@ def _xlsx(content: bytes, filename: str) -> HttpResponse:
     response = HttpResponse(content, content_type=XLSX)
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+# Long enough for a full formal name, short enough that the header cannot drift
+# near the filesystem's limit once the stem and the date are in front of it.
+NAME_SLUG_LIMIT = 40
+
+
+def _export_name(stem: str, *, suffix: str = "") -> str:
+    """`stem-YYYY-MM-DD[-suffix].xlsx`, dated in the timezone the doors are in.
+
+    `timezone.localdate()` and not `date.today()`: storage is UTC and the event
+    is in Asia/Dili, so for the first nine hours of every local day those two
+    disagree. An export at 09:00 on the 2nd would be filed as the 1st.
+
+    ISO order because a downloads folder sorted by name is then sorted by date,
+    which is the only reason to put a date in a filename. `apps/reports` already
+    names its files this way.
+    """
+    dated = f"{stem}-{timezone.localdate().isoformat()}"
+    return f"{dated}-{suffix}.xlsx" if suffix else f"{dated}.xlsx"
+
+
+def _visitor_slug(visitor: Visitor) -> str:
+    """A visitor's name, safe for both a filename and the header carrying it.
+
+    `Content-Disposition` here is the plain `filename="..."` form with no RFC
+    5987 `filename*`, so the value has to be ASCII — a raw accent makes the
+    header malformed rather than pretty. `slugify` folds it: José do Rosário
+    becomes jose-do-rosario.
+
+    A name written in a non-Latin script folds to NOTHING, and this is an
+    international conference — so the badge serial stands in rather than
+    letting the file come out named for the date and a stray hyphen.
+    """
+    return slugify(visitor.full_name)[:NAME_SLUG_LIMIT].strip("-") or (
+        visitor.badge_serial.lower()
+    )
 
 
 def _pdf(content: bytes, filename: str) -> HttpResponse:
@@ -227,7 +266,7 @@ class BadgeRosterExportView(APIView):
             Visitor.objects.filter(deleted_at__isnull=True).order_by("full_name")
         )
         workbook = exports.build_roster_workbook(visitors)
-        return _xlsx(workbook, f"vms-roster-{len(visitors)}.xlsx")
+        return _xlsx(workbook, _export_name("visitors"))
 
 
 class BadgeCredentialExportView(APIView):
@@ -304,7 +343,21 @@ class BadgeCredentialExportView(APIView):
             issued = services.collect_badge_tokens(ordered, actor=request.user)
             workbook = _render(lambda: exports.build_credential_workbook(issued))
 
-        return _xlsx(workbook, f"vms-credentials-{len(issued)}.xlsx")
+        # The suffix names a DELIBERATE selection, so it keys off whether ids
+        # were sent rather than off the count: exporting everyone by selecting
+        # nobody gets no suffix, while selecting all of them explicitly does.
+        #
+        # One visitor gets their name. Several get a count, because a filename
+        # cannot carry forty names and electing one of them to stand for the
+        # rest reads as though the file were about that person.
+        if not requested:
+            suffix = ""
+        elif len(issued) == 1:
+            suffix = _visitor_slug(issued[0][0])
+        else:
+            suffix = f"{len(issued)}-visitors"
+
+        return _xlsx(workbook, _export_name("visitors-badges", suffix=suffix))
 
 
 class BadgeReissueView(APIView):

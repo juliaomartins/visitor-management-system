@@ -29,6 +29,24 @@ async function fetchPdf(path: string, body: unknown, fallbackName: string) {
 }
 
 /**
+ * Today as `YYYY-MM-DD`, for the FALLBACK filenames only.
+ *
+ * THE SERVER IS AUTHORITATIVE. It sends the real name in `Content-Disposition`
+ * and `download` below prefers it; this exists so that the one path where the
+ * header is missing or unparseable still produces a dated file instead of a
+ * bare stem. It is deliberately the same shape and deliberately not the same
+ * clock: the server dates in Asia/Dili, this dates in the browser's zone. On a
+ * closed LAN at one venue those agree, and where they did not, the server's
+ * name is the one that lands.
+ */
+function today(): string {
+  const now = new Date();
+  const month = `${now.getMonth() + 1}`.padStart(2, "0");
+  const day = `${now.getDate()}`.padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/**
  * Fetch a binary file with the bearer token and hand it to the browser.
  *
  * A plain `<a href>` would carry no Authorization header and simply 401, which is
@@ -118,7 +136,7 @@ export async function downloadReissuedSheet(
  * is not.
  */
 export async function downloadRoster(): Promise<void> {
-  return download("/api/v1/badges/roster.xlsx", "vms-roster.xlsx");
+  return download("/api/v1/badges/roster.xlsx", `visitors-${today()}.xlsx`);
 }
 
 /**
@@ -131,10 +149,17 @@ export async function downloadRoster(): Promise<void> {
 export async function downloadCredentialExport(
   visitorIds?: string[],
 ): Promise<void> {
-  const count = visitorIds?.length;
+  /*
+    The server decides the real name, including the single-visitor one: it has
+    the visitor and can fold an accented name to ASCII, which is not worth
+    reimplementing here for a fallback. So this mirrors only the shape, and the
+    count case, and leaves the name to the header.
+  */
+  const count = visitorIds?.length ?? 0;
+  const stem = `visitors-badges-${today()}`;
   return download(
     "/api/v1/badges/export",
-    count ? `vms-credentials-${count}.xlsx` : "vms-credentials.xlsx",
-    visitorIds && visitorIds.length > 0 ? { visitor_ids: visitorIds } : {},
+    count > 1 ? `${stem}-${count}-visitors.xlsx` : `${stem}.xlsx`,
+    count > 0 ? { visitor_ids: visitorIds } : {},
   );
 }

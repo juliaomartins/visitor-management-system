@@ -496,6 +496,49 @@ them existed. If you are unsure, ask the URLconf rather than this list:
 and read the paths, or `curl http://<server>:8000/api/v1/schema/` against the running
 process — which also tells you whether it has your latest code loaded.
 
+**EXPORT FILENAMES COME FROM THE SERVER, NOT THE DASHBOARD.** `download()` in
+`vms-dashboard/lib/badges.ts` reads `Content-Disposition` and uses its own
+string only as a fallback, so renaming a file means editing
+`_export_name` / `_visitor_slug` in `apps/badges/views.py`. Editing the
+dashboard alone changes nothing — that is worth knowing before spending an
+afternoon on it.
+
+| from | filename |
+|---|---|
+| `/visitors` export | `visitors-2026-10-02.xlsx` |
+| `/badges` export, nothing selected | `visitors-badges-2026-10-02.xlsx` |
+| `/badges` export, one selected | `visitors-badges-2026-10-02-ana-maria-sousa.xlsx` |
+| `/badges` export, twelve selected | `visitors-badges-2026-10-02-12-visitors.xlsx` |
+
+Three decisions inside that, each of which has a wrong answer that looks fine:
+
+- **`timezone.localdate()`, never `date.today()`.** Storage is UTC and the doors
+  are in Asia/Dili, so for the first nine hours of every local day they
+  disagree — an export at 09:00 on the 2nd would be filed as the 1st.
+- **ISO order**, so a downloads folder sorted by name is sorted by date.
+  `apps/reports` already named its files this way.
+- **The suffix keys off whether `visitor_ids` was sent, not off the count.** It
+  describes a deliberate selection: exporting everyone by selecting nobody gets
+  no suffix; selecting all of them explicitly gets `250-visitors`. A single
+  visitor gets their name, several get a count — a filename cannot carry forty
+  names, and electing one to stand for the rest reads as though the file were
+  about that person. The name is `slugify`d because the header is the plain
+  `filename="..."` form with no RFC 5987 `filename*`, so a raw accent makes it
+  malformed; and a name in a non-Latin script folds to nothing, so the badge
+  serial stands in.
+
+The reports exports (`vms-entrance-report-{date}.xlsx`) and the badge PDFs
+(`badge-{serial}.pdf`) still carry the older names and are inconsistent with
+these.
+
+**`visitor_ids` on `POST /badges/export` is capped at 250 elements**
+(`max_length=250`, `apps/badges/serializers.py`), and the event expects about
+250 visitors. Select-all-then-export therefore fails with a 400 —
+*"Ensure this field has no more than 250 elements"* — the moment there are 251
+registrations. Measured, not guessed. Nothing in the dashboard anticipates that
+error, so raise the cap or chunk the request before the event rather than
+finding it at the desk.
+
 `/scans` returns `200` with a `result` field for bad badges, not `4xx`. A deactivated
 badge is a business outcome, not an HTTP error — it keeps the app's error handling clean.
 The `result` value is still `revoked`; the enum is what the scanner and the reports are
