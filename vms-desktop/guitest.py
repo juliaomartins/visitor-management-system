@@ -492,6 +492,46 @@ check(
     "%dpx" % window._logs.height(),
 )
 
+print("\nDevelopment / Production mode")
+from config import Mode  # noqa: E402
+
+start_mode = window._mode
+window._mode = Mode.DEV
+window._specs = {s.key: s for s in __import__("config").service_specs(Mode.DEV)}
+window.retranslate()
+check("starts in a known mode", window._mode == Mode.DEV)
+check("the button names the mode it is IN", "Development" in window._mode_button.text(),
+      window._mode_button.text())
+
+window._toggle_mode()
+check("toggling reaches production", window._mode == Mode.PROD, window._mode)
+check("the button follows", "Production" in window._mode_button.text(), window._mode_button.text())
+dash = window._specs["dashboard"]
+check("and the dashboard command becomes node", dash.program == "node", dash.program)
+check("with no npm or npx shim",
+      "npm" not in " ".join(dash.arguments) and "npx" not in " ".join(dash.arguments))
+check("the registry's process got the new spec",
+      window._registry["dashboard"].spec.program == "node",
+      window._registry["dashboard"].spec.program)
+
+window._toggle_mode()
+check("toggling back reaches development", window._mode == Mode.DEV)
+check("and the command is npm run dev again",
+      "dev" in window._registry["dashboard"].spec.arguments,
+      str(window._registry["dashboard"].spec.arguments))
+
+# The refusal: a mode change under a live service would leave the launcher
+# holding a pid started by a command it no longer has on file.
+window._registry["dashboard"]._state = State.RUNNING
+before = window._mode
+QTimer.singleShot(250, lambda: [w.close() for w in app.topLevelWidgets() if w.isModal()])
+window._toggle_mode()
+check("refuses to switch while a service is running", window._mode == before, window._mode)
+window._registry["dashboard"]._state = State.STOPPED
+
+window._mode = start_mode
+window.retranslate()
+
 print("\nTheme")
 first = theme.current().name
 window._toggle_theme()
