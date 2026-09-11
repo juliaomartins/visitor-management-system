@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BadgeCard } from "@/components/badge-card";
 import { ReissueDialog } from "@/components/badges/ReissueDialog";
@@ -19,6 +19,54 @@ import { useQuery } from "@tanstack/react-query";
 
 /** The backend lays nine portrait cards on an A4 sheet, 3 across by 3 down. */
 const PER_SHEET = 9;
+
+/*
+  How far outside the viewport a card starts drawing its QR. Generous on
+  purpose: the point is that nobody ever sees an empty frame, only that we do
+  not render 250 of them at once.
+*/
+const QR_PRELOAD_MARGIN = "800px";
+
+/**
+ * Whether this element has ever come within `QR_PRELOAD_MARGIN` of the viewport.
+ *
+ * `QRCode.toString` is a real computation and the print queue mounts one card
+ * per visitor, so at event size the page did 250 of them on the main thread
+ * before showing anything -- for cards that are mostly off screen and mostly
+ * never printed.
+ *
+ * It latches: once true it never goes back, because a card that has been drawn
+ * has nothing to gain from being thrown away and redrawn on scroll.
+ *
+ * `IntersectionObserver` is absent in no browser this dashboard runs on, but a
+ * missing one must fail OPEN -- a page with no QR codes is worse than a slow
+ * one, and this is the surface whose whole job is showing the QR.
+ */
+function useNearViewport<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [near, setNear] = useState(false);
+
+  useEffect(() => {
+    if (near) return;
+
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setNear(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+      },
+      { rootMargin: QR_PRELOAD_MARGIN },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [near]);
+
+  return { ref, near };
+}
 
 /**
  * The print queue, shown as the sheet it produces.
@@ -310,11 +358,15 @@ function SelectableCard({
   token?: string;
 }) {
   const t = useT();
+  // The QR encode waits until the card is near the viewport. The token itself
+  // is always passed -- deferring is our scheduling decision, so the card must
+  // not start claiming the code lives only on the printed badge.
+  const { ref, near } = useNearViewport<HTMLLabelElement>();
   // A real checkbox, hidden but focusable: this is a multi-select, and a button
   // pretending to be one loses the semantics screen readers and the keyboard
   // already understand. The whole card is the hit target.
   return (
-    <label className="group block cursor-pointer">
+    <label ref={ref} className="group block cursor-pointer">
       <input
         type="checkbox"
         checked={checked}
@@ -327,7 +379,13 @@ function SelectableCard({
           checked ? "bg-accent" : "bg-card group-hover:bg-card-2"
         }`}
       >
-        <BadgeCard visitor={visitor} width="100%" detail token={token} />
+        <BadgeCard
+          visitor={visitor}
+          width="100%"
+          detail
+          token={token}
+          deferQr={!near}
+        />
 
         {/* Selection is stated, not implied by a tint — the same reason every
             status in this app carries its word. */}

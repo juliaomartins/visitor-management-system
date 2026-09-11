@@ -60,6 +60,7 @@ export function BadgeCard({
   width,
   detail = false,
   token,
+  deferQr = false,
 }: {
   visitor: BadgeVisitor;
   /** Any CSS width. Height follows from the CR80 portrait ratio. */
@@ -75,6 +76,19 @@ export function BadgeCard({
    * panel says so rather than drawing a shape that means nothing.
    */
   token?: string;
+  /**
+   * Hold the QR encode until the caller says the card is worth drawing.
+   *
+   * The print queue mounts one card per visitor, and `QRCode.toString` is real
+   * work on the main thread -- 250 encodes before the page settles, for cards
+   * that are mostly off screen. The queue flips this as a card nears the
+   * viewport; see `useNearViewport` there.
+   *
+   * The token is still passed while this is true, which is the point: the panel
+   * says it is DRAWING rather than claiming the code is only on the printed
+   * card. Deferring is our scheduling decision, not a fact about the badge.
+   */
+  deferQr?: boolean;
 }) {
   const t = useT();
   const vip = visitor.category === "vip";
@@ -112,6 +126,14 @@ export function BadgeCard({
           <img
             src={visitor.photo}
             alt=""
+            /*
+              The print queue renders one card per visitor, so this is 250 full
+              badge-resolution photographs on a page that shows a dozen. The
+              circle has its size from the container query above rather than
+              from the image, so there is no layout shift to trade for it.
+            */
+            loading="lazy"
+            decoding="async"
             className={`h-full w-full rounded-full bg-line object-cover ${
               inactive ? "grayscale" : ""
             }`}
@@ -154,7 +176,11 @@ export function BadgeCard({
               token was unrecoverable; it is derived now, so this is the same
               code the printer draws.
             */}
-            <QrPanel token={token} serial={visitor.badge_serial} />
+            <QrPanel
+              token={token}
+              serial={visitor.badge_serial}
+              defer={deferQr}
+            />
           </>
         ) : (
           <p className="cr80-serial mono mt-auto mb-[4cqw] font-bold text-ink">
@@ -198,7 +224,15 @@ export function BadgeCard({
  * spec assumes, and a themed QR that dims in dark mode is a QR that fails at the
  * door.
  */
-function QrPanel({ token, serial }: { token?: string; serial: string }) {
+function QrPanel({
+  token,
+  serial,
+  defer = false,
+}: {
+  token?: string;
+  serial: string;
+  defer?: boolean;
+}) {
   /*
     One piece of state carrying WHICH token it belongs to, rather than a `src`
     and a `failed` flag set separately.
@@ -218,7 +252,7 @@ function QrPanel({ token, serial }: { token?: string; serial: string }) {
   } | null>(null);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || defer) return;
 
     let live = true;
 
@@ -245,7 +279,7 @@ function QrPanel({ token, serial }: { token?: string; serial: string }) {
     return () => {
       live = false;
     };
-  }, [token]);
+  }, [token, defer]);
 
   const settled = token && drawn?.token === token ? drawn : null;
 

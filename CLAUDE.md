@@ -669,6 +669,42 @@ app/(dashboard)/reports            entrance log + CSV/XLSX/PDF export
 - All API types from `@vms/contracts`. Never hand-write a type mirroring a serializer.
 - TanStack Query for server state. No global store for API data.
 
+**NEITHER LIST IS PAGINATED, AND THAT IS THE RIGHT ANSWER — the cost was never
+the JSON.** DRF has no pagination class configured, so `/visitors` returns a
+bare array. Measured at a full 250-visitor event, one SQL query per call:
+
+| call | rows | queries | raw | gzipped |
+|---|---|---|---|---|
+| `/visitors` | 250 | 1 | 82 KB | 13 KB |
+| `/visitors?with_tokens=true` | 250 | 1 | 102 KB | 23 KB |
+
+The guest list is capped by the event, `get_queryset` has no N+1, and paging
+would break the print queue's **select-all** (a lie the moment results span
+pages) and its in-memory filter. Do not add it without a new measurement.
+
+The two pages search differently and both are fine at this size: `/visitors`
+searches **server-side** (250 ms debounce → `?search=`), `/badges` fetches once
+with `?with_tokens=true` and filters **in memory**.
+
+**What actually cost was the photographs.** The cropper stores the badge
+original — 600×800 JPEG, 100–250 KB — and a list row drew it at 42×56, a print
+queue card at ~150×200. Two hundred and fifty of those is tens of megabytes in
+250 requests, roughly two thousand times the JSON. So both `<img>`s now carry
+`loading="lazy"` and `decoding="async"`, which is why the row sets explicit
+`width`/`height`: reserved space is what makes lazy loading free of layout
+shift. **A thumbnail derivative is still the real fix** — 1 KB for a row photo
+against 250 KB, 257× — and it is not built. Serving one runs into the fact that
+`config/urls.py` claims production serves photos "through the signed-URL storage
+in `apps/common`" and **there is no such storage**: `media.py` concatenates a
+base URL and signs nothing.
+
+`QRCode.toString` also ran 250 times on the print queue, once per card, for
+cards mostly off screen. `BadgeCard` takes a `deferQr` prop and `useNearViewport`
+in `badges/page.tsx` flips it 800 px ahead of the viewport. The token is still
+passed while deferred, on purpose: the panel then says it is *drawing* rather
+than claiming the code lives only on the printed card, which would be a lie
+about the badge rather than a fact about our scheduling.
+
 **Dark mode is class-based, not `prefers-color-scheme`.** `@custom-variant dark
 (&:where(.dark, .dark *))` in `globals.css`, toggled by `components/theme-toggle.tsx`.
 The registration desk chooses; the lobby's ambient light is not the OS's business. A
@@ -726,7 +762,8 @@ URLs (built from the `Host` header) resolve. Set `VMS_BACKEND_ORIGIN` to the ser
 LAN address.
 
 **`django-cors-headers` IS installed, and this document said the opposite for a long
-time.** It is in `requirements.txt`, in `INSTALLED_APPS`, and first in `MIDDLEWARE`,
+time.** It is in `requirements.txt`, in `INSTALLED_APPS`, and second in
+`MIDDLEWARE` — `GZipMiddleware` is above it, deliberately; see below —
 with `CORS_ALLOW_ALL_ORIGINS = True` set in **`settings/base.py`** — not just dev. So
 the backend answers every origin with `Access-Control-Allow-Origin: *`.
 

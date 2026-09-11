@@ -65,6 +65,21 @@ INSTALLED_APPS = [
 CORS_ALLOW_ALL_ORIGINS = True
 
 MIDDLEWARE = [
+    # FIRST, and the position is the whole point: response middleware runs
+    # bottom-to-top, so sitting at the top means this compresses AFTER every
+    # other middleware has finished writing the body -- including the CORS
+    # headers below it.
+    #
+    # The visitor list is 82 KB of JSON at 250 visitors and 14 KB gzipped, and
+    # the print queue's `?with_tokens=true` is 102 KB down to 25 KB. Both are
+    # admin calls; the scan path the door depends on is a small POST and is not
+    # affected.
+    #
+    # Not the BREACH worry it would be on a public site: these responses carry
+    # no CSRF token, the dashboard is same-origin through its own proxy, and an
+    # attacker who could measure compressed sizes on this closed LAN already
+    # has the admin's bearer token. Revisit if this API is ever exposed.
+    "django.middleware.gzip.GZipMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

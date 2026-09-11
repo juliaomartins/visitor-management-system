@@ -437,6 +437,19 @@ function VisitorRow({
             alt=""
             width={42}
             height={56}
+            /*
+              The stored photo is the badge original -- 600x800 JPEG, ~100-250KB
+              -- and it is drawn here at 42x56. Two hundred and fifty of those
+              is tens of megabytes, so the browser must not fetch the ones
+              nobody has scrolled to. `width`/`height` above are what make this
+              safe: the row reserves its space before the image arrives, so
+              lazy loading costs no layout shift.
+
+              A thumbnail derivative would be the real fix -- this only stops
+              us paying for the rows that are off screen.
+            */
+            loading="lazy"
+            decoding="async"
             className={`h-14 w-[42px] bg-line object-cover ${
               inactive ? "opacity-40 grayscale" : ""
             }`}
