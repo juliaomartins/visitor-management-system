@@ -31,6 +31,7 @@ from config import (
     VENV_DIR,
     VENV_PYTHON,
     VENV_SCRIPTS,
+    Mode,
 )
 from network import detect_lan_ip, is_lan_address, port_in_use
 from processes import PortOwner, port_owners
@@ -197,6 +198,123 @@ def _interpreter_failed(python: Path, code: int, said: str) -> str:
     return "\n".join(lines)
 
 
+def build_check(label: str, directory: Path) -> Check:
+    """Has this app been built? Production mode only.
+
+    `next start` WITHOUT A BUILD PRINTS SUCCESS AND THEN DIES. Measured:
+
+        > next start
+        ✓ Ready in 341ms                              <- stdout
+        Error: Could not find a production build ...   <- stderr
+        exit code 1
+
+    So the log's last cheerful line says the opposite of what happened, the
+    card flicks RUNNING and drops to ERROR, and the readiness probe spends a
+    minute confirming it. That is the same shape as the `uvicorn.exe` bug, and
+    a single file on disk turns it into a refusal before anything starts.
+
+    `.next/BUILD_ID` is the right marker rather than `.next/` itself: a dev
+    server creates `.next/` too, so its presence proves nothing. BUILD_ID is
+    written by `next build` and by nothing else.
+
+    IT DOES NOT CHECK WHETHER THE BUILD IS CURRENT. Building is deliberate and
+    manual here; see `build_age_warning` for the softer question.
+    """
+    build_id = directory / ".next" / "BUILD_ID"
+    if build_id.is_file():
+        return Check(f"{label} is built", True)
+
+    return Check(
+        f"{label} is built",
+        False,
+        detail=(
+            f"No production build in: {directory / '.next'}\n\n"
+            "Production mode serves a compiled app; it does not compile one. "
+            "Build it first:\n"
+            f"  cd {directory}\n"
+            "  npm run build\n\n"
+            "Or switch the control centre back to Development mode, which "
+            "compiles as it serves."
+        ),
+    )
+
+
+def build_age_warning(label: str, directory: Path) -> Check | None:
+    """Warn when sources are newer than the build. Never blocks.
+
+    A WARNING, BECAUSE THE LAUNCHER DOES NOT GET A VOTE ON WHEN YOU ARE DONE.
+    You may have edited one file and not meant to ship it yet; refusing to
+    start would be the launcher second-guessing a deliberate workflow. It says
+    what it sees and starts anyway -- the same treatment the LAN address check
+    gets.
+
+    Returns None when there is nothing to say, so callers can drop it.
+    """
+    build_id = directory / ".next" / "BUILD_ID"
+    if not build_id.is_file():
+        return None  # build_check already has this covered, and louder
+
+    built_at = build_id.stat().st_mtime
+    newest = _newest_source(directory)
+    if newest is None or newest <= built_at:
+        return None
+
+    from datetime import datetime
+
+    when = datetime.fromtimestamp(built_at).strftime("%d/%m/%Y %H:%M")
+    return Check(
+        f"{label} build is current",
+        False,
+        detail=(
+            f"Source files are newer than the build of {when}.\n"
+            f"  cd {directory}\n"
+            "  npm run build\n\n"
+            "Starting anyway: the running app will serve the older build."
+        ),
+        blocking=False,
+    )
+
+
+#: Directories never worth walking for a source mtime. `node_modules` alone is
+#: tens of thousands of files and is not what anybody edits; `.next` is the
+#: build output and is newer than itself by definition.
+_SKIP_DIRS = {"node_modules", ".next", ".git", "dist", "out", ".turbo"}
+
+#: What counts as a source file for the staleness question.
+_SOURCE_SUFFIXES = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".css", ".json"}
+
+
+def _newest_source(directory: Path) -> float | None:
+    """The newest source mtime in an app, or None if it cannot be read."""
+    newest: float | None = None
+    try:
+        for path in directory.rglob("*"):
+            if any(part in _SKIP_DIRS for part in path.parts):
+                continue
+            if path.suffix not in _SOURCE_SUFFIXES or not path.is_file():
+                continue
+            mtime = path.stat().st_mtime
+            if newest is None or mtime > newest:
+                newest = mtime
+    except OSError:
+        return None
+    return newest
+
+
+def _production_checks(mode: str) -> list[Check]:
+    """The build checks, and only when a build is what will be served."""
+    if mode != Mode.PROD:
+        return []
+
+    checks: list[Check] = []
+    for label, directory in (("Dashboard", DASHBOARD_DIR), ("Lobby Screen", SCREEN_DIR)):
+        checks.append(build_check(label, directory))
+        stale = build_age_warning(label, directory)
+        if stale is not None:
+            checks.append(stale)
+    return checks
+
+
 def port_check(label: str, port: int) -> Check:
     """A busy port is blocking, and this still does NOT free it.
 
@@ -252,8 +370,13 @@ def describe_port_conflict(
     )
 
 
-def run(*, include_scanner: bool) -> Report:
-    """Every check, in the order a person would want to read them."""
+def run(*, include_scanner: bool, mode: str = Mode.DEV) -> Report:
+    """Every check, in the order a person would want to read them.
+
+    `mode` adds the two production-only checks. In development the Next apps
+    compile as they serve, so asking whether they are built would be a
+    question with no meaning and a failure with no fix.
+    """
     lan_ip = detect_lan_ip()
 
     checks: list[Check] = [
@@ -281,6 +404,7 @@ def run(*, include_scanner: bool) -> Report:
         _directory("vms-dashboard", DASHBOARD_DIR),
         _directory("vms-screen", SCREEN_DIR),
         _directory("vms-scanner", SCANNER_DIR),
+        *_production_checks(mode),
         port_check("Backend", BACKEND_PORT),
         port_check("Dashboard", DASHBOARD_PORT),
         port_check("Lobby Screen", SCREEN_PORT),
