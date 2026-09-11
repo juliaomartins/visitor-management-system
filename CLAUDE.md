@@ -984,28 +984,57 @@ package root — the opposite of `vms-scanner`, where everything is under `src/`
   `IdleScreen` takes over between arrival waves. GSAP drives them — `useGSAP`, SplitText
   and Physics2D, all free tier.
 - **The foot of the screen is a real tais, not an SVG swoosh.** `components/TaisWave.tsx`
-  draws two layers of photographed Timorese cloth — a darkened base and a lit ribbon
-  crossing it — drifting against each other at 128s and 91s. It carries the accent the
-  swoosh used to: each layer's `drop-shadow` is `var(--accent)`, so the crest is lit blue
+  draws two layers of photographed Timorese cloth — a drape in front and a darkened
+  ribbon behind — swaying against each other at 71s and 103s. It carries the accent the
+  swoosh used to: each layer's `drop-shadow` is `var(--accent)`, so the hem is lit blue
   for a visitor and gold for a VIP, keeping the four-cue rule intact. Both the arrival
   stage and `IdleScreen` use it.
-  - `art/tais-wave-{1,2}.svg` are the supplied sources — 1983x793 PNGs inside a base64
-    SVG wrapper, 5MB the pair. They are **not** in `public/`, so Next never ships them.
-  - `public/brand/tais-wave-{1,2}.webp` are what the browser loads, built by
-    `scripts/build-tais-tiles.py` (`..\..\.venv\Scripts\python.exe`). Each is the frame
-    plus its own **mirror**, which is what lets it repeat across a wall with no seam —
-    the artwork is 2.5:1 and the band is nearer 7:1, so one copy cannot span the screen
-    without a 3x horizontal stretch that flattens the weave. 1MB the pair.
-  - **`--tais-band`, `--tais-ribbon`, `--tais-ribbon-drop` and `--tais-clear` all live in
-    `globals.css`,** and the arrival stage's bottom padding is `--tais-clear`, derived
-    from the ribbon's own proportions. Written as separate numbers, the content lands on
-    the cloth. The band is `calc(24vh - 46px)`, not a plain `vh`: at 667x375 the
-    difference between 56px and 77px of clearance is a 36-character name setting on two
-    lines versus FitText falling to its floor and wrapping to four, off the screen.
+  - **ONE COPY OF THE PHOTOGRAPH, NEVER TILED — and this reverses what this file said
+    before.** The drape used to be laid down as a mirrored repeating tile. The seam was
+    genuinely invisible; the problem was scale. At the old `24vh - 46px` the band was
+    213px on a 1080p wall, so a 2.5:1 frame came out 532px wide and the panel carried
+    **3.6 copies** of it — a row of repeating chevrons where the artwork is one piece of
+    cloth sagging into a single broad curve.
+  - `art/tais.png` is the reference photograph and the drape's source. It is
+    byte-identical to the PNG embedded in `art/tais-wave-1.svg`, which is left in place
+    as the original delivery but is no longer read. `art/tais-wave-2.svg` is the ribbon —
+    a genuinely different piece of cloth with its own silhouette, not the drape offset.
+    None are in `public/`, so Next never ships them.
+  - `public/brand/tais-{drape,ribbon}.webp` are what the browser loads, built by
+    `scripts/build-tais-layers.py` (`..\..\.venv\Scripts\python.exe`). 570KB the pair,
+    down from 1MB, and neither is mirrored any more.
+  - **THE STRETCH IS THE WHOLE DESIGN CONSTRAINT.** A 2.5:1 photograph cannot span an
+    8:1 band at its own proportions, and how far it stretches is exactly
+    `viewport width / (2.5 x band)`. So the band is sized from the viewport's **width**:
+    `clamp(44px, min(19.3vw, calc(52vh - 190px)), 1000px)`. `19.3vw` pins the stretch at
+    2.16x on every 16:9 panel; the `vh` term is a cap that bites only on short or
+    ultrawide viewports.
+  - **370px at 1080p is a measured trade, not a taste.** Stretch and the visitor's face
+    are bought with the same pixels — measured on this panel with a two-word name and the
+    queue showing: band 300 → 2.66x / 461px face; **370 → 2.16x / 399px**; 420 → 1.90x /
+    340px; 480 → 1.67x / 301px. The brief asks for a 400px photograph, and 370 is the
+    tallest band that still pays it.
+  - **`--tais-clear` is ONE number — `band * 0.87` — and a side gutter must not be
+    reintroduced to shrink it.** The cloth is a bowl, low at the centre and tall in both
+    corners, so the tempting economy is to clear only the middle and hold content out of
+    the corners with `wall:px-[13vw]`. That was built and it is wrong: it starves FitText
+    of width, and at 1366x768 a 31-character name answers by wrapping to four lines and
+    overrunning the header. The panel that most needs the economy cannot afford it.
+  - `--tais-band`, `--tais-ribbon`, `--tais-ribbon-bleed`, `--tais-drape-bleed` and
+    `--tais-clear` all live in `globals.css`, with the measurements written beside them.
+  - Each layer is cut wider than the panel (`--tais-*-bleed`) because the drift is a
+    sway, not a scroll — a single photograph has ends, so it eases back and forth inside
+    its own overhang instead of migrating. `travel()` converts that overhang into
+    `xPercent`, which is a share of the **element**, not the panel; getting that
+    conversion wrong shows the cloth's cut edge at the side of the screen for a few
+    seconds every couple of minutes.
   - **There is deliberately no sheen on the cloth**, and the component says why at
-    length. `mix-blend-mode` cannot work here — both tracks are promoted to their own
+    length. `mix-blend-mode` cannot work here — both layers are promoted to their own
     compositing layers by `filter` + `will-change`, so a blended sibling has no backdrop
     and renders as a flat grey slab across the wall.
+  - Verified by headless screenshot at 1366x768, 1920x1080, 2560x1440, 2560x1080 and
+    3840x2160, in light and dark, VIP and visitor, and under `prefers-reduced-motion`
+    (which drops every tween and leaves the reference photograph at rest).
 - `FitText` auto-fits names and organisations. It exists because a 40-character name at
   a fixed 72px overflows a 1366×768 screen, and the lobby display is the one surface
   nobody can fix during the event.
@@ -1019,10 +1048,18 @@ official languages; English is the conference's working language. Every frontend
 carries all three, and each one owns its own dictionary — there is no shared i18n
 package, because `vms-contracts` is generated and nothing hand-written goes in it.
 
+**`vms-screen` IS THE EXCEPTION, AND IT IS A DELIBERATE ONE. The lobby wall is
+English; only `/pair` is translated.** The display shows a name, a country and a
+photograph — the words around them are a greeting, a status and a clock, and a
+wall that changes language is a wall nobody in the lobby asked to change. The
+person who does need a language is the installer standing at the kiosk on the
+first morning, and they are on the pairing screen. So the switcher moved there
+and the wall's dozen strings became plain constants in `lib/wall-copy.ts`.
+
 | App | Dictionaries | Engine | Persisted in |
 |---|---|---|---|
 | `vms-dashboard` | `lib/locales/{en,pt,tet}.ts` — 365 keys | `lib/i18n.tsx` | cookie `vms.locale` |
-| `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 29 keys | `lib/i18n.tsx` | cookie `vms.screen.locale` |
+| `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 15 keys, **`/pair` only** | `lib/i18n.tsx` | cookie `vms.screen.locale` |
 | `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 72 keys | `src/i18n.tsx` | SecureStore `vms.locale` (native only — see below) |
 | `vms-desktop` | `locales/{en,pt,tet}.py` — 53 keys | `i18n.py` | `QSettings` (registry) |
 
@@ -1104,14 +1141,26 @@ translation.
 - **Backend error messages.** DRF's `detail` strings arrive in English and are
   shown as sent. Errors the frontends write themselves carry a `MessageKey`
   instead, resolved at the point of display — see `useErrorText`.
+- **The lobby wall itself.** `vms-screen/lib/wall-copy.ts` holds every word the
+  display says, in English, as constants — no hook, no context, no key. Scoping
+  is the whole mechanism: `LocaleContext` defaults to `"en"`, so mounting the
+  provider in `app/pair/layout.tsx` instead of the root layout makes `/` English
+  with no flag and no branch anywhere. `components/ServerSetup.tsx` is why that
+  shape was chosen over a prop — it renders on BOTH routes, and it comes out
+  translated during pairing and English on the wall without knowing which it is.
+  Two consequences worth keeping: `setLocale` must **not** write
+  `document.documentElement.lang` (the pair page navigates to `/` on success, so
+  it would follow the operator onto the wall — `app/pair/locale-shell.tsx` owns
+  that attribute instead), and the root layout is no longer `async`, which is why
+  `/` now prerenders as static.
 - **Device names and the conference title.** `SCREEN_NAME` is data the backend
   stores and the dashboard lists; translating it would give one wall three names
   depending on which language it happened to be in when somebody paired it. The
   event's official title is not ours to translate either.
 
 **Where the switcher lives:** the dashboard topbar *and* its sign-in page (the
-one screen reachable without a session); the lobby screen's bottom-left corner
-beside the theme toggle; the scanner's pairing screen (its first screen) and its
+one screen reachable without a session); the lobby screen's **pairing** page and
+nowhere else on that app; the scanner's pairing screen (its first screen) and its
 settings.
 
 **The Tetun wants a native read.** It is careful — INL orthography, loanwords
