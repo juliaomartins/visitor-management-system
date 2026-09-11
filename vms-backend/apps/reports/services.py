@@ -142,10 +142,35 @@ def counts_by_result(queryset: QuerySet[ScanEvent]) -> dict:
     Zero-filled on purpose: an audit that shows `invalid: 0` has said something,
     whereas one that omits the key leaves the reader wondering whether it was
     counted at all.
+
+    THE `.order_by()` IS LOAD-BEARING. DO NOT REMOVE IT.
+
+    `entry_log()` hands this an explicitly ordered queryset
+    (`.order_by("-scanned_at", "-id")`), and Django folds an EXPLICIT ordering
+    into the `GROUP BY` of a `values().annotate()` — it is documented behaviour,
+    not a bug. `id` is the primary key, so the grouping became
+
+        GROUP BY result, scanned_at, id
+
+    one group per scan, every count 1, and the comprehension below kept the last
+    row per result. The dashboard showed `valid 1, duplicate 1, revoked 1,
+    invalid 1` against a day of 91 scans, and the same four numbers reached the
+    report narrative and the XLSX and PDF exports.
+
+    CLAUDE.md LISTED THIS SUSPICION AS A FALSE ALARM, TWICE, AND WAS WRONG. What
+    it says is true of `Meta.ordering`, which has not been folded into `GROUP BY`
+    since Django 3.1 — and `Meta.ordering` was never the problem. Testing the
+    function on a bare `ScanEvent.objects.all()` gives the right answer and
+    proves nothing, because nothing calls it that way. Measured on Django 6.1
+    with 7 valid / 3 duplicate / 2 revoked / 1 invalid: bare queryset 7/3/2/1,
+    `entry_log()` 1/1/1/1, `entry_log()` with this line 7/3/2/1.
+
+    Its three sibling aggregations above are safe only because each ends with an
+    `.order_by(...)` of its own, which replaces the inherited one.
     """
     counted = {
         row["result"]: row["total"]
-        for row in queryset.values("result").annotate(total=Count("id"))
+        for row in queryset.order_by().values("result").annotate(total=Count("id"))
     }
     return {choice.value: counted.get(choice.value, 0) for choice in ScanResult}
 

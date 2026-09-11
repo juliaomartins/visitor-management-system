@@ -1611,11 +1611,31 @@ is worse than no line at all.
 - The pairing rate limit was given as `5/hour per IP`. It is `20/hour`, and it
   counts **failed** attempts only — the code carries a comment explaining why,
   which the document had dropped.
-- `counts_by_result` in `apps/reports/services.py` was suspected of a missing
-  `.order_by()` and flagged as a bug across two sessions. **It is not one.**
-  `Meta.ordering` stopped being folded into `GROUP BY` in Django 3.1, and this
-  runs on 6.1 — proved against a throwaway SQLite database, 7/3/2/1 in, 7/3/2/1
-  out. The advice was right for Django 2.x and is stale.
+- **`counts_by_result` WAS a bug, and this list said twice that it was not.**
+  The entry read: *"suspected of a missing `.order_by()` and flagged as a bug
+  across two sessions. It is not one. `Meta.ordering` stopped being folded into
+  `GROUP BY` in Django 3.1 — proved against a throwaway SQLite database, 7/3/2/1
+  in, 7/3/2/1 out."*
+
+  Every sentence of that is true and it answers the wrong question.
+  `Meta.ordering` was never the problem. `entry_log()` applies an **explicit**
+  `.order_by("-scanned_at", "-id")`, which Django still folds into the `GROUP BY`
+  of a `values().annotate()` — documented behaviour, unchanged. The proof
+  offered was a bare `ScanEvent.objects.all()`, and nothing calls it that way.
+
+  Through the real path the grouping was `GROUP BY result, scanned_at, id`: one
+  group per scan, every count 1. The dashboard showed `valid 1, duplicate 1,
+  revoked 1, invalid 1` against a day of 91 scans, and those same four numbers
+  reached "Refused at the door", the report narrative, and the XLSX and PDF
+  exports. Measured on Django 6.1 — bare queryset 7/3/2/1, `entry_log()`
+  1/1/1/1, fixed 7/3/2/1.
+
+  The three sibling aggregations were safe only by accident: each ends with an
+  `.order_by(...)` of its own, which replaces the inherited one.
+
+  **The lesson is not about Django.** A function was tested in isolation, passed,
+  and was pronounced correct for a caller it had never been tested with — twice,
+  each time more confidently. Aggregations get verified through `entry_log()`.
 
 **When you change a route, a serializer or a filename, change this file in the same
 commit.** Everything above was true once.
