@@ -124,7 +124,7 @@
   color-scheme: dark;
 
   /*
-   * THE TAIS'S GEOMETRY, AND THE ROOM THE STAGE LEAVES IT. All four here.
+   * THE TAIS'S GEOMETRY, AND THE ROOM THE STAGE LEAVES IT. Both numbers here.
    *
    * `components/TaisWave.tsx` draws from these and the arrival stage pads with
    * `--tais-clear`, so the cloth and the clearance cannot drift apart and leave
@@ -132,35 +132,87 @@
    * this pass wrote the clearance as its own guess and put "Ministry of Foreign
    * Affairs and Cooperation" straight across the crest.
    *
-   * `24vh - 46px` RATHER THAN A PLAIN `24vh`, and the subtraction is the whole
-   * point. The band has to be a quarter of a wall — the tile is 5:1, so
-   * anything shallower crops the wave's shape away or stretches the weave
-   * sideways — and it has to be almost nothing on a 375px-tall landscape phone,
-   * where a quarter of the height plus its clearance is more than the layout
-   * owns. A fixed `vh` cannot be both. Subtracting a constant makes the share
-   * grow with the panel: 44px of a phone, 213px of 1080p, 330px of anything
-   * taller than about 1550.
+   * THE BAND IS SIZED FROM THE VIEWPORT'S WIDTH NOW, NOT ITS HEIGHT, and that
+   * inversion is the whole of this pass.
    *
-   * That cliff is real and it is sharp. At 667x375 the difference between 56px
-   * and 77px of clearance is the difference between a 36-character name setting
-   * on two lines and FitText falling to its floor and wrapping to four, over the
-   * header and off the bottom of the screen. Measured, both ways.
+   * The tais is one photograph of one draped cloth, drawn once across the
+   * panel — not a tile. Its natural proportion is 2.5:1 and the foot of a
+   * 1920x1080 wall is nearer 8:1, so a single copy can only span the panel by
+   * being stretched sideways. How far it stretches is exactly
+   * `viewport width / (2.5 x band)`, which makes the band the only control over
+   * how distorted the weave gets. `19.3vw` pins that at 2.16x on any 16:9 panel
+   * wide enough to lead with it, so the cloth looks the same on every wall.
+   *
+   * The previous value, `24vh - 46px`, gave 213px at 1080p. At that height a
+   * 2.5:1 frame is 532px wide, so the old tiling drew 3.6 copies of the wave
+   * across the panel — a row of repeating chevrons where the artwork is one
+   * broad sag. Height was the wrong axis to size from.
+   *
+   * WHY 370px AT 1080p AND NOT MORE, WHICH IS THE REAL TRADE HERE.
+   *
+   * Stretch and the visitor's face are bought with the same pixels, and the
+   * exchange rate was measured on this panel rather than reasoned about. At
+   * 1920x1080, with a two-word name and the queue column showing:
+   *
+   *     band 300 -> 2.66x stretch, 461px face
+   *     band 370 -> 2.16x stretch, 399px face     <- this
+   *     band 420 -> 1.90x stretch, 340px face
+   *     band 480 -> 1.67x stretch, 301px face
+   *
+   * The screen brief asks for a 400px photograph at three to five metres, and
+   * 370 is the tallest band that still pays it. 480 gives a visibly finer
+   * weave and costs the face a third of its diameter, which is the wrong way
+   * round for a screen whose job is to welcome a person by name.
+   *
+   * `52vh - 190px` IS THE SECOND HALF, and it is a cap, not the driver. A
+   * fifth of the WIDTH is more than a short viewport owns. The subtraction
+   * makes the cap grow faster than the panel, so it bites only where it must:
+   * 209px at 1366x768, where the content box is already full to the pixel and
+   * a taller cloth pushes a long name off the top of the screen; 372px at
+   * 1080p, where it hands over to `19.3vw`; nothing at all above that except
+   * on true ultrawide, where 2560x1080 takes the cap and pays 2.87x.
+   *
+   * That cliff on a short panel is real and it is sharp. At 667x375 the
+   * difference between 56px and 77px of clearance is the difference between a
+   * 36-character name setting on two lines and FitText falling to its floor and
+   * wrapping to four, over the header and off the bottom of the screen.
+   * Measured, both ways — and the cap keeps this side of it, at 38px.
    */
-  --tais-band: clamp(44px, calc(24vh - 46px), 330px);
+  --tais-band: clamp(44px, min(19.3vw, calc(52vh - 190px)), 1000px);
 
-  /* The ribbon, as multiples of the band: how much taller it is, and how far
-     below the band it hangs. It breaks out of the band on purpose — a front
-     layer that stops where the back one does is a stripe, not a second piece
-     of cloth. */
-  --tais-ribbon: 1.34;
-  --tais-ribbon-drop: 0.07;
+  /* The ribbon behind the drape, as multiples of the band: how much taller it
+     is, and how far it reaches past each side. It is a different piece of cloth
+     — `art/tais-wave-2.svg`, thin flowing bands with its own silhouette — and
+     it is cut wider than the drape so its own drift has further to travel
+     before an edge could show. */
+  --tais-ribbon: 1.07;
+  --tais-ribbon-bleed: 0.06;
 
-  /* Where the content has to stop: the ribbon's own top edge, plus a little.
-     Derived from the two above rather than written as a number, so moving the
-     ribbon moves the clearance with it. */
-  --tais-clear: calc(
-    var(--tais-band) * (var(--tais-ribbon) - var(--tais-ribbon-drop) + 0.04)
-  );
+  /* How far past each side edge the drape is cut, as a share of the viewport.
+     It is what the drift moves within: the cloth can travel this far in either
+     direction and still cover the panel corner to corner. */
+  --tais-drape-bleed: 0.02;
+
+  /*
+   * Where the content has to stop, and it is ONE number on purpose.
+   *
+   * The cloth is a bowl: it dives to 69% of the frame's height at the centre
+   * of the panel and climbs to 11% in the corners. The obvious economy is to
+   * clear only the middle and keep content out of the corners with side
+   * padding — it was built, and it costs more than it saves. Holding the
+   * gutters at 13vw starves FitText of width, and at 1366x768 a 31-character
+   * name answers by wrapping to four lines and overrunning the header. The
+   * panel that most needs the economy is the one that cannot afford it.
+   *
+   * So the clearance clears the cloth at its TALLEST, everywhere, and the
+   * stage keeps its ordinary side padding. 0.87 is that height plus a little
+   * air: the drape's highest pixel is 11.35% down its own frame, and at the
+   * stage's padding edge it is 17.25% down, so this leaves about 15px spare at
+   * 1080p and cannot be walked past by a long name at any width.
+   *
+   * One number cannot drift out of step with a second one. That is the point.
+   */
+  --tais-clear: calc(var(--tais-band) * 0.87);
 
   /*
    * How the tais's back layer is held behind its front one.

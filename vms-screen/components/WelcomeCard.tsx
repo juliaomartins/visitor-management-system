@@ -54,7 +54,6 @@ export function ArrivalStage({
   /** Arrivals waiting behind this one. They get their own column, never an overlay. */
   queued?: ScreenEvent[];
 }) {
-  const t = useT();
   const hasQueue = queued.length > 0;
   const { width, height } = useViewport();
 
@@ -91,6 +90,7 @@ export function ArrivalStage({
 
   const accent = vip ? "var(--color-vip)" : "var(--color-expo)";
   const deep = vip ? "var(--color-vip-deep)" : "var(--color-expo-deep)";
+  const t = useT();
   const status = t(
     vip ? "welcome.statusVip" : "welcome.statusVisitor",
   );
@@ -139,6 +139,20 @@ export function ArrivalStage({
           about the shape instead: `wall:` is landscape and wide enough for two
           columns, defined in globals.css, otherwise stacked with the queue
           underneath.
+
+          THE SIDE PADDING IS ORDINARY, AND THAT IS A DECISION. The tais below
+          is a bowl — low at the centre of the panel, tall in both corners — so
+          the tempting economy is to clear only the middle here and hold content
+          out of the corners with a wide gutter instead. That was built, at
+          `wall:px-[13vw]`, and it is wrong: it starves FitText of width, and at
+          1366x768 a 31-character name answers by wrapping to four lines and
+          overrunning the header. The panel that most needs the economy is the
+          one that cannot afford it.
+
+          `--tais-clear` therefore clears the cloth at its tallest, everywhere,
+          and this padding stays out of it. One number, in globals.css, where
+          the measurements behind it are written down. Do not reintroduce a
+          gutter here to buy the clearance back.
         */
         className={`relative z-10 grid min-h-0 gap-[clamp(0.5rem,2vw,2.5rem)] px-[clamp(0.75rem,2.5vw,3rem)] pb-(--tais-clear) ${
           hasQueue
