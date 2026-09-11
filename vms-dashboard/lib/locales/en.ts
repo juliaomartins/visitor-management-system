@@ -89,7 +89,7 @@ export const en = {
   "visitors.exportTitle":
     "Spreadsheet of everyone registered. Nothing is reissued.",
   "visitors.exporting": "Exporting\u2026",
-  "visitors.export": "Export .xlsx",
+  "visitors.export": "Export Excel",
   "visitors.exportFailed": "The roster could not be exported.",
   "visitors.register": "Register visitor",
   "visitors.refreshing": "Refreshing\u2026",
@@ -273,7 +273,7 @@ export const en = {
   "badges.print": "Print",
   "badges.printCount": "Print {count}",
   "badges.sheetFailed": "The sheet could not be produced.",
-  "badges.export": "Export .xlsx",
+  "badges.export": "Export Excel",
   "badges.fileFailed": "The file could not be produced.",
   "badges.selectedOne": "{count} selected \u00b7 {sheets} A4 sheet",
   "badges.selectedMany": "{count} selected \u00b7 {sheets} A4 sheets",

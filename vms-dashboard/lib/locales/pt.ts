@@ -84,7 +84,7 @@ export const pt: Messages = {
   "visitors.exportTitle":
     "Folha de c\u00e1lculo com todos os inscritos. Nada \u00e9 reemitido.",
   "visitors.exporting": "A exportar\u2026",
-  "visitors.export": "Exportar .xlsx",
+  "visitors.export": "Exportar Excel",
   "visitors.exportFailed": "N\u00e3o foi poss\u00edvel exportar a lista.",
   "visitors.register": "Registar visitante",
   "visitors.refreshing": "A atualizar\u2026",
@@ -279,7 +279,7 @@ export const pt: Messages = {
   "badges.print": "Imprimir",
   "badges.printCount": "Imprimir {count}",
   "badges.sheetFailed": "N\u00e3o foi poss\u00edvel produzir a folha.",
-  "badges.export": "Exportar .xlsx",
+  "badges.export": "Exportar Excel",
   "badges.fileFailed": "N\u00e3o foi poss\u00edvel produzir o ficheiro.",
   "badges.selectedOne": "{count} selecionado \u00b7 {sheets} folha A4",
   "badges.selectedMany": "{count} selecionados \u00b7 {sheets} folhas A4",

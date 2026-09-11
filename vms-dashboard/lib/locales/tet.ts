@@ -89,7 +89,7 @@ export const tet: Messages = {
   "visitors.exportTitle":
     "Folha k\u00e1lkulu ho ema hotu ne\u2019eb\u00e9 rejista. La f\u00f3 sai kartaun foun.",
   "visitors.exporting": "Esporta hela\u2026",
-  "visitors.export": "Esporta .xlsx",
+  "visitors.export": "Esporta Excel",
   "visitors.exportFailed": "La bele esporta lista.",
   "visitors.register": "Rejista vizitante",
   "visitors.refreshing": "Atualiza hela\u2026",
@@ -278,7 +278,7 @@ export const tet: Messages = {
   "badges.print": "Imprime",
   "badges.printCount": "Imprime {count}",
   "badges.sheetFailed": "La bele halo folha.",
-  "badges.export": "Esporta .xlsx",
+  "badges.export": "Esporta Excel",
   "badges.fileFailed": "La bele halo fixeiru.",
   "badges.selectedOne": "{count} hili \u00b7 folha A4 {sheets}",
   "badges.selectedMany": "{count} hili \u00b7 folha A4 {sheets}",
