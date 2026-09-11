@@ -3,28 +3,14 @@ import type { Messages } from "./en";
 /**
  * Tetun Dili, INL orthography.
  *
- * The greeting is the one word on this panel a visitor actually reads, and
- * "Benvindu" is what a Timorese lobby says. Worth a native check all the same.
+ * Setup words only, and they are the ones that matter most to get right: an
+ * installer who cannot read the screen cannot finish. Worth a native check.
  *
  * Generated and escaped for the reason given in `en.ts`.
  */
 export const tet: Messages = {
 
-  // ------------------------------------------------------------ the wall --
-  "welcome.greeting": "Benvindu",
-  "welcome.statusVip": "Vizitante VIP",
-  "welcome.statusVisitor": "Vizitante",
-  "welcome.admitted": "Simu ona",
-  "welcome.guest": "Konvidadu",
-  "idle.waiting": "Hein xegada",
-  "queue.next": "Tuirmai",
-  "feed.connected": "Konekta ba fluxu xegada",
-  "feed.disconnected": "La konekta ba fluxu xegada",
-  "brand.organisers": "Organizad\u00f3r sira",
-
-  // --------------------------------------------------------- preferences --
-  "theme.toDark": "Troka ekr\u00e1n ba modu nakukun",
-  "theme.toLight": "Troka ekr\u00e1n ba modu naroman",
+  // ------------------------------------------------ the language control --
   "language.label": "Lian",
   "language.choose": "Hili lian",
 
@@ -46,9 +32,4 @@ export const tet: Messages = {
   "server.badAddress": "Ne\u2019e la hanesan enderesu. Koko 10.101.196.41:8000",
   "server.checking": "Verifika hela\u2026",
   "server.connect": "Konekta",
-
-  // ------------------------------------------------------------ document --
-  "meta.title": "DRCC 2026 \u2014 Xegada",
-  "meta.description":
-    "Konfer\u00e9nsia Rejion\u00e1l Kooperativa D\u00edli no Di\u00e1logu Ministeri\u00e1l 2026 \u2014 ekr\u00e1n xegada iha resepsaun.",
 };

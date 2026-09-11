@@ -7,21 +7,7 @@ import type { Messages } from "./en";
  */
 export const pt: Messages = {
 
-  // ------------------------------------------------------------ the wall --
-  "welcome.greeting": "Bem-vindo",
-  "welcome.statusVip": "Visitante VIP",
-  "welcome.statusVisitor": "Visitante",
-  "welcome.admitted": "Admitido",
-  "welcome.guest": "Convidado",
-  "idle.waiting": "A aguardar chegadas",
-  "queue.next": "Segue",
-  "feed.connected": "Ligado ao fluxo de chegadas",
-  "feed.disconnected": "Desligado do fluxo de chegadas",
-  "brand.organisers": "Organizadores",
-
-  // --------------------------------------------------------- preferences --
-  "theme.toDark": "Mudar o ecr\u00e3 para modo escuro",
-  "theme.toLight": "Mudar o ecr\u00e3 para modo claro",
+  // ------------------------------------------------ the language control --
   "language.label": "Idioma",
   "language.choose": "Escolher idioma",
 
@@ -45,9 +31,4 @@ export const pt: Messages = {
     "Isso n\u00e3o parece um endere\u00e7o. Experimente 10.101.196.41:8000",
   "server.checking": "A verificar\u2026",
   "server.connect": "Ligar",
-
-  // ------------------------------------------------------------ document --
-  "meta.title": "DRCC 2026 \u2014 Chegadas",
-  "meta.description":
-    "Confer\u00eancia Regional Cooperativa de D\u00edli e Di\u00e1logo Ministerial 2026 \u2014 ecr\u00e3 de chegadas do \u00e1trio.",
 };

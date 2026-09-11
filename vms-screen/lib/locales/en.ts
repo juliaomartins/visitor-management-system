@@ -1,34 +1,21 @@
 /**
- * English - the source of truth for the lobby screen's messages.
+ * English - the source of truth for the pairing screen's messages.
  *
- * A MUCH SMALLER SET THAN THE DASHBOARD'S, and deliberately so. This panel has
- * almost no words on it: a greeting, a status, a clock and the two setup screens
- * nobody sees after the first morning. Everything else on the wall is a name, a
- * country and a photograph, which need no translation.
+ * SETUP ONLY. The lobby wall is English and its words are plain constants in
+ * `lib/wall-copy.ts`; everything here is read by an installer standing at the
+ * kiosk on the first morning and by nobody after that. That is why the set is
+ * small and why it is worth translating: somebody who has landed in a language
+ * they cannot read needs a way out, and this is the screen they are on.
  *
  * `pt.ts` and `tet.ts` are typed as `Messages`, so omitting a key is a compile
- * error rather than an English word appearing on a wall in front of delegates.
+ * error rather than an English word appearing mid-setup.
  *
  * Non-ASCII is written as \uXXXX escapes and these files are generated - see
  * the dashboard's `lib/locales/en.ts` for the incident that made that a rule.
  */
 export const en = {
 
-  // ------------------------------------------------------------ the wall --
-  "welcome.greeting": "Welcome",
-  "welcome.statusVip": "VIP Visitor",
-  "welcome.statusVisitor": "Visitor",
-  "welcome.admitted": "Admitted",
-  "welcome.guest": "Guest",
-  "idle.waiting": "Waiting for arrivals",
-  "queue.next": "Next",
-  "feed.connected": "Arrival feed connected",
-  "feed.disconnected": "Arrival feed disconnected",
-  "brand.organisers": "Organisers",
-
-  // --------------------------------------------------------- preferences --
-  "theme.toDark": "Switch the display to dark mode",
-  "theme.toLight": "Switch the display to light mode",
+  // ------------------------------------------------ the language control --
   "language.label": "Language",
   "language.choose": "Choose a language",
 
@@ -51,14 +38,9 @@ export const en = {
     "That does not look like an address. Try 10.101.196.41:8000",
   "server.checking": "Checking\u2026",
   "server.connect": "Connect",
-
-  // ------------------------------------------------------------ document --
-  "meta.title": "DRCC 2026 \u2014 Arrivals",
-  "meta.description":
-    "D\u00edli Regional Cooperative Conference and Ministerial Dialogue 2026 \u2014 lobby arrivals display.",
 } as const;
 
-/** Every message key on the lobby screen. */
+/** Every message key on the pairing screen. */
 export type MessageKey = keyof typeof en;
 
 /** The shape a translation has to satisfy. */

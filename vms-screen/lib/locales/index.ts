@@ -3,11 +3,15 @@ import { pt } from "./pt";
 import { tet } from "./tet";
 
 /**
- * The locale set for the lobby screen, and the pure helpers around it.
+ * The locale set for the PAIRING screen, and the pure helpers around it.
  *
- * NO "use client" HERE. The root layout is a server component and has to know
- * the language before it renders anything — see `lib/i18n.tsx` for why a wall
- * panel in particular cannot correct its language after the fact.
+ * NO "use client" HERE. `app/pair/layout.tsx` is a server component and has to
+ * know the language before it renders anything — see `lib/i18n.tsx` for why a
+ * screen cannot correct its language after the fact.
+ *
+ * `ordinal()` used to live at the foot of this file, turning a queue position
+ * into "2nd" or "2.º" or a bare numeral. The queue is on the wall, which is
+ * English, so it moved to `wallFormat.ordinal` in `lib/wall-copy.ts`.
  */
 export type Locale = "en" | "pt" | "tet";
 
@@ -18,9 +22,8 @@ export const DEFAULT_LOCALE: Locale = "en";
  *
  * A cookie, not localStorage — which is what the theme next door uses. The
  * theme is a class the server can guess wrong and a pre-paint script can fix.
- * The language is the text itself, and on a wall-sized panel a hydration swap
- * is a room-sized flicker of the wrong words. A cookie is the one browser
- * preference the server can read while rendering.
+ * The language is the text itself, and a hydration swap rewrites the screen.
+ * A cookie is the one browser preference the server can read while rendering.
  */
 export const LOCALE_COOKIE = "vms.screen.locale";
 
@@ -80,24 +83,6 @@ export function translate(
   return message.replace(/\{(\w+)\}/g, (whole, name: string) =>
     name in params ? String(params[name]) : whole,
   );
-}
-
-/**
- * "Next", "2nd", "3rd" — the queue positions, per language.
- *
- * ENGLISH ORDINALS ARE A LANGUAGE FEATURE, NOT A NUMBER FORMAT. The queue used
- * a hand-written st/nd/rd/th table, which is correct English and wrong
- * everywhere else: Portuguese writes 2.º, and Tetun does not mark ordinals on
- * the numeral at all. `Intl.PluralRules` knows the English rule, so English
- * asks it rather than keeping the table.
- */
-export function ordinal(locale: Locale, n: number): string {
-  if (locale === "tet") return String(n);
-  if (locale === "pt") return `${n}.º`;
-
-  const suffix = { one: "st", two: "nd", few: "rd", other: "th" };
-  const rule = new Intl.PluralRules("en", { type: "ordinal" }).select(n);
-  return `${n}${suffix[rule as keyof typeof suffix] ?? "th"}`;
 }
 
 export type { MessageKey, Messages };
