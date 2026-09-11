@@ -107,7 +107,11 @@ class ControlCenter(QMainWindow):
         #: request its own `setSizes` provokes.
         self._share_pending = False
 
-        self._mode = Mode.DEV
+        # Remembered like the theme and the language. A machine set up for the
+        # event stays in production across restarts; a developer's stays in
+        # development. Neither has to remember to set it on the morning.
+        stored = i18n.settings().value("mode", Mode.DEV)
+        self._mode = stored if stored in (Mode.DEV, Mode.PROD) else Mode.DEV
         self._lan_ip = detect_lan_ip()
 
         self._specs = {spec.key: spec for spec in service_specs(self._mode)}
@@ -347,7 +351,7 @@ class ControlCenter(QMainWindow):
         # includes whatever the display scaling did to them.
         needed = sum(
             b.sizeHint().width() + 8
-            for b in (self._language, self._theme, self._run_all, self._stop_all)
+            for b in (self._language, self._theme, self._mode_button, self._run_all, self._stop_all)
         ) + self._overall.sizeHint().width()
         room = width - 32 - (self._titles.sizeHint().width() if rows == 1 else 0)
         self._lay_out_controls(rows=1 if needed <= room else 2)
@@ -424,6 +428,13 @@ class ControlCenter(QMainWindow):
         self._theme.setMinimumHeight(34)
         self._theme.clicked.connect(self._toggle_theme)
 
+        # Mode sits with language and theme rather than in a settings dialog,
+        # for the same reason those two do: it is changed because of the room
+        # you are in -- editing at a desk, or running a conference.
+        self._mode_button = QPushButton()
+        self._mode_button.setMinimumHeight(34)
+        self._mode_button.clicked.connect(self._toggle_mode)
+
         self._run_all = QPushButton()
         self._run_all.setMinimumHeight(38)
 
@@ -457,7 +468,7 @@ class ControlCenter(QMainWindow):
         self._control_line_b.setSpacing(8)
         self._control_box.addLayout(self._control_line_a)
         self._control_box.addLayout(self._control_line_b)
-        for button in (self._language, self._theme, self._run_all, self._stop_all):
+        for button in (self._language, self._theme, self._mode_button, self._run_all, self._stop_all):
             button.setSizePolicy(
                 QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
             )
@@ -485,6 +496,7 @@ class ControlCenter(QMainWindow):
         self._control_line_a.addStretch(1)
         self._control_line_a.addWidget(self._language)
         self._control_line_a.addWidget(self._theme)
+        self._control_line_a.addWidget(self._mode_button)
 
         target = self._control_line_a if rows == 1 else self._control_line_b
         if rows == 2:
@@ -498,6 +510,7 @@ class ControlCenter(QMainWindow):
             self._overall,
             self._language,
             self._theme,
+            self._mode_button,
             self._run_all,
             self._stop_all,
         ):
@@ -624,11 +637,16 @@ class ControlCenter(QMainWindow):
         if getattr(self, "_compact", False):
             self._language.setText(i18n.current().upper())
             self._theme.setText("")
+            # Compact keeps the mode WORD, not an icon. Which mode this is in
+            # decides what gets run at a conference, and it is the one control
+            # here whose state is not visible anywhere else on the window.
+            self._mode_button.setText(t(f"mode.{self._mode}"))
             self._run_all.setText("")
             self._stop_all.setText("")
         else:
             self._language.setText(i18n.language_name(i18n.current()))
             self._theme.setText(t("pref.toLight") if dark else t("pref.toDark"))
+            self._mode_button.setText(t("mode.button", mode=t(f"mode.{self._mode}")))
             self._run_all.setText(t("app.runAll"))
             self._stop_all.setText(t("app.stopAll"))
 
@@ -637,6 +655,7 @@ class ControlCenter(QMainWindow):
         # not the only place the word exists.
         self._language.setToolTip(t("pref.language"))
         self._theme.setToolTip(t("pref.toLight") if dark else t("pref.toDark"))
+        self._mode_button.setToolTip(t("mode.tip"))
         self._run_all.setToolTip(t("app.runAll"))
         self._stop_all.setToolTip(t("app.stopAll"))
         self._network.retranslate()
@@ -656,6 +675,48 @@ class ControlCenter(QMainWindow):
 
     def _set_language(self, code: str) -> None:
         i18n.set_locale(code)
+        self.retranslate()
+
+    def _toggle_mode(self) -> None:
+        """Swap between the dev server and the built app.
+
+        REFUSED WHILE ANYTHING IS RUNNING, and that is not timidity. The mode
+        decides the command, so switching under a live service would leave the
+        launcher holding a pid it no longer knows how to describe: the card
+        would claim `next start` over a running `next dev`, and Stop would be
+        aimed at a process started by a command that is no longer on file.
+        Stopping first costs one click and keeps the two honest.
+        """
+        running = [
+            t(self._specs[key].name_key)
+            for key in self._specs
+            if self._registry[key].is_active
+        ]
+        if running:
+            QMessageBox.information(
+                self,
+                t("dlg.modeBusy"),
+                t("dlg.modeBusyBody", services="\n  ".join(running)),
+            )
+            return
+
+        self._mode = Mode.PROD if self._mode == Mode.DEV else Mode.DEV
+        i18n.settings().setValue("mode", self._mode)
+
+        # The specs carry the command, so they are rebuilt and handed to the
+        # processes that will run them. The registry keeps its objects: their
+        # signals are already wired to the cards.
+        self._specs = {spec.key: spec for spec in service_specs(self._mode)}
+        for key, spec in self._specs.items():
+            self._registry[key].spec = spec
+        self._orchestrator.set_specs(self._specs)
+
+        self._logs.app(
+            t("msg.modeChanged", mode=t(f"mode.{self._mode}"))
+        )
+        if self._mode == Mode.PROD:
+            self._logs.app(t("msg.modeProdHint"))
+        self.restyle()
         self.retranslate()
 
     # -------------------------------------------------------------- actions --
@@ -680,7 +741,7 @@ class ControlCenter(QMainWindow):
     def _on_run_all(self) -> None:
         include_scanner = self._cards["scanner"].include_in_run_all
 
-        report = preflight.run(include_scanner=include_scanner)
+        report = preflight.run(include_scanner=include_scanner, mode=self._mode)
         self._logs.app(preflight.format_report(report))
 
         if not report.ok:
@@ -785,9 +846,24 @@ class ControlCenter(QMainWindow):
         self._run_all.setEnabled(True)
 
     def _on_start_one(self, key: str) -> None:
-        """Starting one service by hand still waits for readiness properly."""
-        self._flash_busy()
+        """Starting one service by hand still waits for readiness properly.
+
+        AND, IN PRODUCTION, STILL REFUSES AN APP THAT WAS NEVER BUILT. Run All
+        gets a full preflight; a single Start never did, which is exactly the
+        button somebody presses after editing and rebuilding one app. Without
+        this the card flicks RUNNING, drops to ERROR, and the log's last line
+        before the error reads "Ready in 341ms".
+        """
         spec = self._specs[key]
+
+        if self._mode == Mode.PROD and key in ("dashboard", "screen"):
+            built = preflight.build_check(t(spec.name_key), spec.directory)
+            if not built.ok:
+                QMessageBox.warning(self, t("dlg.notBuilt"), built.detail)
+                self._logs.app(built.detail)
+                return
+
+        self._flash_busy()
         self._logs.app(t("msg.starting", name=t(spec.name_key)))
         self._registry[key].start(service_environment(key, self._lan_ip))
 
