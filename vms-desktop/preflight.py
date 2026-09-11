@@ -11,7 +11,9 @@ to do about it.
 
 from __future__ import annotations
 
+import os
 import shutil
+import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,7 +31,6 @@ from config import (
     VENV_DIR,
     VENV_PYTHON,
     VENV_SCRIPTS,
-    VENV_UVICORN,
 )
 from network import detect_lan_ip, is_lan_address, port_in_use
 from processes import PortOwner, port_owners
@@ -108,16 +109,92 @@ def _virtualenv_checks() -> list[Check]:
             VENV_PYTHON.is_file(),
             detail=f"Not found: {VENV_PYTHON}\nThe virtual environment looks incomplete.",
         ),
-        Check(
-            f"Uvicorn ({VENV_UVICORN.name})",
-            VENV_UVICORN.is_file(),
-            detail=(
-                f"Not found: {VENV_UVICORN}\n"
-                f'Install it into the virtual environment:\n'
-                f'  "{VENV_PYTHON}" -m pip install "uvicorn[standard]"'
-            ),
-        ),
+        # THE UVICORN CHECK USED TO BE `VENV_UVICORN.is_file()` AND PROVED
+        # NOTHING. On a project copied to another computer that file is present
+        # and unrunnable, so the check passed and the backend died silently a
+        # second later. Running the interpreter answers the question the stat
+        # was only pretending to ask.
+        interpreter_check(),
     ]
+
+
+def interpreter_check(python: Path | None = None) -> Check:
+    """Run the interpreter and make it import uvicorn. Do not trust the filename.
+
+    EXISTENCE WAS THE WRONG QUESTION, and it cost a whole event-day morning on
+    a copied project. `VENV_UVICORN.is_file()` said yes -- the file had been
+    copied along with everything else -- and the backend then exited with code
+    1 and printed nothing at all, because a Windows console-script stub carries
+    the absolute path of the interpreter that created it and that path was on
+    the other computer.
+
+    So this executes something. `-c "import uvicorn"` is enough to prove three
+    things at once that a stat cannot prove any of: the interpreter runs, its
+    virtual environment resolves after whatever move brought it here, and
+    uvicorn is installed in it.
+
+    Cheap enough for a preflight -- one interpreter start, no server, no port,
+    nothing written.
+    """
+    python = python or VENV_PYTHON
+    label = "Backend interpreter"
+
+    try:
+        completed = subprocess.run(
+            [str(python), "-c", "import uvicorn"],
+            capture_output=True,
+            text=True,
+            timeout=30.0,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0,
+        )
+    except FileNotFoundError:
+        return Check(label, False, detail=_interpreter_missing(python))
+    except OSError as error:
+        return Check(label, False, detail=f"{python}\ncould not be run: {error}")
+    except subprocess.TimeoutExpired:
+        return Check(label, False, detail=f"{python}\ndid not answer within 30s.")
+
+    if completed.returncode == 0:
+        return Check(label, True)
+
+    said = " ".join((completed.stdout or "").split() + (completed.stderr or "").split())
+    return Check(label, False, detail=_interpreter_failed(python, completed.returncode, said))
+
+
+def _interpreter_missing(python: Path) -> str:
+    return (
+        f"Not found: {python}\n"
+        "The virtual environment is missing. Create it and install the backend "
+        "requirements before starting VMS."
+    )
+
+
+def _interpreter_failed(python: Path, code: int, said: str) -> str:
+    """Name the two ways a COPIED project fails, because both are silent."""
+    lines = [
+        f"{python}",
+        f"exists, but could not run `import uvicorn` (exit code {code}).",
+        "",
+    ]
+    if said:
+        lines += ["It said:", f"  {said}", ""]
+    else:
+        lines += [
+            "It printed nothing at all, which is itself the clue.",
+            "",
+        ]
+
+    lines += [
+        "This is what a COPIED virtual environment looks like. A venv cannot be",
+        "moved between machines or drives: it records the path it was built at.",
+        "",
+        "Recreate it, from the folder above this one:",
+        f"  python -m venv .venv",
+        f'  .venv\\Scripts\\python.exe -m pip install -r vms-backend\\requirements.txt',
+        "",
+        "Copy the project's source, never its .venv.",
+    ]
+    return "\n".join(lines)
 
 
 def port_check(label: str, port: int) -> Check:

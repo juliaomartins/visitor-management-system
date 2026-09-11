@@ -17,12 +17,14 @@ are not obvious and must not be "tidied":
   process, so a second worker makes a scan reach the lobby screen only
   sometimes. `--reload` is absent for the same reason — it forks.
 
-* The backend runs from the repository's own `.venv`, by calling
-  `uvicorn.exe` inside it directly. Not `activate.bat && uvicorn`: activation
-  is a shell mutation that does not survive into a child process, so a
+* The backend runs from the repository's own `.venv`, by calling that venv's
+  `python.exe` with `-m uvicorn`. Not `activate.bat && uvicorn`: activation is
+  a shell mutation that does not survive into a child process, so a
   `cmd /c "call activate && ..."` wrapper buys nothing over naming the
-  executable, and costs an extra process that Windows will not kill with its
-  parent.
+  interpreter, and costs an extra process that Windows will not kill with its
+  parent. And NOT the `uvicorn.exe` beside it, which was the original choice
+  and broke the moment the project was copied to another computer — see
+  `backend_spec`.
 
 * Next dev servers get `--hostname 0.0.0.0`, so phones on the LAN can reach
   them. Without it Next binds loopback and the failure reads as "the network is
@@ -73,7 +75,10 @@ ROOT = repository_root()
 VENV_DIR = ROOT / ".venv"
 VENV_SCRIPTS = VENV_DIR / ("Scripts" if os.name == "nt" else "bin")
 VENV_PYTHON = VENV_SCRIPTS / ("python.exe" if os.name == "nt" else "python")
-VENV_UVICORN = VENV_SCRIPTS / ("uvicorn.exe" if os.name == "nt" else "uvicorn")
+# There is deliberately NO `VENV_UVICORN` here any more. The console-script
+# `.exe` beside the interpreter cannot survive the project being copied to
+# another machine -- see `backend_spec` for what that cost. Run the module
+# through the interpreter instead.
 
 BACKEND_DIR = ROOT / "vms-backend"
 DASHBOARD_DIR = ROOT / "vms-dashboard"
@@ -138,14 +143,35 @@ class ServiceSpec:
 
 
 def backend_spec() -> ServiceSpec:
+    """The command CLAUDE.md documents, run through the interpreter.
+
+    `python.exe -m uvicorn`, NOT `uvicorn.exe`, and the difference only shows
+    up on the machine that matters. A Windows console-script `.exe` is a stub
+    with the absolute path of its creating interpreter baked in -- ours reads
+    `#!C:\\workplace\\vms\\.venv\\Scripts\\python.exe`. Copy the project to
+    another computer, or just to another drive, and that path is dangling: the
+    stub exits with code 1 and writes NOTHING to stdout or stderr, so the
+    launcher can only report "Exited unexpectedly with code 1" above an empty
+    log. It looks like the backend crashed. The backend never ran.
+
+    `python.exe` has no such problem -- it finds its own prefix from the
+    `pyvenv.cfg` beside it, so it follows the copy. Measured by moving a venv:
+    `python.exe` kept working and reported the new prefix, while the
+    console-script stub next to it exited 1 in silence.
+
+    This is also rule 3 of this application: the command comes from CLAUDE.md,
+    which has always written it this way.
+    """
     return ServiceSpec(
         key="backend",
         name="Backend",
         name_key="svc.backend",
         technology="Django + Channels (uvicorn)",
         directory=BACKEND_DIR,
-        program=str(VENV_UVICORN),
+        program=str(VENV_PYTHON),
         arguments=[
+            "-m",
+            "uvicorn",
             "config.asgi:application",
             "--host",
             "0.0.0.0",

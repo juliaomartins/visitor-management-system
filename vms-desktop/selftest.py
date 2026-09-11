@@ -41,12 +41,12 @@ print("config — paths")
 check("repository root found", (config.ROOT / "vms-backend").is_dir(), str(config.ROOT))
 check("no absolute path is hard-coded", "C:\\Users" not in Path(config.__file__).read_text(encoding="utf-8"))
 check("venv python located", config.VENV_PYTHON.is_file(), str(config.VENV_PYTHON))
-check("venv uvicorn located", config.VENV_UVICORN.is_file(), str(config.VENV_UVICORN))
+check("no uvicorn.exe constant to reach for", not hasattr(config, "VENV_UVICORN"))
 
 print("\nconfig — the backend command CLAUDE.md requires")
 backend = config.backend_spec()
 args = backend.arguments
-check("runs config.asgi:application", args[0] == "config.asgi:application")
+check("runs config.asgi:application", "config.asgi:application" in args)
 check("binds 0.0.0.0", "--host" in args and args[args.index("--host") + 1] == "0.0.0.0")
 check("port 8000", "--port" in args and args[args.index("--port") + 1] == "8000")
 check(
@@ -54,8 +54,22 @@ check(
     "--workers" in args and args[args.index("--workers") + 1] == "1",
 )
 check("no --reload (it forks)", "--reload" not in args)
-check("uses the venv uvicorn, not a global one", str(config.VENV_DIR) in backend.program)
+check("uses the venv, not a global interpreter", str(config.VENV_DIR) in backend.program)
 check("working directory is vms-backend", backend.directory == config.BACKEND_DIR)
+
+# THE COPIED-PROJECT BUG. A Windows console-script `.exe` embeds the absolute
+# path of the interpreter that built it, so `uvicorn.exe` copied from
+# C:\workplace\vms to D:\vms still tries to launch the C: path -- and exits 1
+# writing NOTHING to either stream. The launcher could only report "Exited
+# unexpectedly with code 1" above an empty log.
+#
+# `python.exe -m uvicorn` is the form CLAUDE.md documents, and it survives the
+# copy because the interpreter resolves its own prefix from the adjacent
+# pyvenv.cfg. Verified by moving a venv: python.exe works, pip.exe exits 1 in
+# silence.
+check("runs the interpreter, not a console-script shim", backend.program == str(config.VENV_PYTHON))
+check("invokes uvicorn as a module", args[:2] == ["-m", "uvicorn"], str(args[:2]))
+check("no .exe shim anywhere in the command", "uvicorn.exe" not in " ".join([backend.program, *args]))
 
 print("\nconfig — the Next commands")
 for spec in (config.dashboard_spec(config.Mode.DEV), config.screen_spec(config.Mode.DEV)):
@@ -132,6 +146,25 @@ check(
     not by_label["LAN address"].blocking,
 )
 check("the report renders", "Preflight check" in preflight.format_report(report))
+
+print("\npreflight — the interpreter is RUN, not just found on disk")
+# `VENV_UVICORN.is_file()` passed on the machine where this broke: the file had
+# been copied, it just could not execute. Existence is not the question.
+ok_check = preflight.interpreter_check()
+check("the real venv passes", ok_check.ok, ok_check.detail)
+check("it is a blocking check", ok_check.blocking)
+
+missing = preflight.interpreter_check(Path(r"C:\no-such-directory\python.exe"))
+check("a missing interpreter fails", not missing.ok)
+check("and the failure names the path", "no-such-directory" in missing.detail, missing.detail)
+
+# The case that actually happened: the file is THERE and still cannot run.
+impostor = Path(os.environ.get("TEMP", ".")) / "vms-selftest-not-python.exe"
+impostor.write_bytes(b"this is not an executable\n")
+broken = preflight.interpreter_check(impostor)
+check("a file that exists but cannot run fails too", not broken.ok, broken.detail)
+check("and it is not reported as merely missing", "Not found" not in broken.detail, broken.detail)
+impostor.unlink()
 
 print("\nprocesses — a failed tree kill must not look like a success")
 # A pid that cannot exist. Real `taskkill`, real exit code, no mock: the entire

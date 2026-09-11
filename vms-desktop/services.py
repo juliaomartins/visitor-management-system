@@ -108,6 +108,10 @@ class ServiceProcess(QObject):
         self.spec = spec
         self._state = State.STOPPED
         self._stopping = False
+        #: Whether this run's child has written a single byte. A child that
+        #: dies having said nothing is a finding, not an absence -- see
+        #: `_on_finished`.
+        self._child_spoke = False
 
         self._process = QProcess(self)
         # One stream, in the order the child actually wrote it. Keeping stdout
@@ -164,6 +168,7 @@ class ServiceProcess(QObject):
             return
 
         self._stopping = False
+        self._child_spoke = False
         self._process.setWorkingDirectory(str(self.spec.directory))
         self._process.setProcessEnvironment(self._environment(extra_env or {}))
 
@@ -324,6 +329,7 @@ class ServiceProcess(QObject):
         raw = bytes(self._process.readAllStandardOutput())
         if not raw:
             return
+        self._child_spoke = True
         # Children write whatever their console encoding is. Never let a stray
         # byte take the launcher down with a decode error.
         self.output.emit(self.spec.key, raw.decode("utf-8", errors="replace"))
@@ -415,6 +421,24 @@ class ServiceProcess(QObject):
             self.spec.key,
             f"Exited unexpectedly with code {code} ({status.name}).\n",
         )
+
+        # AND WHEN THERE ARE NO LINES ABOVE, SAY THAT. A child that dies having
+        # written nothing to either stream is not a missing log -- it is the
+        # symptom of a program that never reached its own `main`, and the
+        # commonest cause here is a project copied between machines: a Windows
+        # console-script `.exe` carries the absolute path of the interpreter
+        # that built it, so on the new machine it exits 1 in total silence.
+        # Without this line the log is blank and the reader has nowhere to go.
+        if not self._child_spoke:
+            self.output.emit(
+                self.spec.key,
+                "It printed nothing at all -- no error, no traceback.\n"
+                "That usually means the program never started, rather than "
+                "starting and failing.\n"
+                "If this project was copied from another computer, recreate "
+                "the .venv here: a virtual environment records the path it was "
+                "built at and cannot be moved.\n",
+            )
         self._set_state(State.ERROR)
         self.exited_unexpectedly.emit(self.spec.key, code)
 

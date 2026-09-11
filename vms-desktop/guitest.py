@@ -228,6 +228,28 @@ check("ends in ERROR, not STOPPED", crasher.state is State.ERROR)
 check("reports the exit code", crashed == [3], str(crashed))
 check("never reported READY", State.READY not in crash_states)
 
+print("\nA child that dies saying NOTHING")
+# This is what a relocated venv's uvicorn.exe did on a copied project: exit 1,
+# both streams empty. "Exited unexpectedly with code 1" over a blank log is a
+# dead end, so the silence itself has to be reported as the finding it is.
+silent_log: list[str] = []
+silent = service("silent", "import sys; sys.exit(1)")
+silent.output.connect(lambda _k, text: silent_log.append(text))
+silent.start()
+pump(2500)
+
+silent_text = "".join(silent_log)
+check("ends in ERROR", silent.state is State.ERROR)
+check(
+    "the log says the child printed nothing",
+    "printed nothing" in silent_text.lower(),
+    repr(silent_text[-200:]),
+)
+check(
+    "a child that DID print is not accused of silence",
+    "printed nothing" not in "".join(outputs["backend"]).lower(),
+)
+
 print("\nA program that does not exist")
 missing = service("missing", program=str(here / "no-such-executable.exe"))
 missing.start()
@@ -425,6 +447,50 @@ check("the log keeps a floor", window._logs.minimumHeight() >= 100)
 
 window.resize(1180, 860)
 pump(260)
+
+print("\nThe log holds its 35% share at every size")
+# THE LOG IS THE ONLY WINDOW INTO FOUR CHILD PROCESSES, and it was getting
+# whatever the cards left over -- about 110px on an 880px window, four lines.
+# The share is a contract now, re-asserted on every resize, not a stretch
+# factor (which only ever distributes the EXTRA space) and not a one-time
+# balance (which the first resize undid).
+from main import LOG_SHARE  # noqa: E402
+
+for width, height in (
+    (1920, 1080), (1440, 980), (1180, 880), (1024, 768), (900, 700), (700, 560), (520, 480), (440, 440)
+):
+    window.resize(width, height)
+    pump(260)
+    total = window._split.height()
+    log = window._logs.height()
+    share = log / total if total else 0
+    check(
+        "%dx%d: the log is never under %d%%" % (width, height, round(LOG_SHARE * 100)),
+        share >= LOG_SHARE - 0.01,
+        "got %.1f%% (%dpx of %dpx)" % (share * 100, log, total),
+    )
+    # AND IT TAKES THE SLACK. The cards fit in one row on a wide screen, so a
+    # hard 35% left 348px of nothing directly above the log. The panel pane is
+    # never taller than the cards actually need.
+    needs = window._scroll.widget().sizeHint().height()
+    given = window._scroll.height()
+    # A handle's width of slack: where the 35% floor and the surplus rule land
+    # within a few pixels of each other (1024x768 does), Qt settles 4px off the
+    # ideal split and the log still gets its full share. Measured, and it does
+    # not oscillate -- zero recomputes once idle at every size.
+    check(
+        "%dx%d: no dead space above the log" % (width, height),
+        given <= needs + window._split.handleWidth(),
+        "pane %dpx for %dpx of content -- %dpx empty" % (given, needs, given - needs),
+    )
+
+window.resize(1920, 1080)
+pump(300)
+check(
+    "a wide window hands the surplus to the log, not to the gap",
+    window._logs.height() > 600,
+    "%dpx" % window._logs.height(),
+)
 
 print("\nTheme")
 first = theme.current().name

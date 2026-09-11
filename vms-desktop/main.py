@@ -26,7 +26,7 @@ from pathlib import Path
 # up itself, so it is only needed for the developer path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from PySide6.QtCore import QSize, Qt, QTimer  # noqa: E402
+from PySide6.QtCore import QEvent, QSize, Qt, QTimer  # noqa: E402
 from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QIcon  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
@@ -67,6 +67,15 @@ APP_NAME = "VMS Control Center"
 #: Half a second says "that registered"; the card's own bar carries the rest.
 CLICK_FEEDBACK_MS = 550
 
+#: The log's share of the height below the header, held at every window size.
+#:
+#: A CONTRACT, NOT A LEFTOVER. The log used to be given whatever the service
+#: cards did not want, which on a default window was about 110 pixels -- four
+#: lines, in the one panel that explains why a service just died. At 35% an
+#: 880px window shows roughly fifteen lines, which is a traceback rather than
+#: the end of one, and the cards above scroll for the difference.
+LOG_SHARE = 0.35
+
 
 class ControlCenter(QMainWindow):
     def __init__(self) -> None:
@@ -93,6 +102,10 @@ class ControlCenter(QMainWindow):
         icon = Path(__file__).resolve().parent / "assets" / "vms.ico"
         if icon.is_file():
             self.setWindowIcon(QIcon(str(icon)))
+
+        #: Guards against re-entering the share calculation from the layout
+        #: request its own `setSizes` provokes.
+        self._share_pending = False
 
         self._mode = Mode.DEV
         self._lan_ip = detect_lan_ip()
@@ -160,6 +173,14 @@ class ControlCenter(QMainWindow):
         panel_layout.addLayout(self._grid)
         panel_layout.addStretch(1)
 
+        self._panels = panels
+        # THE SHARE DEPENDS ON THIS WIDGET'S SIZE HINT, so it has to be
+        # recomputed when the hint changes -- not only when the window does.
+        # Reflowing 4 columns to 2 reports a transitional hint for one more
+        # turn than a resize gets, and the share was computed against it:
+        # 474px where the settled answer was 436, leaving a 38px band.
+        panels.installEventFilter(self)
+
         self._scroll = QScrollArea()
         self._scroll.setWidget(panels)
         self._scroll.setWidgetResizable(True)
@@ -177,47 +198,99 @@ class ControlCenter(QMainWindow):
         self._logs.setMinimumHeight(120)
         self._split.addWidget(self._logs)
 
-        # Panels first, log second, and the log keeps its share when the window
-        # grows: a taller window should show more log, not more empty card.
-        self._split.setStretchFactor(0, 3)
-        self._split.setStretchFactor(1, 2)
+        # Both halves are told the same ratio, so anything Qt redistributes
+        # between our own calls moves the same way `_apply_log_share` would.
+        self._split.setStretchFactor(0, round((1 - LOG_SHARE) * 100))
+        self._split.setStretchFactor(1, round(LOG_SHARE * 100))
         root.addWidget(self._split, stretch=1)
 
-        self._balanced = False
+    def eventFilter(self, watched, event) -> bool:  # noqa: N802  (Qt naming)
+        """Recompute the share when the panel column's own layout changes.
 
-    def _balance_split(self) -> None:
-        """Give the panels the height they actually want, once.
-
-        A STRETCH FACTOR IS A RATIO, NOT A FIT. 3:2 handed the panels about
-        510px while two rows of cards plus the network panel wanted 650, so the
-        bottom row was sliced through the middle -- scrollable, but looking
-        broken. This asks the panel column how tall it is and gives it that,
-        leaving the log its minimum and whatever is over.
-
-        Once only: after this the user's own drag is the authority, and
-        re-balancing on every resize would keep undoing it.
+        A RESIZE IS NOT THE ONLY THING THAT MOVES THE ANSWER. The share is
+        computed from the panel column's size hint, and that hint settles a
+        turn later than the resize which caused it: reflowing four columns to
+        two reported 474px, then 436px. Watching the widget catches the second
+        number; waiting longer would only have been a guess about how long.
         """
-        if self._balanced:
+        if watched is self._panels and event.type() == QEvent.Type.LayoutRequest:
+            self._schedule_log_share()
+        return super().eventFilter(watched, event)
+
+    def _schedule_log_share(self) -> None:
+        """Apply the share once, after the current layout pass finishes."""
+        if self._share_pending:
             return
-        self._balanced = True
+        self._share_pending = True
+        QTimer.singleShot(0, self._apply_log_share)
+
+    def _apply_log_share(self) -> None:
+        """Give the log its share of the height, and any the cards refuse.
+
+        A FLOOR, NOT A CEILING, and the difference is 348 pixels. Held to
+        exactly 35%, a 1920x1080 window put the four cards in a single row that
+        wanted 295px, gave the pane 643px, and left the remaining 348px empty
+        directly above the log -- a band of nothing between the only two things
+        on screen. So the log takes what the cards do not want: about 70% at
+        1920x1080, 42% at 1180x880, and the plain 35% from 900x700 down, where
+        the cards want more than there is and the pane scrolls instead.
+
+        THIS REPLACES A RULE THAT FITTED THE CARDS FIRST, and the trade it made
+        has been reversed deliberately. That rule asked the panel column how
+        tall it wanted to be, gave it exactly that, and handed the log whatever
+        was left -- which on an 880px window was about 110 pixels. Four lines.
+        The log is the only window into four child processes, so on the morning
+        something dies at 08:40 those four lines are the whole diagnosis.
+
+        What that rule was protecting against was real: a card grid cut through
+        the middle of a row of buttons reads as broken. It is the lesser cost.
+        The cards already reflow to fewer columns as the window narrows, and
+        the panels already sit in a scroll area built for exactly this -- so a
+        short panel area scrolls, while a short log simply hides the answer.
+
+        NOT A STRETCH FACTOR, and not a one-time balance. A stretch factor only
+        distributes the space a resize ADDS, so it drifts away from the ratio
+        the moment anything else sets a size; a one-time balance is undone by
+        the first resize. The share is asserted outright, whenever the geometry
+        changes.
+
+        A drag still works -- the splitter is not locked -- and the next resize
+        restores the share.
+        """
+        self._share_pending = False
 
         total = self._split.height()
         if total <= 0:
             return
 
-        wanted = self._scroll.widget().sizeHint().height()
-        # The log's own floor, not an inflated one. Rounding it up to 150 left
-        # the panels seventeen pixels short of their content, which lands the
-        # cut through the middle of a row of buttons -- scrollable, but it
-        # reads as broken. The log is still guaranteed its minimum.
-        log_floor = self._logs.minimumHeight()
-        panels = max(0, min(wanted, total - log_floor))
-        self._split.setSizes([panels, total - panels])
+        # The HANDLE is part of the splitter's height and belongs to neither
+        # pane. Left out of this sum, Qt scales both sides down to make room
+        # and the log lands a few pixels under its share -- 34.6% where the
+        # constant says 35.
+        content = total - self._split.handleWidth()
+
+        # What the cards genuinely want, asked of them rather than assumed. It
+        # changes with the column count, so it must be read after the reflow --
+        # which is why the caller defers this by an event loop turn.
+        needs = self._scroll.widget().sizeHint().height()
+
+        log = max(
+            round(total * LOG_SHARE),  # the guaranteed share
+            content - needs,  # plus anything the cards do not want
+            self._logs.minimumHeight(),  # never below legible
+        )
+        log = min(log, content)  # a window too small for even the floor
+
+        # Settled already? Do not write the same sizes back -- `setSizes`
+        # posts another layout request, which would call this again.
+        if self._split.sizes() == [content - log, log]:
+            return
+        self._split.setSizes([content - log, log])
 
     def showEvent(self, event) -> None:  # noqa: N802  (Qt naming)
         super().showEvent(event)
         # After the first layout pass, when the splitter has a real height.
-        QTimer.singleShot(0, self._balance_split)
+        self._schedule_log_share()
 
     def _relayout_cards(self, columns: int) -> None:
         """Arrange the four cards in 1, 2 or 4 columns.
@@ -287,6 +360,12 @@ class ControlCenter(QMainWindow):
         if rows == 1:
             available -= self._titles.sizeHint().width()
         self._set_compact_controls(self._full_controls_width() > available)
+
+        # LAST, because everything above can change the header's height and so
+        # the splitter's. Deferred by a turn for the same reason: the header
+        # rows laid out just now have not been measured yet, and a share
+        # computed against the old height is wrong by exactly one row.
+        self._schedule_log_share()
 
     def _build_header(self) -> QGridLayout:
         """Title on the left, controls on the right -- until there is no room.
