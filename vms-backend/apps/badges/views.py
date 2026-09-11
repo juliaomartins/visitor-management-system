@@ -4,7 +4,7 @@
     POST /api/v1/badges/reissue-sheet  [admin]  an A4 sheet, reissuing as it goes
     POST /api/v1/badges/export         [admin]  an .xlsx with QR, reissuing as it goes
     POST /api/v1/badges/reissue        [admin]  raw tokens as JSON, reissuing as it goes
-    GET  /api/v1/badges/roster.xlsx    [admin]  the visitor list, reissuing NOTHING
+    GET  /api/v1/badges/roster.xlsx    [admin]  photo + QR, reissuing NOTHING
 
 The three POSTs carry something that must not sit in a URL: a raw badge token in
 the first case, a destructive reissue in the other two. The roster is a GET
@@ -188,11 +188,15 @@ class BadgeReissueSheetView(APIView):
 
 
 class BadgeRosterExportView(APIView):
-    """The visitor list as a spreadsheet. Reads only.
+    """The visitor list as a spreadsheet: photograph, name and the live QR.
 
     Safe to run at any point during the event: it reissues nothing, so every card
-    already in circulation keeps working. It carries no QR, because a QR the
-    server can still produce would mean the server had kept the token.
+    already in circulation keeps working. The QR it draws is the one already on
+    that card — `badge_token` derives it, so producing it costs nothing.
+
+    It is consequently a file of working badges. That is not the same as
+    destructive, but it is not the credential-free list this endpoint used to
+    return; see the note in `exports.py`.
     """
 
     permission_classes = [IsAdmin]
@@ -201,12 +205,15 @@ class BadgeRosterExportView(APIView):
         operation_id="badges_roster_export_retrieve",
         summary="Export the visitor roster as .xlsx",
         description=(
-            "Who is registered, as a spreadsheet: serial, name, country, "
-            "organisation, category, badge state and registration time.\n\n"
-            "NON-DESTRUCTIVE. Nothing is reissued and no card stops working.\n\n"
-            "There is no QR column. The server stores only `sha256(token)`, so it "
-            "cannot reproduce the code on a card it has already printed — see "
-            "POST /badges/export for a file that has one."
+            "Who is registered, as a spreadsheet: row number, photograph, "
+            "name, badge QR, country, organisation and registration time.\n\n"
+            "NON-DESTRUCTIVE. Nothing is reissued and no card stops working. "
+            "Each QR is the visitor's existing badge token, derived rather "
+            "than stored, so the code drawn here is the code already on "
+            "their card.\n\n"
+            "It therefore contains working credentials. Use POST "
+            "/badges/export instead only when an outside card producer needs "
+            "freshly minted tokens and every current card is being replaced."
         ),
         responses={
             200: OpenApiResponse(

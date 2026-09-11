@@ -4,7 +4,7 @@
  * EVERY ENDPOINT HERE IS NON-DESTRUCTIVE, AND THAT IS THE WHOLE STORY:
  *
  *   POST /badges/card           needs the RAW token.
- *   GET  /badges/roster.xlsx    the visitor list, no credentials.
+ *   GET  /badges/roster.xlsx    the visitor list, with photo and live QR.
  *   POST /badges/reissue-sheet  needs only ids. Draws the A4 sheet.
  *   POST /badges/export         .xlsx with the QR for each visitor.
  *
@@ -108,10 +108,14 @@ export async function downloadReissuedSheet(
 /**
  * The visitor roster as a spreadsheet. Reads only — nothing is reissued.
  *
- * No QR column, and it cannot have one: the server keeps `sha256(token)` and
- * throws the raw value away, so it cannot reproduce the code on a card it has
- * already printed. Use `downloadCredentialExport` when a QR is actually needed
- * and the reissue is acceptable.
+ * Row number, photograph, name, badge QR, country, organisation, registered.
+ * The QR is the one already on that visitor's card: tokens are derived, so the
+ * server can redraw a code it issued weeks ago without replacing it.
+ *
+ * Which makes this a file of working badges. `downloadCredentialExport` is
+ * still the one to reach for when an outside card producer needs fresh tokens
+ * and every current card is being replaced — that one is destructive; this one
+ * is not.
  */
 export async function downloadRoster(): Promise<void> {
   return download("/api/v1/badges/roster.xlsx", "vms-roster.xlsx");

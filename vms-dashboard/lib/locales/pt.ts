@@ -82,7 +82,7 @@ export const pt: Messages = {
   "visitors.tab.normal": "Normal",
   "visitors.tab.vip": "VIP",
   "visitors.exportTitle":
-    "Folha de c\u00e1lculo com todos os inscritos. Nada \u00e9 reemitido.",
+    "Todos os inscritos, com foto e QR do cart\u00e3o. Nada \u00e9 reemitido.",
   "visitors.exporting": "A exportar\u2026",
   "visitors.export": "Exportar Excel",
   "visitors.exportFailed": "N\u00e3o foi poss\u00edvel exportar a lista.",

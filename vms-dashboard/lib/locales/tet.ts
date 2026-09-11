@@ -87,7 +87,7 @@ export const tet: Messages = {
   "visitors.tab.normal": "Norm\u00e1l",
   "visitors.tab.vip": "VIP",
   "visitors.exportTitle":
-    "Folha k\u00e1lkulu ho ema hotu ne\u2019eb\u00e9 rejista. La f\u00f3 sai kartaun foun.",
+    "Ema hotu ne\u2019eb\u00e9 rejista, ho foto no QR kartaun. La f\u00f3 sai kartaun foun.",
   "visitors.exporting": "Esporta hela\u2026",
   "visitors.export": "Esporta Excel",
   "visitors.exportFailed": "La bele esporta lista.",

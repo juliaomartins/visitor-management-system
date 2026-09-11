@@ -175,11 +175,11 @@ export interface paths {
         };
         /**
          * Export the visitor roster as .xlsx
-         * @description Who is registered, as a spreadsheet: serial, name, country, organisation, category, badge state and registration time.
+         * @description Who is registered, as a spreadsheet: row number, photograph, name, badge QR, country, organisation and registration time.
          *
-         *     NON-DESTRUCTIVE. Nothing is reissued and no card stops working.
+         *     NON-DESTRUCTIVE. Nothing is reissued and no card stops working. Each QR is the visitor's existing badge token, derived rather than stored, so the code drawn here is the code already on their card.
          *
-         *     There is no QR column. The server stores only `sha256(token)`, so it cannot reproduce the code on a card it has already printed — see POST /badges/export for a file that has one.
+         *     It therefore contains working credentials. Use POST /badges/export instead only when an outside card producer needs freshly minted tokens and every current card is being replaced.
          */
         get: operations["badges_roster_export_retrieve"];
         put?: never;

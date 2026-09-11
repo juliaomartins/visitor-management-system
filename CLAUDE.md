@@ -465,7 +465,7 @@ DELETE /api/v1/visitors/{id}/permanent       erase for good        [admin]
 
 POST   /api/v1/badges/card                   one card PDF, from a raw token
 POST   /api/v1/badges/reissue-sheet          A4 sheet PDF. Non-destructive.
-GET    /api/v1/badges/roster.xlsx            the roster, no credentials
+GET    /api/v1/badges/roster.xlsx            roster + photo + live QR
 POST   /api/v1/badges/export                 .xlsx WITH working QR codes
 POST   /api/v1/badges/reissue                ROTATES TOKENS. No client calls it.
 
@@ -551,6 +551,23 @@ vms-backend/
 ```
 
 `badges/` and `reports/` have no models on purpose — they read from `visitors` and
+**`roster.xlsx` now crosses that same boundary, and it used to be the one export
+that did not.** Its columns are `No. | Photo | Full name | QR code | Country |
+Organisation | Registered`, so the file is a set of working badges — one click
+from `/visitors`, with no confirmation in front of it. Two things make that
+defensible and it is worth knowing which: the QR is `badge_token(visitor)`, the
+code **already** on that person's card, so exporting reissues nothing and breaks
+nothing; and the admin who can click it can already read every token from
+`?with_tokens=true`. What changed is convenience, again — but a spreadsheet gets
+forwarded in a way a query string does not. If that ever needs tightening, the
+confirmation dialog in front of `POST /badges/export` is the shape to copy.
+
+`Category` and `Badge state` were dropped from that sheet to make room. A
+deactivated visitor is therefore shown with a QR that will not scan, and the only
+cue is that their name is set grey and italic — `DIM_FONT` in `exports.py`. If
+somebody asks why a badge in the spreadsheet was refused at the door, that is
+the answer.
+
 `scans`. This stops `visitors/views.py` absorbing every feature.
 
 Business logic lives in `services.py`. Views stay thin.

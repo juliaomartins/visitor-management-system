@@ -87,7 +87,7 @@ export const en = {
   "visitors.tab.normal": "Normal",
   "visitors.tab.vip": "VIP",
   "visitors.exportTitle":
-    "Spreadsheet of everyone registered. Nothing is reissued.",
+    "Everyone registered, with their photo and badge QR. Nothing is reissued.",
   "visitors.exporting": "Exporting\u2026",
   "visitors.export": "Export Excel",
   "visitors.exportFailed": "The roster could not be exported.",

@@ -212,8 +212,12 @@ export default function VisitorsPage() {
         </div>
 
         {/* Reads only — no badge is reissued and no card stops working, so this
-            is safe to run mid-event. It carries no QR column; the server cannot
-            produce one for a card it has already printed. */}
+            is safe to run mid-event.
+
+            It DOES carry a QR column, which is new: the token is derived, so the
+            server can redraw the code already on someone's card without minting
+            a replacement. The file is therefore a set of working badges, and the
+            tooltip says as much before anyone clicks. */}
         <button
           type="button"
           onClick={exportRoster}
