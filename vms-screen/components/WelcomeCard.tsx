@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
+import { WALL } from "@/lib/wall-copy";
 import { motion } from "framer-motion";
 import { useRef } from "react";
 
@@ -90,10 +90,7 @@ export function ArrivalStage({
 
   const accent = vip ? "var(--color-vip)" : "var(--color-expo)";
   const deep = vip ? "var(--color-vip-deep)" : "var(--color-expo-deep)";
-  const t = useT();
-  const status = t(
-    vip ? "welcome.statusVip" : "welcome.statusVisitor",
-  );
+  const status = vip ? WALL.statusVip : WALL.statusVisitor;
 
   return (
     /*
@@ -223,7 +220,7 @@ export function ArrivalStage({
             data-greeting
             className="mt-[clamp(0.6rem,2.4vh,2.2rem)] shrink-0 font-serif text-[clamp(1rem,min(3.2vw,4.4vh),2.75rem)] leading-none text-ink-soft italic"
           >
-            {t("welcome.greeting")}
+            {WALL.greeting}
           </p>
 
           {/*

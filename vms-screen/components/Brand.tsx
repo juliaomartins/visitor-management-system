@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
+import { WALL } from "@/lib/wall-copy";
 /**
  * The event's identity on the wall.
  *
@@ -62,11 +62,10 @@ export function EventMark() {
  * event. They keep their own background and their own colour, always.
  */
 export function Organisers() {
-  const t = useT();
   return (
     <div
       className="flex shrink-0 items-center gap-[clamp(0.35rem,0.7vw,0.7rem)] rounded-[0.6rem] bg-white px-[clamp(0.4rem,0.7vw,0.75rem)] py-[clamp(0.25rem,0.45vh,0.5rem)]"
-      aria-label={t("brand.organisers")}
+      aria-label={WALL.organisers}
     >
       {EVENT.organisers.map((org) => (
         /* eslint-disable-next-line @next/next/no-img-element */

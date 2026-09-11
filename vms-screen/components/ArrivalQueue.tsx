@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormat, useT } from "@/lib/i18n";
+import { WALL, wallFormat } from "@/lib/wall-copy";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { FitText } from "@/components/FitText";
@@ -92,8 +92,6 @@ function QueueRow({
   position: number;
   name: { max: number; min: number };
 }) {
-  const t = useT();
-  const format = useFormat();
   const vip = event.category === "vip";
 
   return (
@@ -136,8 +134,8 @@ function QueueRow({
         >
           {vip ? "VIP · " : ""}
           {position === 0
-            ? t("queue.next")
-            : format.ordinal(position + 1)}
+            ? WALL.next
+            : wallFormat.ordinal(position + 1)}
         </p>
 
         {/*
@@ -178,10 +176,12 @@ function QueueRow({
 }
 
 /*
-  THE st/nd/rd/th TABLE HAS MOVED AND CHANGED SHAPE.
+  THE st/nd/rd/th TABLE LIVES IN `lib/wall-copy.ts` NOW, AND IT IS ENGLISH ONLY.
 
-  It was correct English and wrong everywhere else: Portuguese writes 2.\u00ba,
-  and Tetun does not mark an ordinal on the numeral at all. `ordinal` in
-  lib/locales asks Intl.PluralRules for the English rule and gives the other two
-  their own.
+  It spent a pass in `lib/locales` as a per-language `ordinal()`, because the
+  English table is wrong everywhere else: Portuguese writes 2.\u00ba, and Tetun
+  does not mark an ordinal on the numeral at all. The queue is on the wall, and
+  the wall is English, so the other two languages have nothing to say here any
+  more -- `wallFormat.ordinal` asks `Intl.PluralRules` for the English rule and
+  stops there.
 */

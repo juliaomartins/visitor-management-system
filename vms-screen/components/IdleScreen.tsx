@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
+import { WALL, wallFormat } from "@/lib/wall-copy";
 import { EventMark, Organisers } from "@/components/Brand";
 import { TaisWave } from "@/components/TaisWave";
 
@@ -24,7 +24,6 @@ import { gsap, particleBudget, prefersReducedMotion, useGSAP } from "@/lib/gsap"
  * the panel burning in: every bright element moves.
  */
 export function IdleScreen({ waiting }: { waiting: boolean }) {
-  const t = useT();
   const [now, setNow] = useState<Date | null>(null);
   const root = useRef<HTMLDivElement | null>(null);
 
@@ -41,17 +40,9 @@ export function IdleScreen({ waiting }: { waiting: boolean }) {
     };
   }, []);
 
-  const time = now
-    ? now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : "";
+  const time = now ? wallFormat.time(now) : "";
   const seconds = now ? now.getSeconds() : 0;
-  const date = now
-    ? now.toLocaleDateString([], {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      })
-    : "";
+  const date = now ? wallFormat.date(now) : "";
 
   return (
     <div
@@ -91,7 +82,7 @@ export function IdleScreen({ waiting }: { waiting: boolean }) {
         <SecondsBar seconds={seconds} />
 
         <p className="mt-[3vh] text-center text-[clamp(0.9rem,1.6vw,1.6rem)] font-medium tracking-[0.3em] text-ink-faint uppercase">
-          {t(waiting ? "idle.waiting" : "welcome.greeting")}
+          {waiting ? WALL.waiting : WALL.greeting}
         </p>
 
         {date ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
+import { WALL } from "@/lib/wall-copy";
 import { setTheme, useTheme } from "@/lib/theme";
 
 /**
@@ -17,11 +17,10 @@ import { setTheme, useTheme } from "@/lib/theme";
  */
 export function ThemeToggle() {
   const theme = useTheme();
-  const t = useT();
   const next = theme === "dark" ? "light" : "dark";
   // One message per destination rather than "Switch to" glued to an adjective:
   // the adjective agrees with a noun that is not in the fragment.
-  const label = t(next === "dark" ? "theme.toDark" : "theme.toLight");
+  const label = next === "dark" ? WALL.toDark : WALL.toLight;
 
   return (
     <button

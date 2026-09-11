@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/lib/i18n";
+import { WALL } from "@/lib/wall-copy";
 /**
  * Is the feed alive?
  *
@@ -13,14 +13,11 @@ import { useT } from "@/lib/i18n";
  * artefact on a frozen panel, a moving one could not.
  */
 export function ConnectionDot({ connected }: { connected: boolean }) {
-  const t = useT();
   return (
     <div
       className="pointer-events-none absolute right-6 bottom-6 flex items-center gap-2"
       role="status"
-      aria-label={t(
-        connected ? "feed.connected" : "feed.disconnected",
-      )}
+      aria-label={connected ? WALL.feedConnected : WALL.feedDisconnected}
     >
       <span
         className={`block h-3 w-3 rounded-full ${
