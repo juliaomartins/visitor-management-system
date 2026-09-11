@@ -6,21 +6,26 @@ import { setLocale, useLocale, useT } from "@/lib/i18n";
 import { LOCALES, localeMeta } from "@/lib/locales";
 
 /**
- * The language control, sized for a wall rather than a desk.
+ * The language control. `/pair` ONLY.
  *
- * DELIBERATELY QUIET, exactly like the theme toggle it sits beside. Nobody in
- * the lobby should be drawn to it — the only person who ever presses it is
- * staff, standing at the panel during setup — so it holds a low opacity until
- * hovered or focused and never animates. A control that pulses on a welcome
- * screen is competing with the visitor's name.
+ * IT USED TO SIT ON THE WALL, beside the theme toggle, and it does not any
+ * more. The lobby display is English — its words are constants in
+ * `lib/wall-copy.ts` — so a language control there would have been a switch
+ * with nothing behind it. The installer still needs one, and the pairing screen
+ * is where they are standing, so it lives there and nowhere else.
+ *
+ * That move is also why the anchor is the plain bottom-left corner now. It used
+ * to carry an offset the width of the theme toggle, to sit to its right; there
+ * is no theme toggle on the pairing screen, and the offset left it floating in
+ * the middle of nothing.
  *
  * A menu rather than a cycling button. With three languages, cycling stops
  * telling you where you will land, and the person most likely to need this is
- * the one who cannot read the language currently on the wall.
+ * the one who cannot read the language currently on screen.
  *
- * THE MENU OPENS UPWARDS. It is anchored to the bottom-left corner of a
- * full-height panel, so a downward menu would open off the screen — and on a
- * kiosk there is nothing to scroll.
+ * THE MENU OPENS UPWARDS. It is anchored to the bottom of a full-height panel,
+ * so a downward menu would open off the screen — and on a kiosk there is
+ * nothing to scroll.
  */
 export function LanguageToggle() {
   const locale = useLocale();
@@ -53,7 +58,7 @@ export function LanguageToggle() {
   return (
     <div
       ref={root}
-      className="fixed bottom-[clamp(0.6rem,1.6vh,1.4rem)] left-[calc(clamp(0.6rem,1.6vw,1.4rem)+clamp(28px,3vh,44px)+0.5rem)] z-50"
+      className="fixed bottom-[clamp(0.6rem,1.6vh,1.4rem)] left-[clamp(0.6rem,1.6vw,1.4rem)] z-50"
     >
       {open ? (
         <div

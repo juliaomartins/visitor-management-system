@@ -5,7 +5,6 @@ import {
   Fragment,
   useCallback,
   useContext,
-  useMemo,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -14,26 +13,33 @@ import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE,
   LOCALE_COOKIE_MAX_AGE,
-  localeMeta,
-  ordinal,
   translate,
   type Locale,
   type MessageKey,
 } from "@/lib/locales";
 
 /**
- * The active language for the lobby panel.
+ * The active language for the PAIRING screen. Nothing else in this app has one.
+ *
+ * The wall is English and its words are constants in `lib/wall-copy.ts`. What
+ * remains translated is setup: the language control, the pairing form and
+ * finding the server. `app/pair/layout.tsx` is the only place that mounts the
+ * provider below — see the note there for why scoping it is all it takes.
  *
  * WHY THIS IS NOT SHAPED LIKE `lib/theme.ts`, which sits next to it. The theme
  * is a class name: the server renders dark, a pre-paint script can flip it, and
- * the markup never changes. A language IS the markup. If the server guessed
- * English and the kiosk wanted Tetun, React would hydrate over the whole panel
- * and swap every word — on a wall-sized display, in front of the people it is
- * meant to be welcoming.
+ * the markup never changes. A language IS the markup, so text that arrives in
+ * one language and hydrates into another is a React mismatch over the whole
+ * screen.
  *
- * So the locale is read from a cookie by the root layout, a server component,
+ * So the locale is read from a cookie by the pair layout, a server component,
  * and handed down. The store below exists only so that changing the language
  * during setup re-renders without a reload.
+ *
+ * `useFormat` used to live at the bottom of this file — a clock, a date and
+ * queue ordinals in the active language. Every one of its callers was on the
+ * wall, so it moved to `wallFormat` in `lib/wall-copy.ts` and is pinned to
+ * en-GB there.
  */
 const listeners = new Set<() => void>();
 
@@ -50,9 +56,16 @@ function subscribe(notify: () => void): () => void {
 /**
  * Switch language, and remember it.
  *
- * The cookie is what makes the next server render agree with this one — which
- * matters more here than on a laptop, because a kiosk browser reloads on its
- * own after a power cut and nobody is standing there to fix it.
+ * The cookie is what makes the next server render agree with this one, and it
+ * outlives the setup session on purpose: an installer who comes back to `/pair`
+ * — or unpairs and sets the machine up again — lands in the language they
+ * chose. The wall ignores the cookie entirely.
+ *
+ * THIS NO LONGER WRITES `document.documentElement.lang`, and must not. `<html>`
+ * is `lang="en"` for the wall now, and this page navigates to `/` as soon as
+ * pairing succeeds — so relabelling the document here would follow the operator
+ * onto the lobby display. `app/pair/locale-shell.tsx` owns the attribute, on a
+ * wrapper, where it belongs to this route alone.
  */
 export function setLocale(next: Locale): void {
   chosen = next;
@@ -63,7 +76,6 @@ export function setLocale(next: Locale): void {
     // A locked-down kiosk browser still gets the language for this session.
   }
 
-  document.documentElement.lang = localeMeta(next).html;
   for (const notify of listeners) notify();
 }
 
@@ -92,7 +104,7 @@ export function useLocale(): Locale {
   return useContext(LocaleContext);
 }
 
-/** The translator. `t("welcome.greeting")`. */
+/** The translator. `t("pair.title")`. */
 export function useT(): (
   key: MessageKey,
   params?: Record<string, string | number>,
@@ -129,41 +141,4 @@ export function useRichT(): (
     },
     [locale],
   );
-}
-
-/**
- * The clock, the date, and queue positions, in the active language.
- *
- * THE CLOCK IS THE REASON THIS EXISTS. `IdleScreen` renders a wall-sized time
- * and a date beneath it; both were coming from the host machine's locale, so a
- * kiosk installed as en-US showed an American date under a Tetun greeting.
- *
- * Tetum borrows pt-PT (see `lib/locales/index.ts`), and the date is numeric so
- * no Portuguese month name lands on a Tetun wall.
- */
-export function useFormat() {
-  const locale = useLocale();
-
-  return useMemo(() => {
-    const tag = localeMeta(locale).intl;
-
-    const time = new Intl.DateTimeFormat(tag, {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    const date = new Intl.DateTimeFormat(tag, {
-      weekday: "long",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-    return {
-      time: (value: Date) => time.format(value),
-      date: (value: Date) => date.format(value),
-      /** "Next" is a message; "2nd" is a language rule. See `ordinal`. */
-      ordinal: (n: number) => ordinal(locale, n),
-    };
-  }, [locale]);
 }

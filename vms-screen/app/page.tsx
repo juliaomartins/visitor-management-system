@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 
 import { ConnectionDot } from "@/components/ConnectionDot";
 import { EventSplash } from "@/components/EventSplash";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ServerSetup } from "@/components/ServerSetup";
 import { IdleScreen } from "@/components/IdleScreen";
@@ -262,7 +261,6 @@ export default function ScreenPage() {
 
       <ConnectionDot connected={connected} />
       <ThemeToggle />
-      <LanguageToggle />
 
       {/*
         The first-load splash. An overlay, not a gate: the WebSocket connects and

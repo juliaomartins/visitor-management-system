@@ -1,16 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Instrument_Serif } from "next/font/google";
 
-import { cookies } from "next/headers";
-
-import { LocaleProvider } from "@/lib/i18n";
-import {
-  LOCALE_COOKIE,
-  localeMeta,
-  normaliseLocale,
-  translate,
-} from "@/lib/locales";
 import { THEME_BOOTSTRAP } from "@/lib/theme";
+import { WALL } from "@/lib/wall-copy";
 import "./globals.css";
 
 /**
@@ -39,20 +31,16 @@ const instrument = Instrument_Serif({
 });
 
 /**
- * The tab title, in the panel's language.
+ * The tab title. English, like the wall it titles.
  *
- * Nobody in the lobby sees this — but the person setting three kiosks up from
- * one laptop sees three tabs, and they are easier to tell apart in the language
- * each screen is actually showing.
+ * This used to be read from the locale cookie, which made the layout `async`
+ * and the whole document language-dependent. Only `/pair` is translated now,
+ * and a pairing screen does not need its own tab name.
  */
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = normaliseLocale((await cookies()).get(LOCALE_COOKIE)?.value);
-
-  return {
-    title: translate(locale, "meta.title"),
-    description: translate(locale, "meta.description"),
-  };
-}
+export const metadata: Metadata = {
+  title: WALL.title,
+  description: WALL.description,
+};
 
 /** Kiosk: fill the panel, no pinch-zoom, no browser UI to reveal. */
 export const viewport: Viewport = {
@@ -64,20 +52,22 @@ export const viewport: Viewport = {
 };
 
 /**
- * Async because the language is read here, on the server, before anything
- * renders.
+ * THE DOCUMENT IS ENGLISH, AND ONLY `/pair` DEPARTS FROM THAT.
  *
- * The theme can be corrected after the fact by a script in the head. The
- * language cannot: text that arrives in English and turns into Tetun during
- * hydration is a React mismatch and, on a wall-sized panel, a room-sized
- * flicker of the wrong words.
+ * This layout used to be `async` so it could read the locale cookie and set the
+ * language for the whole app. The wall is English now, so it reads nothing and
+ * declares `lang="en"` outright. `app/pair/layout.tsx` still reads the cookie
+ * and still has to, for the reason this comment used to give: text that arrives
+ * in one language and hydrates into another is a React mismatch.
+ *
+ * `lang` on a nested element wins for everything inside it, so the pairing
+ * screen labels its own subtree and a screen reader picks the right voice there
+ * without the wall ever claiming to be anything but English.
  */
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const locale = normaliseLocale((await cookies()).get(LOCALE_COOKIE)?.value);
-
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang={localeMeta(locale).html}
+      lang="en"
       /*
         The theme script below edits this element's class before React hydrates
         -- deliberately, so a light-mode operator never sees a full-wall white
@@ -100,7 +90,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body className="h-full font-display antialiased">
-        <LocaleProvider initial={locale}>{children}</LocaleProvider>
+        {children}
       </body>
     </html>
   );
