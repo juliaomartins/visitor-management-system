@@ -447,6 +447,7 @@ export const tet: Messages = {
   "recap.notArrivedCount": "{count} husi {registered}",
   "recap.notArrivedNote":
     "Laiha leitura v\u00e1lidu iha per\u00edodu ne\u2019e. Lista kompletu iha PDF no livru Excel.",
+  "recap.andMore": "no {count} tan",
 
   // ----------------------------------------------------------- entry log --
   "entry.emptyBody": "Loke loron barak liu, ka hamoos filtru.",
@@ -454,6 +455,8 @@ export const tet: Messages = {
   "entry.col.name": "Naran",
   "chart.noScans":
     "Laiha leitura iha per\u00edodu ne\u2019e, tan ne\u2019e laiha buat atu hatudu.",
+  "chart.refused": "Rejeita",
+  "chart.scansByHour": "Leitura tuir oras",
 
   // ------------------------------------------------------------ overview --
   "overview.subtitleQuiet": "Ohin nia xegada iha odamatan hotu",
@@ -465,6 +468,10 @@ export const tet: Messages = {
   "overview.vipCount": "{count} VIP",
   "overview.arrivedToday": "To\u2019o ohin",
   "overview.arrivedNote": "{percent}% husi sira ne\u2019eb\u00e9 rejista",
+  "overview.ofRegistered": "husi {count} ne\u2019eb\u00e9 rejista",
+  "overview.duplicates": "Duplikadu",
+  "overview.duplicatesNote": "Iha laran ona, la konta fali",
+  "overview.peakHour": "Oras naruk liu",
   "overview.refusedAtDoor": "Rejeita iha odamatan",
   "overview.duplicateOne": "Leitura duplikadu {count} la konta",
   "overview.duplicateMany": "Leitura duplikadu {count} la konta",

@@ -988,6 +988,8 @@ M = [
      "livro Excel.",
      "Laiha leitura válidu iha períodu ne’e. Lista kompletu iha PDF no livru "
      "Excel."),
+    ("recap.andMore", "and {count} more", "e mais {count}",
+     "no {count} tan"),
 
     ("//entry log", "", "", ""),
     ("entry.emptyBody", "Widen the dates, or clear the filters.",
@@ -999,6 +1001,9 @@ M = [
      "No scans in this range, so there is nothing to plot.",
      "Sem leituras neste intervalo, por isso não há nada para representar.",
      "Laiha leitura iha períodu ne’e, tan ne’e laiha buat atu hatudu."),
+    ("chart.refused", "Refused", "Recusados", "Rejeita"),
+    ("chart.scansByHour", "Scans by hour", "Leituras por hora",
+     "Leitura tuir oras"),
 
     ("//overview", "", "", ""),
     ("overview.subtitleQuiet", "Today’s arrivals across every door",
@@ -1016,6 +1021,13 @@ M = [
      "To’o ohin"),
     ("overview.arrivedNote", "{percent}% of those registered",
      "{percent}% dos registados", "{percent}% husi sira ne’ebé rejista"),
+    ("overview.ofRegistered", "of {count} registered", "de {count} registados",
+     "husi {count} ne’ebé rejista"),
+    ("overview.duplicates", "Duplicates", "Duplicados", "Duplikadu"),
+    ("overview.duplicatesNote", "Already inside, not counted again",
+     "Já dentro, não contados de novo",
+     "Iha laran ona, la konta fali"),
+    ("overview.peakHour", "Peak hour", "Hora de pico", "Oras naruk liu"),
     ("overview.refusedAtDoor", "Refused at the door", "Recusados à porta",
      "Rejeita iha odamatan"),
     ("overview.duplicateOne", "{count} duplicate scan not counted",

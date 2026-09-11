@@ -139,6 +139,40 @@
   --color-revoked-soft: #f9e0e0;
   --color-neutral-mark: #8a94a0;
 
+  /*
+    CHART FILLS. Separate tokens from the status inks above, and the reason is
+    measurement rather than taste.
+
+    A chart fill sits next to its neighbours in a stacked band, so the pair that
+    matters is revoked-against-invalid. `--color-vip` (#8a6200) against
+    `--color-revoked` (#cc0000) is OKLab dE 1.9 under deuteranopia -- to a
+    red-green colourblind reader those are one colour, and they are the two that
+    add up to "refused at the door". Re-stepped to #d98a00 that pair clears, and
+    the worst of ALL pairs becomes dE 8.4 (protan), above the 8 target.
+
+    Two known, accepted departures, both deliberate:
+
+    - The grey fails a chroma floor -- it reads as grey. That is the point: a
+      duplicate is a status neutral, not a third identity.
+    - #d98a00 is 2.77:1 on white, under the 3:1 mark. That obligates relief and
+      does not permit colour alone: every outcome here carries its word AND its
+      number, and the reports page is the table view.
+
+    Green, gold and red under red-green CVD all collapse toward one axis, so
+    lightness is the only escape -- and the dark band (L 0.48-0.67) is too
+    narrow to hold four of them apart. So the FOUR-outcome band adds a hatch on
+    revoked, and the three-series hour chart (valid / duplicate / refused) needs
+    no texture: it validates clean in both themes.
+
+    Hues are not ours to choose. Green valid / amber revoked / red invalid is
+    the scanner's verdict language and a hard constraint, so a colour means the
+    same thing at the door, on the wall and in a report.
+  */
+  --color-chart-valid: #006c30;
+  --color-chart-duplicate: #8a94a0;
+  --color-chart-revoked: #d98a00;
+  --color-chart-invalid: #cc0000;
+
   --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
@@ -200,6 +234,17 @@
   --color-revoked: #f24141;
   --color-revoked-soft: #331416;
   --color-neutral-mark: #8a94a0;
+
+  /*
+    Re-solved against #141b24, not flipped. The dark lightness band is
+    L 0.48-0.67 and gold has to live inside it, so #fcb400 (L 0.816) would
+    glare: #b8830f (L 0.646) is the step that fits. Three-series worst pair is
+    then dE 8.1 (protan), a PASS.
+  */
+  --color-chart-valid: #008f3f;
+  --color-chart-duplicate: #8a94a0;
+  --color-chart-revoked: #b8830f;
+  --color-chart-invalid: #f24141;
 }
 
 /* The browser's own widgets -- scrollbars, form controls, the caret -- follow
@@ -564,4 +609,37 @@ body {
   width: 44px;
   height: 44px;
   transform: translate(-50%, -50%);
+}
+
+/*
+  The dashboard's one orchestrated entrance: the headline figure rises into
+  place. On the BLOCK, never on the number -- see the note in `ArrivalHero`.
+  A transform and an opacity cannot render a wrong value, which a count-up can
+  and did.
+
+  There was a `vms-draw` keyframe here that revealed the arrivals line from a
+  dash pattern. It is gone: a stroke that is invisible until an animation
+  finishes is a stroke that is missing whenever the animation does not, and
+  screenshots caught exactly that.
+*/
+@keyframes vms-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.25em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vms-rise {
+  animation: vms-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Anyone who asked for less motion gets the figure, plainly and at once. */
+@media (prefers-reduced-motion: reduce) {
+  .vms-rise {
+    animation: none;
+  }
 }

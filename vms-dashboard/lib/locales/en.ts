@@ -441,12 +441,15 @@ export const en = {
   "recap.notArrivedCount": "{count} of {registered}",
   "recap.notArrivedNote":
     "No valid scan in this range. Full list is in the PDF and the workbook.",
+  "recap.andMore": "and {count} more",
 
   // ----------------------------------------------------------- entry log --
   "entry.emptyBody": "Widen the dates, or clear the filters.",
   "entry.col.time": "Time",
   "entry.col.name": "Name",
   "chart.noScans": "No scans in this range, so there is nothing to plot.",
+  "chart.refused": "Refused",
+  "chart.scansByHour": "Scans by hour",
 
   // ------------------------------------------------------------ overview --
   "overview.subtitleQuiet": "Today\u2019s arrivals across every door",
@@ -456,6 +459,10 @@ export const en = {
   "overview.vipCount": "{count} VIP",
   "overview.arrivedToday": "Arrived today",
   "overview.arrivedNote": "{percent}% of those registered",
+  "overview.ofRegistered": "of {count} registered",
+  "overview.duplicates": "Duplicates",
+  "overview.duplicatesNote": "Already inside, not counted again",
+  "overview.peakHour": "Peak hour",
   "overview.refusedAtDoor": "Refused at the door",
   "overview.duplicateOne": "{count} duplicate scan not counted",
   "overview.duplicateMany": "{count} duplicate scans not counted",

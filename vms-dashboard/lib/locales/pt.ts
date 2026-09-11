@@ -456,6 +456,7 @@ export const pt: Messages = {
   "recap.notArrivedCount": "{count} de {registered}",
   "recap.notArrivedNote":
     "Sem leitura v\u00e1lida neste intervalo. A lista completa est\u00e1 no PDF e no livro Excel.",
+  "recap.andMore": "e mais {count}",
 
   // ----------------------------------------------------------- entry log --
   "entry.emptyBody": "Alargue as datas, ou limpe os filtros.",
@@ -463,6 +464,8 @@ export const pt: Messages = {
   "entry.col.name": "Nome",
   "chart.noScans":
     "Sem leituras neste intervalo, por isso n\u00e3o h\u00e1 nada para representar.",
+  "chart.refused": "Recusados",
+  "chart.scansByHour": "Leituras por hora",
 
   // ------------------------------------------------------------ overview --
   "overview.subtitleQuiet": "As chegadas de hoje em todas as portas",
@@ -474,6 +477,10 @@ export const pt: Messages = {
   "overview.vipCount": "{count} VIP",
   "overview.arrivedToday": "Chegaram hoje",
   "overview.arrivedNote": "{percent}% dos registados",
+  "overview.ofRegistered": "de {count} registados",
+  "overview.duplicates": "Duplicados",
+  "overview.duplicatesNote": "J\u00e1 dentro, n\u00e3o contados de novo",
+  "overview.peakHour": "Hora de pico",
   "overview.refusedAtDoor": "Recusados \u00e0 porta",
   "overview.duplicateOne": "{count} leitura duplicada n\u00e3o contada",
   "overview.duplicateMany": "{count} leituras duplicadas n\u00e3o contadas",

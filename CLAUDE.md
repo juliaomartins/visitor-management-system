@@ -551,6 +551,23 @@ print queue asks for it because it draws the real QR on every card and a frame s
 the same codes, so the boundary it crosses is convenience, not secrecy — but do not
 sprinkle it onto other callers for tidiness.
 
+**`roster.xlsx` now crosses that same boundary, and it used to be the one export
+that did not.** Its columns are `No. | Photo | Full name | QR code | Country |
+Organisation | Registered`, so the file is a set of working badges — one click
+from `/visitors`, with no confirmation in front of it. Two things make that
+defensible and it is worth knowing which: the QR is `badge_token(visitor)`, the
+code **already** on that person's card, so exporting reissues nothing and breaks
+nothing; and the admin who can click it can already read every token from
+`?with_tokens=true`. What changed is convenience, again — but a spreadsheet gets
+forwarded in a way a query string does not. If that ever needs tightening, the
+confirmation dialog in front of `POST /badges/export` is the shape to copy.
+
+`Category` and `Badge state` were dropped from that sheet to make room. A
+deactivated visitor is therefore shown with a QR that will not scan, and the only
+cue is that their name is set grey and italic — `DIM_FONT` in `exports.py`. If
+somebody asks why a badge in the spreadsheet was refused at the door, that is
+the answer.
+
 Only `/devices/pair` is reachable without a token.
 
 ---
@@ -594,23 +611,6 @@ vms-backend/
 ```
 
 `badges/` and `reports/` have no models on purpose — they read from `visitors` and
-**`roster.xlsx` now crosses that same boundary, and it used to be the one export
-that did not.** Its columns are `No. | Photo | Full name | QR code | Country |
-Organisation | Registered`, so the file is a set of working badges — one click
-from `/visitors`, with no confirmation in front of it. Two things make that
-defensible and it is worth knowing which: the QR is `badge_token(visitor)`, the
-code **already** on that person's card, so exporting reissues nothing and breaks
-nothing; and the admin who can click it can already read every token from
-`?with_tokens=true`. What changed is convenience, again — but a spreadsheet gets
-forwarded in a way a query string does not. If that ever needs tightening, the
-confirmation dialog in front of `POST /badges/export` is the shape to copy.
-
-`Category` and `Badge state` were dropped from that sheet to make room. A
-deactivated visitor is therefore shown with a QR that will not scan, and the only
-cue is that their name is set grey and italic — `DIM_FONT` in `exports.py`. If
-somebody asks why a badge in the spreadsheet was refused at the door, that is
-the answer.
-
 `scans`. This stops `visitors/views.py` absorbing every feature.
 
 Business logic lives in `services.py`. Views stay thin.
@@ -704,6 +704,64 @@ in `badges/page.tsx` flips it 800 px ahead of the viewport. The token is still
 passed while deferred, on purpose: the panel then says it is *drawing* rather
 than claiming the code lives only on the printed card, which would be a lie
 about the badge rather than a fact about our scheduling.
+
+**ONE CHART SYSTEM, IN `components/charts/`.** `outcomes.ts` owns what an
+outcome looks like and `primitives.tsx` owns the scales, the hour gap-filling,
+the tooltip shell, the legend and the empty state. Both charts read from it, so
+a colour means one thing across the app — and the same thing it means at the
+door.
+
+**Chart geometry is CSS pixels from a measured container, never a scaled
+viewBox.** `preserveAspectRatio="none"` on `viewBox="0 0 100 180"` scaled x by
+~14.7 and y by 1, so every length meant two different things: `rx={7}` drew a
+103×7 **ellipse**, which is the flattened cap that used to sit on every bar of
+the reports chart. That is not a radius to tune — it is what non-uniform scaling
+does to any radius, stroke or circle. `useMeasuredWidth` exists so 7 is 7 in
+both directions. Note it measures the **content box**: `clientWidth` includes
+padding and `contentRect.width` does not, and mixing the two made the first
+measurement 40px too wide.
+
+**Outcome colours are `--color-chart-*`, and they are measured, not chosen.**
+Green valid / amber revoked / red invalid is the scanner's verdict language and
+a hard constraint, so the hues were fixed and only the steps were ours. Amber at
+`--color-vip` (#8a6200) against red (#cc0000) is OKLab ΔE **1.9** under
+deuteranopia — one colour to a red-green colourblind reader, and those two are
+exactly what add up to "refused at the door". Re-stepped to #d98a00 the light
+theme clears at ΔE 8.4 worst-pair.
+
+Dark could not be fixed by re-stepping: its usable band is L 0.48–0.67, and
+green, gold and red all collapse toward one axis under red-green CVD, so
+lightness is the only escape and 0.19 of band will not hold four hues apart.
+**So the four-outcome band hatches revoked** (`OutcomeSpec.hatch`) and the
+three-series hour chart, which folds revoked and invalid into "refused", needs
+no texture — it validates clean in both themes. Two accepted departures, both
+deliberate: the grey reads as grey (it is a status neutral, not a third
+identity), and #d98a00 is 2.77:1 on white, which obligates the word and the
+number beside every figure — never colour alone.
+
+**`--color-sun` never existed.** The reports chart filled its duplicate series
+with it, so the `fill` was invalid, SVG fell back to black, and duplicates
+rendered identical to refused. A legend claiming three series showed two.
+
+**Motion on the dashboard is one CSS rise on the hero block, and that is a
+correction.** The figure used to count up on `requestAnimationFrame`, which
+renders a number that is briefly **wrong** — headless screenshots caught it at
+0 and at 75 where the truth was 220, and Chrome throttles rAF in background
+tabs, which this repo already documents for the kiosk. The arrivals line also
+used to draw itself in from a dash pattern, which means the line is invisible
+until the animation finishes; screenshots caught that frozen partway with no
+line at all. **A mark whose visibility depends on an animation completing is a
+mark that is sometimes missing.** Both are gone. `.vms-rise` animates opacity
+and transform only, and cannot display a value that is not true.
+
+**Verifying these panels needs no backend.** They are driven entirely by props,
+so a throwaway route rendering them with fixed data can be photographed with
+headless Chrome. Two traps if you do it: the `(dashboard)` route group is behind
+`proxy.ts`, and **Chrome on Windows refuses a window narrower than ~500px** — so
+`--window-size=400` lays out at 500 and the screenshot captures its left 400,
+which looks exactly like a horizontal overflow and is not one. Three screenshots
+were read that way before the page was asked for its own `scrollWidth`. Put the
+page in a 400px `<iframe>` instead; an iframe has a viewport of its own.
 
 **Dark mode is class-based, not `prefers-color-scheme`.** `@custom-variant dark
 (&:where(.dark, .dark *))` in `globals.css`, toggled by `components/theme-toggle.tsx`.
