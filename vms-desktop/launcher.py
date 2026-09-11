@@ -149,11 +149,21 @@ class Orchestrator(QObject):
         self._registry = registry
         self._specs = specs
         self._probes: dict[str, ReadinessProbe] = {}
+
         self._lan_ip = "127.0.0.1"
         self._include_scanner = False
         self._pending: set[str] = set()
         self._failed = False
         self._running = False
+
+    def set_specs(self, specs: dict[str, ServiceSpec]) -> None:
+        """Replace the specs after a mode change.
+
+        The registry keeps its `ServiceProcess` objects -- their signals are
+        already wired to the cards -- so only the commands move. Guarded by the
+        window, which refuses a mode change while anything is running.
+        """
+        self._specs = specs
 
     @property
     def running(self) -> bool:
