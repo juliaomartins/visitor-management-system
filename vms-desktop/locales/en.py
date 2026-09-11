@@ -85,6 +85,20 @@ MESSAGES = {
     "dlg.freePortBody":
         "This will stop the following, and anything they started:\n\n{who}\n\nThe control centre did not start them. If one of these is something else you are using, close this and stop it yourself.",
 
+    # ----------------------------------- development or production --
+    "mode.dev": "Development",
+    "mode.prod": "Production",
+    "mode.button": "Mode: {mode}",
+    "mode.tip":
+        "Development runs the Next dev server and compiles as it serves. Production serves a build you made with `npm run build`, and starts in seconds with every page ready.",
+    "msg.modeChanged": "Mode changed to {mode}.",
+    "msg.modeProdHint":
+        "Production serves the last build. After editing an app, run `npm run build` in its folder, then stop and start it here.",
+    "dlg.modeBusy": "Stop the services first",
+    "dlg.modeBusyBody":
+        "The mode decides how each service is started, so it cannot change while one is running:\n\n  {services}\n\nPress Stop All, then change the mode.",
+    "dlg.notBuilt": "Not built yet",
+
     # ---------------------------------------------- freeing a port --
     "msg.freeingPort": "Freeing port {port}: stopping {who}.",
     "msg.portFreed": "Port {port} is free.",

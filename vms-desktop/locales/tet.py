@@ -86,6 +86,20 @@ MESSAGES = {
     "dlg.freePortBody":
         "Ida ne'e sei para tuir mai, no buat hotu ne'eb\u00e9 sira hah\u00fa:\n\n{who}\n\nSentru kontrolu la hah\u00fa sira. Se ida husi sira mak buat seluk ne'eb\u00e9 Ita uza hela, taka ida ne'e no para rasik.",
 
+    # ----------------------------------- development or production --
+    "mode.dev": "Dezenvolvimentu",
+    "mode.prod": "Produsaun",
+    "mode.button": "Modu: {mode}",
+    "mode.tip":
+        "Dezenvolvimentu hala'o servidor dev Next no kompila bainhira serve. Produsaun serve build ne'ebe halo ho `npm run build`, no hahu iha segundu balun ho pajina hotu prontu.",
+    "msg.modeChanged": "Modu muda ba {mode}.",
+    "msg.modeProdHint":
+        "Produsaun serve build ikus. Depois edita aplikasaun ida, hala'o `npm run build` iha ninia pasta, depois para no hahu fali iha ne'e.",
+    "dlg.modeBusy": "Para uluk servisu sira",
+    "dlg.modeBusyBody":
+        "Modu deside oinsa hahu servisu ida-idak, tan ne'e la bele muda bainhira ida hala'o hela:\n\n  {services}\n\nHanehan Para hotu, depois muda modu.",
+    "dlg.notBuilt": "Seidauk build",
+
     # ---------------------------------------------- freeing a port --
     "msg.freeingPort": "Libera porta {port}: para {who}.",
     "msg.portFreed": "Porta {port} livre ona.",

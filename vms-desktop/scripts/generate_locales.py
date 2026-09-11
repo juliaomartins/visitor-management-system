@@ -164,6 +164,44 @@ M = [
      "Sentru kontrolu la hahú sira. Se ida husi sira mak buat seluk ne'ebé "
      "Ita uza hela, taka ida ne'e no para rasik."),
 
+    ("//", "development or production", "", ""),
+    # The button says which mode it is IN, not which it would switch to. A
+    # control that names the other state is read as a label by half the people
+    # who see it, and this one decides what gets run at a conference.
+    ("mode.dev", "Development", "Desenvolvimento", "Dezenvolvimentu"),
+    ("mode.prod", "Production", "Producao", "Produsaun"),
+    ("mode.button", "Mode: {mode}", "Modo: {mode}", "Modu: {mode}"),
+    ("mode.tip",
+     "Development runs the Next dev server and compiles as it serves. "
+     "Production serves a build you made with `npm run build`, and starts in "
+     "seconds with every page ready.",
+     "Desenvolvimento executa o servidor dev do Next e compila enquanto "
+     "serve. Producao serve uma compilacao feita com `npm run build`, e "
+     "arranca em segundos com todas as paginas prontas.",
+     "Dezenvolvimentu hala'o servidor dev Next no kompila bainhira serve. "
+     "Produsaun serve build ne'ebe halo ho `npm run build`, no hahu iha "
+     "segundu balun ho pajina hotu prontu."),
+    ("msg.modeChanged", "Mode changed to {mode}.", "Modo alterado para {mode}.",
+     "Modu muda ba {mode}."),
+    ("msg.modeProdHint",
+     "Production serves the last build. After editing an app, run "
+     "`npm run build` in its folder, then stop and start it here.",
+     "Producao serve a ultima compilacao. Depois de editar uma aplicacao, "
+     "execute `npm run build` na sua pasta, depois pare e inicie-a aqui.",
+     "Produsaun serve build ikus. Depois edita aplikasaun ida, hala'o "
+     "`npm run build` iha ninia pasta, depois para no hahu fali iha ne'e."),
+    ("dlg.modeBusy", "Stop the services first",
+     "Pare primeiro os servicos", "Para uluk servisu sira"),
+    ("dlg.modeBusyBody",
+     "The mode decides how each service is started, so it cannot change while "
+     "one is running:\n\n  {services}\n\nPress Stop All, then change the mode.",
+     "O modo decide como cada servico e iniciado, por isso nao pode mudar "
+     "enquanto um esta a correr:\n\n  {services}\n\nCarregue em Parar tudo e "
+     "depois mude o modo.",
+     "Modu deside oinsa hahu servisu ida-idak, tan ne'e la bele muda bainhira "
+     "ida hala'o hela:\n\n  {services}\n\nHanehan Para hotu, depois muda modu."),
+    ("dlg.notBuilt", "Not built yet", "Ainda nao compilado", "Seidauk build"),
+
     ("//", "freeing a port", "", ""),
     ("msg.freeingPort", "Freeing port {port}: stopping {who}.",
      "A libertar a porta {port}: a parar {who}.",

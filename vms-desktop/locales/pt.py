@@ -88,6 +88,20 @@ MESSAGES = {
     "dlg.freePortBody":
         "Isto vai parar o seguinte, e tudo o que tenha iniciado:\n\n{who}\n\nO centro de controlo n\u00e3o os iniciou. Se algum for outra coisa que esteja a usar, feche isto e pare-o voc\u00ea mesmo.",
 
+    # ----------------------------------- development or production --
+    "mode.dev": "Desenvolvimento",
+    "mode.prod": "Producao",
+    "mode.button": "Modo: {mode}",
+    "mode.tip":
+        "Desenvolvimento executa o servidor dev do Next e compila enquanto serve. Producao serve uma compilacao feita com `npm run build`, e arranca em segundos com todas as paginas prontas.",
+    "msg.modeChanged": "Modo alterado para {mode}.",
+    "msg.modeProdHint":
+        "Producao serve a ultima compilacao. Depois de editar uma aplicacao, execute `npm run build` na sua pasta, depois pare e inicie-a aqui.",
+    "dlg.modeBusy": "Pare primeiro os servicos",
+    "dlg.modeBusyBody":
+        "O modo decide como cada servico e iniciado, por isso nao pode mudar enquanto um esta a correr:\n\n  {services}\n\nCarregue em Parar tudo e depois mude o modo.",
+    "dlg.notBuilt": "Ainda nao compilado",
+
     # ---------------------------------------------- freeing a port --
     "msg.freeingPort": "A libertar a porta {port}: a parar {who}.",
     "msg.portFreed": "A porta {port} est\u00e1 livre.",
