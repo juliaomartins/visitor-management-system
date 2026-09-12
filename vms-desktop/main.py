@@ -543,9 +543,14 @@ class ControlCenter(QMainWindow):
         back, which is an oscillation, not a layout.
         """
         dark = theme.current().name == "dark"
+        # EVERY BUTTON IN THE ROW, or the answer is wrong by whatever is
+        # missing. The mode button was added to the row and not to this list,
+        # which left the measurement 179px short -- the function decided the
+        # row fitted while the row it was describing no longer existed.
         labels = [
             i18n.language_name(i18n.current()),
             t("pref.toLight") if dark else t("pref.toDark"),
+            t(f"mode.{self._mode}"),
             f"▶  {t('app.runAll')}",
             f"■  {t('app.stopAll')}",
         ]
@@ -577,6 +582,10 @@ class ControlCenter(QMainWindow):
             card.start_requested.connect(self._on_start_one)
             card.stop_requested.connect(self._on_stop_one)
             card.open_requested.connect(self._on_open_one)
+            # Ticking the scanner changes what Run All would start, so it
+            # changes whether Run All has anything left to do. This signal
+            # existed and was connected to nothing.
+            card.enabled_changed.connect(lambda *_: self._refresh_controls())
 
         self._registry.state_changed.connect(self._on_state_changed)
         self._registry.output.connect(self._logs.service)
@@ -605,6 +614,17 @@ class ControlCenter(QMainWindow):
             if theme.current().name == "dark"
             else icons.moon(p.text_muted)
         )
+        self._mode_button.setStyleSheet(theme.ghost_button_qss())
+        # The mode button names the mode it IS in -- unlike the theme button
+        # beside it, which names its destination. A preference you can only be
+        # in one of, whose consequence is what gets run at a conference, is
+        # worth reading as state rather than as an offer.
+        self._mode_button.setIcon(
+            icons.package(p.text_muted)
+            if self._mode == Mode.PROD
+            else icons.code(p.text_muted)
+        )
+
         self._run_all.setStyleSheet(theme.primary_button_qss())
         self._run_all.setIcon(icons.play(p.on_accent))
         self._stop_all.setStyleSheet(theme.danger_button_qss())
@@ -613,6 +633,7 @@ class ControlCenter(QMainWindow):
         for button in (
             self._language,
             self._theme,
+            self._mode_button,
             self._run_all,
             self._stop_all,
         ):
@@ -637,16 +658,23 @@ class ControlCenter(QMainWindow):
         if getattr(self, "_compact", False):
             self._language.setText(i18n.current().upper())
             self._theme.setText("")
-            # Compact keeps the mode WORD, not an icon. Which mode this is in
-            # decides what gets run at a conference, and it is the one control
-            # here whose state is not visible anywhere else on the window.
-            self._mode_button.setText(t(f"mode.{self._mode}"))
+            # Compact drops to the icon alone, like the theme button beside
+            # it -- and it can, because the icon IS the state here: angle
+            # brackets for source, a bundle for a build. That is the whole
+            # point of making it reactive.
+            self._mode_button.setText("")
             self._run_all.setText("")
             self._stop_all.setText("")
         else:
             self._language.setText(i18n.language_name(i18n.current()))
             self._theme.setText(t("pref.toLight") if dark else t("pref.toDark"))
-            self._mode_button.setText(t("mode.button", mode=t(f"mode.{self._mode}")))
+            # THE WORD ALONE, not "Mode: Development". The icon already says
+            # which control this is, so the prefix repeats it -- and it is not
+            # free: measured, the full label put the control row 11px over the
+            # width available at the default 1180px window, which dropped Run
+            # All and Stop All to bare icons. A preference must not cost the
+            # two actions their names.
+            self._mode_button.setText(t(f"mode.{self._mode}"))
             self._run_all.setText(t("app.runAll"))
             self._stop_all.setText(t("app.stopAll"))
 
@@ -655,7 +683,15 @@ class ControlCenter(QMainWindow):
         # not the only place the word exists.
         self._language.setToolTip(t("pref.language"))
         self._theme.setToolTip(t("pref.toLight") if dark else t("pref.toDark"))
-        self._mode_button.setToolTip(t("mode.tip"))
+        # The tooltip carries the prefix the label dropped, plus what the two
+        # modes actually do -- which is where a sentence that long belongs.
+        self._mode_button.setToolTip(
+            t("mode.button", mode=t(f"mode.{self._mode}")) + "\n" + t("mode.tip")
+        )
+        # Set here for completeness and then overwritten by
+        # `_refresh_controls` below, which knows whether the button can act and
+        # says so instead. Retranslate runs on every language change, so the
+        # reason has to be re-resolved with everything else.
         self._run_all.setToolTip(t("app.runAll"))
         self._stop_all.setToolTip(t("app.stopAll"))
         self._network.retranslate()
@@ -663,6 +699,7 @@ class ControlCenter(QMainWindow):
         for card in self._cards.values():
             card.retranslate()
         self._refresh_overall()
+        self._refresh_controls()
 
     def _toggle_theme(self) -> None:
         nxt = "light" if theme.current().name == "dark" else "dark"
@@ -751,8 +788,8 @@ class ControlCenter(QMainWindow):
         self._flash_busy()
         self._lan_ip = report.lan_ip
         self._network.set_address(self._lan_ip)
-        self._run_all.setEnabled(False)
         self._orchestrator.start_all(self._lan_ip, include_scanner=include_scanner)
+        self._refresh_controls()
 
     def _show_preflight_failure(self, report: preflight.Report) -> None:
         """The refusal, plus a way out of the one failure that has a way out.
@@ -843,7 +880,7 @@ class ControlCenter(QMainWindow):
         self._flash_busy()
         self._orchestrator.cancel()
         self._registry.stop_all()
-        self._run_all.setEnabled(True)
+        self._refresh_controls()
 
     def _on_start_one(self, key: str) -> None:
         """Starting one service by hand still waits for readiness properly.
@@ -911,18 +948,66 @@ class ControlCenter(QMainWindow):
     def _on_state_changed(self, key: str, state: State) -> None:
         self._cards[key].set_state(state)
         self._refresh_overall()
+        self._refresh_controls()
 
     def _on_unexpected_exit(self, key: str, code: int) -> None:
         name = t(self._specs[key].name_key)
         self._logs.app(f"{name} — exit code {code}. See the {name} tab.")
-        self._run_all.setEnabled(True)
+        self._refresh_controls()
 
     def _on_run_all_finished(self, ok: bool) -> None:
-        self._run_all.setEnabled(True)
+        self._refresh_controls()
         if not ok:
             self._logs.app(t("msg.notReady"))
         else:
             self._logs.app(t("msg.allRunning"))
+
+    def _run_all_targets(self) -> list[str]:
+        """The services Run All would actually start, right now.
+
+        Read from the scanner's own tick box rather than from the spec, because
+        that box is the decision and it is made at the moment of pressing --
+        which is also why `_on_run_all` asks it the same question.
+        """
+        return [
+            key
+            for key, spec in self._specs.items()
+            if not spec.optional or self._cards[key].include_in_run_all
+        ]
+
+    def _refresh_controls(self) -> None:
+        """Enable Run All and Stop All only when they have work to do.
+
+        A BUTTON THAT CANNOT ACT SHOULD SAY SO BEFORE IT IS PRESSED. Stop All
+        used to be pressable with nothing running, and Run All with everything
+        already up: both then did nothing, which reads as a broken button
+        rather than as a finished job. That matters most in the minute before
+        doors open, when the honest answer -- "it is already running" -- is the
+        one somebody needs.
+
+        THE TOOLTIP CARRIES THE REASON. A control that greys out without
+        saying why is a dead end, so the disabled state and its explanation are
+        set together here and nowhere else.
+        """
+        targets = self._run_all_targets()
+        anything_up = any(self._registry[key].is_active for key in self._specs)
+        all_up = bool(targets) and all(
+            self._registry[key].is_active for key in targets
+        )
+        busy = self._orchestrator.running
+
+        self._run_all.setEnabled(not busy and not all_up)
+        if busy:
+            self._run_all.setToolTip(t("app.runAllBusy"))
+        elif all_up:
+            self._run_all.setToolTip(t("app.runAllDone"))
+        else:
+            self._run_all.setToolTip(t("app.runAll"))
+
+        self._stop_all.setEnabled(anything_up)
+        self._stop_all.setToolTip(
+            t("app.stopAll") if anything_up else t("app.stopAllIdle")
+        )
 
     def _refresh_overall(self) -> None:
         """ONLINE / PARTIAL / OFFLINE, from the states rather than a flag."""
