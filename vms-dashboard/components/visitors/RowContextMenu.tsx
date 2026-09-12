@@ -297,3 +297,54 @@ export function TrashIcon() {
     </svg>
   );
 }
+
+/** Print: the badge PDF, a card page for one visitor or A4 sheets for many. */
+export function PrinterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={ICON} aria-hidden>
+      <path
+        d="M7 9V4.5h10V9"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 17H5.5A1.5 1.5 0 0 1 4 15.5v-5A1.5 1.5 0 0 1 5.5 9h13a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5H17"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 14h10v5.5H7z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Export: a grid rather than a generic download arrow -- it is a spreadsheet. */
+export function SpreadsheetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={ICON} aria-hidden>
+      <rect
+        x="4.5"
+        y="4.5"
+        width="15"
+        height="15"
+        rx="1.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M4.5 9.5h15M4.5 14.5h15M9.5 4.5v15"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}

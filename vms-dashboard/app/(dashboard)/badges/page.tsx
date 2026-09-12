@@ -6,6 +6,11 @@ import { BadgeCard } from "@/components/badge-card";
 import { ReissueDialog } from "@/components/badges/ReissueDialog";
 import { useSetPageMeta } from "@/components/page-meta";
 import {
+  PrinterIcon,
+  RowContextMenu,
+  SpreadsheetIcon,
+} from "@/components/visitors/RowContextMenu";
+import {
   downloadCredentialExport,
   downloadReissuedSheet,
 } from "@/lib/badges";
@@ -92,8 +97,22 @@ export default function BadgesPage() {
   /*
     Only the export asks. Printing changes nothing now, so a confirmation there
     would be a dialog whose honest text is "this is safe, continue?".
+
+    The dialog carries its OWN ids rather than reading `selected`, because the
+    right-click menu can export one card while a different selection sits
+    behind it. `fromSelection` says whether finishing should clear that
+    selection -- only when it was the selection being acted on.
   */
-  const [confirming, setConfirming] = useState<"export" | null>(null);
+  const [exportTarget, setExportTarget] = useState<Target | null>(null);
+
+  /*
+    Where the menu is drawn, and what it resolved to act on. Resolved when it
+    OPENS, not when an item is chosen: choosing closes the menu first, and the
+    heading the registrar read must be the set that prints.
+  */
+  const [menu, setMenu] = useState<
+    (Target & { x: number; y: number; heading: string }) | null
+  >(null);
 
   /*
     THIS PAGE ASKS FOR REAL BADGE TOKENS, AND THE CARDS BELOW DRAW REAL QR CODES.
@@ -163,6 +182,60 @@ export default function BadgesPage() {
       return next;
     });
 
+  /*
+    ONE print path for the toolbar and the menu, so they cannot disagree about
+    what a failure looks like or when the selection clears.
+  */
+  const print = async ({ ids, fromSelection }: Target) => {
+    setPending(true);
+    setError(undefined);
+    try {
+      await downloadReissuedSheet(ids);
+      if (fromSelection) setSelected(new Set());
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError ? cause.message : t("badges.sheetFailed"),
+      );
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const openExport = (target: Target) => {
+    // A print failure left in `error` would otherwise greet the dialog.
+    setError(undefined);
+    setExportTarget(target);
+  };
+
+  /*
+    WHO A RIGHT-CLICK ACTS ON -- the file-manager rule, and the only one that
+    does not lose work. A card inside the selection acts on the whole
+    selection. A card outside it acts on that visitor ALONE and leaves the
+    selection untouched: reprinting one person at the door must not throw away
+    the twelve cards somebody just picked for the next sheet.
+
+    A selection of exactly one is still "the selection" and still clears, but
+    its heading is the visitor's name -- "1 selected visitors" names nobody.
+  */
+  const openMenu = (visitor: Visitor, x: number, y: number) => {
+    // A second file mid-download would race the first for `pending`.
+    if (pending) return;
+
+    const fromSelection = selected.has(visitor.id);
+    const ids = fromSelection ? [...selected] : [visitor.id];
+
+    setMenu({
+      x,
+      y,
+      ids,
+      fromSelection,
+      heading:
+        ids.length === 1
+          ? visitor.full_name
+          : t("badges.menu.selection", { count: ids.length }),
+    });
+  };
+
   const allShown =
     visitors.length > 0 &&
     visitors.every((visitor) => selected.has(visitor.id));
@@ -217,22 +290,7 @@ export default function BadgesPage() {
           <button
             type="button"
             disabled={selected.size === 0 || pending}
-            onClick={async () => {
-              setPending(true);
-              setError(undefined);
-              try {
-                await downloadReissuedSheet([...selected]);
-                setSelected(new Set());
-              } catch (cause) {
-                setError(
-                  cause instanceof ApiError
-                    ? cause.message
-                    : t("badges.sheetFailed"),
-                );
-              } finally {
-                setPending(false);
-              }
-            }}
+            onClick={() => print({ ids: [...selected], fromSelection: true })}
             className="btn btn-primary disabled:opacity-40"
           >
             {selected.size
@@ -248,7 +306,9 @@ export default function BadgesPage() {
           */}
           <button
             type="button"
-            onClick={() => setConfirming("export")}
+            onClick={() =>
+              openExport({ ids: [...selected], fromSelection: true })
+            }
             disabled={selected.size === 0}
             className="btn btn-ghost disabled:opacity-40"
           >
@@ -269,19 +329,32 @@ export default function BadgesPage() {
           */}
         </div>
 
+        {/*
+          A FAILED PRINT USED TO BE SILENT. `error` was set, but only the export
+          dialog rendered it, and that dialog is closed while printing -- so a
+          sheet that never downloaded looked exactly like one that was slow. The
+          failure takes this line while the dialog is shut; with it open, the
+          dialog shows its own.
+        */}
         <p
           aria-live="polite"
-          className={`mono mt-3 h-4 text-[11px] transition-opacity ${
-            selected.size > 0 ? "text-ink-2 opacity-100" : "opacity-0"
+          className={`mt-3 h-4 truncate text-[11px] transition-opacity ${
+            error && !exportTarget
+              ? "text-revoked opacity-100"
+              : selected.size > 0
+                ? "mono text-ink-2 opacity-100"
+                : "mono opacity-0"
           }`}
         >
-          {/* One sheet and many are separate messages: the noun and its
-              number agree differently in each language, and Tetun does not
-              inflect the noun at all. */}
-          {t(sheets === 1 ? "badges.selectedOne" : "badges.selectedMany", {
-            count: selected.size,
-            sheets,
-          })}
+          {error && !exportTarget
+            ? error
+            : /* One sheet and many are separate messages: the noun and its
+                 number agree differently in each language, and Tetun does not
+                 inflect the noun at all. */
+              t(sheets === 1 ? "badges.selectedOne" : "badges.selectedMany", {
+                count: selected.size,
+                sheets,
+              })}
         </p>
       </div>
 
@@ -305,6 +378,7 @@ export default function BadgesPage() {
                 visitor={visitor}
                 checked={selected.has(visitor.id)}
                 onToggle={() => toggle(visitor.id)}
+                onOpenMenu={(x, y) => openMenu(visitor, x, y)}
                 token={visitor.badge_token}
               />
             </li>
@@ -312,18 +386,48 @@ export default function BadgesPage() {
         </ul>
       )}
 
+      {menu ? (
+        <RowContextMenu
+          x={menu.x}
+          y={menu.y}
+          heading={menu.heading}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label:
+                menu.ids.length === 1
+                  ? t("badges.menu.printOne")
+                  : t("badges.menu.printMany", { count: menu.ids.length }),
+              icon: <PrinterIcon />,
+              onSelect: () => print(menu),
+            },
+            {
+              // Through the same confirmation as the toolbar: the file holds
+              // working credentials whichever button produced it.
+              label:
+                menu.ids.length === 1
+                  ? t("badges.menu.exportOne")
+                  : t("badges.menu.exportMany", { count: menu.ids.length }),
+              icon: <SpreadsheetIcon />,
+              onSelect: () => openExport(menu),
+            },
+          ]}
+        />
+      ) : null}
+
       <ReissueDialog
-        open={confirming !== null}
-        count={selected.size}
+        open={exportTarget !== null}
+        count={exportTarget?.ids.length ?? 0}
         pending={pending}
         error={error}
         onConfirm={async () => {
+          if (!exportTarget) return;
           setPending(true);
           setError(undefined);
           try {
-            await downloadCredentialExport([...selected]);
-            setSelected(new Set());
-            setConfirming(null);
+            await downloadCredentialExport(exportTarget.ids);
+            if (exportTarget.fromSelection) setSelected(new Set());
+            setExportTarget(null);
           } catch (cause) {
             setError(
               cause instanceof ApiError
@@ -336,7 +440,7 @@ export default function BadgesPage() {
         }}
         onCancel={() => {
           if (!pending) {
-            setConfirming(null);
+            setExportTarget(null);
             setError(undefined);
           }
         }}
@@ -345,15 +449,21 @@ export default function BadgesPage() {
   );
 }
 
+/** Who an action is for, and whether finishing it should clear the selection. */
+type Target = { ids: string[]; fromSelection: boolean };
+
 function SelectableCard({
   visitor,
   checked,
   onToggle,
+  onOpenMenu,
   token,
 }: {
   visitor: Visitor;
   checked: boolean;
   onToggle: () => void;
+  /** Viewport coordinates to draw the menu at. */
+  onOpenMenu: (x: number, y: number) => void;
   /** The badge's real code, from `?with_tokens=true`. Draws a scannable QR. */
   token?: string;
 }) {
@@ -366,7 +476,27 @@ function SelectableCard({
   // pretending to be one loses the semantics screen readers and the keyboard
   // already understand. The whole card is the hit target.
   return (
-    <label ref={ref} className="group block cursor-pointer">
+    <label
+      ref={ref}
+      className="group block cursor-pointer"
+      onContextMenu={(event) => {
+        event.preventDefault();
+
+        /*
+          The Menu key and Shift+F10 on the focused checkbox raise this with no
+          pointer behind it, and Chrome reports 0,0 -- the window's corner,
+          nowhere near the card. Anchor to the card instead, as the visitor
+          rows do.
+        */
+        if (event.clientX === 0 && event.clientY === 0) {
+          const card = event.currentTarget.getBoundingClientRect();
+          onOpenMenu(card.left + 24, card.top + 48);
+          return;
+        }
+
+        onOpenMenu(event.clientX, event.clientY);
+      }}
+    >
       <input
         type="checkbox"
         checked={checked}

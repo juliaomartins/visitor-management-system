@@ -288,6 +288,11 @@ export const pt: Messages = {
   "badges.noMatch": "Nenhum visitante corresponde a essa pesquisa.",
   "badges.onSheet": "Na folha",
   "badges.notPrinting": "Fora da folha",
+  "badges.menu.selection": "{count} visitantes selecionados",
+  "badges.menu.printOne": "Imprimir crach\u00e1",
+  "badges.menu.printMany": "Imprimir {count} crach\u00e1s",
+  "badges.menu.exportOne": "Exportar para Excel\u2026",
+  "badges.menu.exportMany": "Exportar {count} para Excel\u2026",
 
   // ------------------------------------------------------- export dialog --
   "export.titleOne":

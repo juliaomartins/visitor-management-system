@@ -282,6 +282,11 @@ export const en = {
   "badges.noMatch": "No visitors match that search.",
   "badges.onSheet": "On the sheet",
   "badges.notPrinting": "Not printing",
+  "badges.menu.selection": "{count} selected visitors",
+  "badges.menu.printOne": "Print badge",
+  "badges.menu.printMany": "Print {count} badges",
+  "badges.menu.exportOne": "Export to Excel\u2026",
+  "badges.menu.exportMany": "Export {count} to Excel\u2026",
 
   // ------------------------------------------------------- export dialog --
   "export.titleOne": "Export badge codes for {count} visitor?",

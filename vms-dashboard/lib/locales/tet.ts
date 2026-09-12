@@ -287,6 +287,11 @@ export const tet: Messages = {
   "badges.noMatch": "Laiha vizitante ida tuir buka ne\u2019e.",
   "badges.onSheet": "Iha folha",
   "badges.notPrinting": "La imprime",
+  "badges.menu.selection": "Vizitante {count} ne\u2019eb\u00e9 hili",
+  "badges.menu.printOne": "Imprime kartaun",
+  "badges.menu.printMany": "Imprime kartaun {count}",
+  "badges.menu.exportOne": "Esporta ba Excel\u2026",
+  "badges.menu.exportMany": "Esporta {count} ba Excel\u2026",
 
   // ------------------------------------------------------- export dialog --
   "export.titleOne": "Esporta k\u00f3digu kartaun ba vizitante {count}?",

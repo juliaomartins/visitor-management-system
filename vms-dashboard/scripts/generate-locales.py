@@ -615,6 +615,17 @@ M = [
      "Laiha vizitante ida tuir buka ne’e."),
     ("badges.onSheet", "On the sheet", "Na folha", "Iha folha"),
     ("badges.notPrinting", "Not printing", "Fora da folha", "La imprime"),
+    # The right-click menu on a card. One message per plural form, and the
+    # heading exists only for many: a menu acting on one visitor names them.
+    ("badges.menu.selection", "{count} selected visitors",
+     "{count} visitantes selecionados", "Vizitante {count} ne’ebé hili"),
+    ("badges.menu.printOne", "Print badge", "Imprimir crachá", "Imprime kartaun"),
+    ("badges.menu.printMany", "Print {count} badges", "Imprimir {count} crachás",
+     "Imprime kartaun {count}"),
+    ("badges.menu.exportOne", "Export to Excel…", "Exportar para Excel…",
+     "Esporta ba Excel…"),
+    ("badges.menu.exportMany", "Export {count} to Excel…",
+     "Exportar {count} para Excel…", "Esporta {count} ba Excel…"),
 
     ("//export dialog", "", "", ""),
     ("export.titleOne", "Export badge codes for {count} visitor?",

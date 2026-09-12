@@ -912,6 +912,25 @@ small inline bootstrap script in `app/layout.tsx` sets the class before first pa
 `<html>` carries `suppressHydrationWarning` — without it React reports a mismatch on
 every load.
 
+**Right-click a card on `/badges` for Print / Export to Excel**, through the same
+`RowContextMenu`. Who it acts on follows the file-manager rule, and it has a wrong
+answer that looks fine:
+
+| right-click on | acts on | the selection |
+|---|---|---|
+| a card that is **not** selected | that visitor alone | untouched |
+| a card that **is** selected | the whole selection | cleared after, like the toolbar |
+
+Acting on a lone card never clears the selection, or reprinting one person at the
+door would throw away twelve cards picked for the next sheet. The heading names
+the subject — the visitor, or "5 selected visitors" — so nobody prints the wrong
+set. The export dialog takes its count and ids from **whatever the menu resolved**,
+not from `selected`, or a lone card would export the selection behind it.
+
+**A failed print used to be silent.** The page set `error`, but only the export
+dialog rendered it, and that dialog is closed while printing. The failure now
+shows in the status line under the toolbar, for the button and the menu alike.
+
 **Right-click a visitor row for Edit / Deactivate (or Activate) / Delete permanently.**
 `components/visitors/RowContextMenu.tsx`. It replaces the browser's own menu on those
 rows, so "open in new tab" is gone there — a deliberate trade, because the alternative
