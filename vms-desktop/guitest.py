@@ -532,6 +532,83 @@ window._registry["dashboard"]._state = State.STOPPED
 window._mode = start_mode
 window.retranslate()
 
+print("\nThe mode icon changes with the mode")
+from widgets import icons  # noqa: E402
+
+
+def icon_bytes(button):
+    """A QIcon has no useful __eq__, so compare what it actually draws."""
+    from PySide6.QtCore import QBuffer, QByteArray
+
+    pixmap = button.icon().pixmap(16, 16)
+    data = QByteArray()
+    buf = QBuffer(data)
+    buf.open(QBuffer.OpenModeFlag.WriteOnly)
+    pixmap.save(buf, "PNG")
+    return bytes(data)
+
+
+check("icons.code exists", hasattr(icons, "code"))
+check("icons.package exists", hasattr(icons, "package"))
+window._mode = Mode.DEV
+window.restyle()
+dev_icon = icon_bytes(window._mode_button)
+window._mode = Mode.PROD
+window.restyle()
+prod_icon = icon_bytes(window._mode_button)
+check("the button carries an icon at all", len(dev_icon) > 0)
+check("and a different one per mode", dev_icon != prod_icon)
+window._mode = start_mode
+window.restyle()
+
+print("\nRun All and Stop All refuse when there is nothing to do")
+for key in window._specs:
+    window._registry[key]._state = State.STOPPED
+window._refresh_controls()
+check("nothing running: Stop All is disabled", not window._stop_all.isEnabled())
+check("nothing running: Run All is enabled", window._run_all.isEnabled())
+check(
+    "and the disabled one says why",
+    bool(window._stop_all.toolTip()) and "run" in window._stop_all.toolTip().lower(),
+    window._stop_all.toolTip(),
+)
+
+window._registry["backend"]._state = State.READY
+window._refresh_controls()
+check("one service up: Stop All is enabled", window._stop_all.isEnabled())
+check("one service up: Run All is still enabled", window._run_all.isEnabled())
+
+# Everything Run All would start, running. The scanner is opt-in, so with its
+# box unticked the other three ARE everything.
+for key in ("backend", "dashboard", "screen"):
+    window._registry[key]._state = State.READY
+window._cards["scanner"].set_include_in_run_all(False)
+window._refresh_controls()
+check(
+    "all required services up: Run All is disabled",
+    not window._run_all.isEnabled(),
+    str({k: window._registry[k].state.value for k in window._specs}),
+)
+check(
+    "and it says why",
+    "already" in window._run_all.toolTip().lower(),
+    window._run_all.toolTip(),
+)
+check("Stop All stays enabled", window._stop_all.isEnabled())
+
+# Ticking the scanner adds a service that is NOT running, so Run All has work.
+window._cards["scanner"].set_include_in_run_all(True)
+window._refresh_controls()
+check(
+    "ticking the scanner gives Run All something to do again",
+    window._run_all.isEnabled(),
+)
+window._cards["scanner"].set_include_in_run_all(False)
+
+for key in window._specs:
+    window._registry[key]._state = State.STOPPED
+window._refresh_controls()
+
 print("\nTheme")
 first = theme.current().name
 window._toggle_theme()
