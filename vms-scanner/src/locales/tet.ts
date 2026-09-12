@@ -41,6 +41,7 @@ export const tet: Messages = {
   "camera.turnTorchOn": "Lakan lampu",
   "camera.turnTorchOff": "Desliga lampu",
   "camera.fallbackName": "Leit\u00f3r",
+  "camera.unpairA11y": "Hasai pareia husi telem\u00f3vel ne\u2019e",
 
   // --------------------------------------------------------------- queue --
   "queue.syncingOne": "Sinkroniza hela. Leitura {count} seidauk haruka.",

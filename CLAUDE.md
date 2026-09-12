@@ -87,7 +87,7 @@ needed as a standalone thing, that is where it is.
 | Channel layer | `InMemoryChannelLayer` — **no Redis** |
 | Background jobs | none — **no Celery** |
 | Dashboard | TypeScript, Next.js 16 (App Router), Tailwind v4, TanStack Query, `qrcode`, `react-image-crop` |
-| Scanner | TypeScript, React Native, Expo SDK 57, expo-router, expo-camera, expo-sqlite, reanimated |
+| Scanner | TypeScript, React Native, Expo SDK 57, expo-router, expo-camera, expo-sqlite, reanimated, react-native-safe-area-context, `@expo/vector-icons` |
 | Scanner on web | localStorage for the queue AND the token — pairs; the camera needs a secure context |
 | Screen | TypeScript, Next.js 16, Tailwind v4, GSAP |
 | Desktop | Python, **PySide6** (Qt 6), packaged with PyInstaller |
@@ -1001,6 +1001,47 @@ finished and the keystore has answered — never one or the other, or the app fl
 pairing screen at a phone that is already paired. The native splash in `app.json` is
 transparent in every theme so the two do not fight.
 
+### The camera screen is three bands, and the controls are one dock
+
+`CameraOverlay.tsx` is a rail across the top (this phone's name, the pending-queue
+pill, and Unpair), the framing box in the middle, and a two-segment dock at the
+foot: **Torch | Server**. It replaced a centred torch pill with two grey text
+links in the corner beneath it — three weights in three places, one of them
+destructive, none of them clearing the Android gesture bar.
+
+- **`SafeAreaProvider` is mounted in `src/app/_layout.tsx` and is not optional.**
+  `useSafeAreaInsets()` throws *"No safe area value available"* without it, and
+  the overlay reads the insets directly so the dock clears the gesture bar while
+  the camera preview stays full-bleed underneath. `initialWindowMetrics` is
+  passed so the first frame is laid out correctly instead of painting at zero
+  and jumping.
+- **The server control IS the status light.** `useServerStatus` (extracted from
+  `ServerBar`, one implementation for both screens) probes `getApiOrigin()` —
+  the address actually in use, never the first stored candidate — and the dock's
+  right half shows green `server-network` / red `server-network-off` / grey
+  "Checking", with a slow breath on the red. The thing that tells you the link is
+  down is the thing you press to fix it. **Never colour alone:** tint, word and a
+  different glyph, the same rule the three verdicts follow.
+  - The camera screen passes a 15s interval because it is looked at all day; the
+    pairing screen passes none and re-checks on focus. The interval stops when
+    the app leaves the foreground, and a failed sync re-probes at once.
+  - "Checking" is shown once, before the first answer. A poll that reset to it
+    every 15s would blink grey at a connection that never dropped.
+- **Unpair is deliberately NOT in the dock.** It ends the shift for that phone and
+  can only be undone with a fresh code, so it sits at tertiary weight in the top
+  rail, out of the thumb's resting arc. The confirmation in front of it has not
+  moved.
+- **Icons are `@expo/vector-icons` (MaterialCommunityIcons)** — a font, not a
+  native module, so it needs no new native build. The font is preloaded in the
+  root layout as a fourth condition on the launch gate, or the one screen a guard
+  ever sees paints its dock with two blank squares for a frame. A failed load
+  counts as ready: an unlabelled-but-working dock beats an app that will not
+  start.
+- **`QueueIndicator`'s visible text is still English in all three languages** —
+  `{count} scans syncing…` is built from string literals while only its
+  `accessibilityLabel` is translated. Pre-existing, and visible on the one screen
+  a Tetun-reading guard uses.
+
 - No login screen, ever. Pair once, store the device token in expo-secure-store, then
   open straight to the camera. **On web there is no keystore — see below.**
 - **Offline SQLite queue is required in v1.** Every scan writes locally first, then syncs
@@ -1357,7 +1398,7 @@ and the wall's dozen strings became plain constants in `lib/wall-copy.ts`.
 |---|---|---|---|
 | `vms-dashboard` | `lib/locales/{en,pt,tet}.ts` — 365 keys | `lib/i18n.tsx` | cookie `vms.locale` |
 | `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 15 keys, **`/pair` only** | `lib/i18n.tsx` | cookie `vms.screen.locale` |
-| `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 72 keys | `src/i18n.tsx` | SecureStore `vms.locale` (native only — see below) |
+| `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 74 keys | `src/i18n.tsx` | SecureStore `vms.locale` (native only — see below) |
 | `vms-desktop` | `locales/{en,pt,tet}.py` — 53 keys | `i18n.py` | `QSettings` (registry) |
 
 The desktop app uses **no `QTranslator` and no gettext**. Qt's own machinery

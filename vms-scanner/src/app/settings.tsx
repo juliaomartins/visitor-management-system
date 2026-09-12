@@ -4,8 +4,9 @@
  * REACHABLE BEFORE PAIRING, and that is the whole point. A phone pointed at the
  * wrong address cannot pair, cannot scan, and cannot be fixed from inside any
  * screen that needs the server to work first. So this sits in front of all of
- * it, on its own route, with a gear on the pairing screen and one beside the
- * unpair control on the camera screen.
+ * it, on its own route, reached by the gear on the pairing screen and by the
+ * server half of the camera screen's control dock -- which is also the light
+ * that says whether the address currently set is answering.
  *
  * AN UNTESTED ADDRESS IS NEVER SAVED. Save is disabled until a test succeeds,
  * and editing either field throws the previous result away. An address that

@@ -37,6 +37,7 @@ export const pt: Messages = {
   "camera.turnTorchOn": "Ligar a lanterna",
   "camera.turnTorchOff": "Desligar a lanterna",
   "camera.fallbackName": "Leitor",
+  "camera.unpairA11y": "Desemparelhar este telem\u00f3vel",
 
   // --------------------------------------------------------------- queue --
   "queue.syncingOne": "A sincronizar. {count} leitura ainda pendente.",

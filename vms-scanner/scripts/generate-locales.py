@@ -117,6 +117,9 @@ M = [
     ("camera.turnTorchOff", "Turn the torch off", "Desligar a lanterna",
      "Desliga lampu"),
     ("camera.fallbackName", "Scanner", "Leitor", "Leitór"),
+    ("camera.unpairA11y", "Unpair this phone",
+     "Desemparelhar este telemóvel",
+     "Hasai pareia husi telemóvel ne’e"),
 
     ("//queue", "", "", ""),
     ("queue.syncingOne", "Syncing. {count} scan still pending.",

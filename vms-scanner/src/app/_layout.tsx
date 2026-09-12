@@ -18,11 +18,17 @@
  * There is no tab bar and no header. The guard sees one screen, forever
  * (CLAUDE.md constraint #4).
  */
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Constants, { ExecutionEnvironment } from "expo-constants";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import {
+  initialWindowMetrics,
+  SafeAreaProvider,
+} from "react-native-safe-area-context";
 
 import { LaunchScreen } from "@/components/LaunchScreen";
 import { LocaleProvider, useLocale } from "@/i18n";
@@ -44,6 +50,20 @@ function Routes() {
   */
   const { ready: localeReady } = useLocale();
   const [introDone, setIntroDone] = useState(false);
+
+  /*
+    A FOURTH CONDITION, for the same reason as the third.
+
+    The icons on the camera screen are glyphs in a font, and a font is loaded
+    asynchronously. Without waiting, the one screen a guard ever sees paints its
+    dock with two blank squares and fills them in a frame or two later. The
+    launch animation is already covering this window, so the wait costs nothing
+    anybody sees.
+
+    `failed` counts as ready on purpose: a missing font must leave the guard
+    with an unlabelled-but-working dock, never with an app that will not start.
+  */
+  const [iconsReady, iconsFailed] = useFonts(MaterialCommunityIcons.font);
 
   /*
     Hand over as soon as React can paint, not when the keystore answers.
@@ -77,7 +97,7 @@ function Routes() {
 
   // Both, whichever is later. `introDone` latches, so a slow keystore holds the
   // finished frame rather than replaying anything.
-  if (loading || !localeReady || !introDone) {
+  if (loading || !localeReady || !(iconsReady || iconsFailed) || !introDone) {
     return <LaunchScreen onFinish={() => setIntroDone(true)} />;
   }
 
@@ -94,11 +114,20 @@ function Routes() {
 
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <LocaleProvider>
-        <StatusBar style="light" />
-        <Routes />
-      </LocaleProvider>
-    </SessionProvider>
+    /*
+      `useSafeAreaInsets` throws without this provider -- "No safe area value
+      available" -- and the camera screen reads the insets directly so its dock
+      can clear the Android gesture bar. `initialWindowMetrics` hands the
+      provider the insets the native side already knows at startup, so the first
+      frame is laid out correctly instead of painting at zero and jumping.
+    */
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <SessionProvider>
+        <LocaleProvider>
+          <StatusBar style="light" />
+          <Routes />
+        </LocaleProvider>
+      </SessionProvider>
+    </SafeAreaProvider>
   );
 }

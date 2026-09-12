@@ -42,6 +42,7 @@ export const en = {
   "camera.turnTorchOn": "Turn the torch on",
   "camera.turnTorchOff": "Turn the torch off",
   "camera.fallbackName": "Scanner",
+  "camera.unpairA11y": "Unpair this phone",
 
   // --------------------------------------------------------------- queue --
   "queue.syncingOne": "Syncing. {count} scan still pending.",
