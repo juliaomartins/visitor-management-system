@@ -112,6 +112,8 @@ export const en = {
   "settings.reports": "It reports {ip}.",
   "setup.hint":
     "Ask whoever set up the laptop for its IP address, or run {cmd} on it. The port is almost always 8000.",
+  "setup.bareIp":
+    "A bare IP is fine \u2014 http:// and the port are filled in for you.",
 
   // ------------------------------------------------------------ language --
   "language.label": "Language",

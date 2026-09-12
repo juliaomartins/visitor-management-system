@@ -284,6 +284,10 @@ M = [
      "{cmd} nele. A porta é quase sempre 8000.",
      "Husu enderesu IP ba ema ne’ebé prepara laptop, ka hala’o {cmd} "
      "iha nia. Porta baibain 8000."),
+    ("setup.bareIp",
+     "A bare IP is fine — http:// and the port are filled in for you.",
+     "Basta o IP — o http:// e a porta são preenchidos automaticamente.",
+     "IP mesak deit mos bele — http:// ho porta prenxe automatikamente."),
 
     ("//language", "", "", ""),
     ("language.label", "Language", "Idioma", "Lian"),

@@ -8,6 +8,7 @@
  * It never saves an address that did not answer. An address that looks accepted
  * and fails at the next badge is worse than an honest error here.
  */
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRichT, useT } from "@/i18n";
 import { useState } from "react";
 import {
@@ -110,9 +111,7 @@ export function ServerSetup({
               style={styles.input}
               accessibilityLabel={t("server.addressA11y")}
             />
-            <Text style={styles.hint}>
-              A bare IP is fine — http:// and the port are filled in for you.
-            </Text>
+            <Text style={styles.hint}>{t("setup.bareIp")}</Text>
           </View>
 
           {error ? (
@@ -121,28 +120,69 @@ export function ServerSetup({
             </Text>
           ) : null}
 
-          <Pressable
-            onPress={submit}
-            disabled={checking || !value.trim()}
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.button,
-              (checking || !value.trim()) && styles.buttonDisabled,
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            {checking ? (
-              <ActivityIndicator color={colors.onAccent} />
-            ) : (
-              <Text style={styles.buttonLabel}>{t("server.connect")}</Text>
-            )}
-          </Pressable>
+          {/*
+            TWO WAYS OUT OF HERE, AND BOTH ARE BUTTONS.
 
-          <Pressable onPress={onRetry} disabled={searching} accessibilityRole="button">
-            <Text style={styles.retry}>
-              {searching ? t("server.searching") : t("server.retrySaved")}
-            </Text>
-          </Pressable>
+            Connect takes the address in the field. Retry takes the ones already
+            on the phone, which is the whole answer when the server never moved
+            and was simply off -- the commonest way anybody arrives at this
+            screen, and the one that needs no typing at all.
+
+            It used to be muted text under a filled button: no border, no fill,
+            a 34pt target, and nothing to say it could be pressed. On the screen
+            where a guard is already stuck, the cheapest fix was the one that
+            looked like a caption.
+          */}
+          <View style={styles.actions}>
+            <Pressable
+              onPress={submit}
+              disabled={checking || !value.trim()}
+              accessibilityRole="button"
+              android_ripple={{ color: "rgba(255,255,255,0.18)" }}
+              style={({ pressed }) => [
+                styles.button,
+                (checking || !value.trim()) && styles.buttonDisabled,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              {checking ? (
+                <ActivityIndicator color={colors.onAccent} />
+              ) : (
+                <Text style={styles.buttonLabel} numberOfLines={1}>
+                  {t("server.connect")}
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={onRetry}
+              disabled={searching}
+              accessibilityRole="button"
+              accessibilityState={{ busy: searching, disabled: searching }}
+              android_ripple={{ color: "rgba(244,248,251,0.12)" }}
+              style={({ pressed }) => [
+                styles.retry,
+                searching && styles.retryBusy,
+                pressed && styles.retryPressed,
+              ]}
+            >
+              {searching ? (
+                <ActivityIndicator color={colors.textMuted} size="small" />
+              ) : (
+                <MaterialCommunityIcons
+                  name="refresh"
+                  size={19}
+                  color={colors.text}
+                />
+              )}
+              {/* Two lines, because Portuguese says "Tentar de novo os
+                  enderecos guardados" -- half again the English, and clipping
+                  it would hide which addresses it means. */}
+              <Text style={styles.retryLabel} numberOfLines={2}>
+                {searching ? t("server.searching") : t("server.retrySaved")}
+              </Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -221,10 +261,30 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: colors.surfaceRaised },
   buttonPressed: { backgroundColor: colors.accentPressed },
   buttonLabel: { color: colors.onAccent, fontSize: 17, fontWeight: "700" },
+  // The two ways out sit together as one group; the page's own `gap` is a
+  // section gap and would read as two unrelated controls.
+  actions: { gap: spacing.sm },
   retry: {
-    color: colors.textMuted,
-    fontSize: 15,
-    textAlign: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    minHeight: HIT_SIZE,
     paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    overflow: "hidden",
+  },
+  retryBusy: { opacity: 0.6 },
+  retryPressed: { backgroundColor: colors.surfaceRaised },
+  retryLabel: {
+    flexShrink: 1,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

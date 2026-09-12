@@ -111,6 +111,8 @@ export const tet: Messages = {
   "settings.reports": "Nia hato\u2019o {ip}.",
   "setup.hint":
     "Husu enderesu IP ba ema ne\u2019eb\u00e9 prepara laptop, ka hala\u2019o {cmd} iha nia. Porta baibain 8000.",
+  "setup.bareIp":
+    "IP mesak deit mos bele \u2014 http:// ho porta prenxe automatikamente.",
 
   // ------------------------------------------------------------ language --
   "language.label": "Lian",

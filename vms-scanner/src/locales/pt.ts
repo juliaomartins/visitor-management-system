@@ -108,6 +108,8 @@ export const pt: Messages = {
   "settings.reports": "Reporta {ip}.",
   "setup.hint":
     "Pe\u00e7a o endere\u00e7o IP a quem configurou o port\u00e1til, ou execute {cmd} nele. A porta \u00e9 quase sempre 8000.",
+  "setup.bareIp":
+    "Basta o IP \u2014 o http:// e a porta s\u00e3o preenchidos automaticamente.",
 
   // ------------------------------------------------------------ language --
   "language.label": "Idioma",
