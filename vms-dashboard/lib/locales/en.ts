@@ -212,7 +212,9 @@ export const en = {
   "receipt.badgeToken": "Badge token",
   "receipt.rendering": "Rendering\u2026",
   "receipt.downloadPdf": "Download badge PDF",
-  "receipt.printBrowser": "Print from browser",
+  "receipt.print": "Print badge",
+  "receipt.printFellBack":
+    "This browser cannot print a PDF directly, so the badge was downloaded instead. Open the file and print it from there.",
   "receipt.copied": "Copied",
   "receipt.copyToken": "Copy token",
   "receipt.qrFailed":

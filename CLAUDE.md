@@ -1022,6 +1022,24 @@ the badge could never be printed. Tokens are derived now: `GET /visitors/{id}`
 returns `badge_token`, and the card can be reprinted at any time from the
 visitor's page. Losing the receipt costs nothing.
 
+**The receipt's Print button prints the SERVER'S PDF, never the page.** It used to
+be "Print from browser": `window.print()` over a hidden landscape card, 85.6 × 54
+mm with a rectangular photo, left over from before the PDF existed. The print
+stylesheet asked for a portrait 54 mm page and pinned the wider card into it, so
+names came out one letter per line, and `visibility: hidden` on everything else
+kept the page's layout — five sheets for one badge, none of them the real card.
+The card, the second QR canvas that fed it and both print rules in `globals.css`
+are gone.
+
+`printBadgeCard` in `lib/badges.ts` fetches the same `POST /badges/card` PDF that
+Download saves (`fetchFile` is shared, so the two buttons cannot fail
+differently), loads it into an invisible same-origin iframe and calls `print()`
+there — one 54 × 85.6 mm page, identical to `/badges` for one visitor. If
+`navigator.pdfViewerEnabled` is false, or the frame does not load, it downloads
+instead and the receipt says so. **Do not "simplify" that to printing a
+`display: none` frame**: Chrome does not load a PDF viewer into an unrendered
+frame, and a frame with no viewer prints a blank page without any error.
+
 **The dashboard proxies `/api` and `/media` to the backend** via rewrites in
 `next.config.ts`, so every browser request is same-origin: no preflight on the
 `Authorization` header, the refresh cookie is first-party, and DRF's absolute photo

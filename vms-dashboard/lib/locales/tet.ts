@@ -214,7 +214,9 @@ export const tet: Messages = {
   "receipt.badgeToken": "Token kartaun",
   "receipt.rendering": "Kria hela\u2026",
   "receipt.downloadPdf": "Deskarrega PDF kartaun",
-  "receipt.printBrowser": "Imprime husi navegad\u00f3r",
+  "receipt.print": "Imprime kartaun",
+  "receipt.printFellBack":
+    "Navegad\u00f3r ne\u2019e la bele imprime PDF direta, tan ne\u2019e kartaun deskarrega ona. Loke fixeiru no imprime husi ne\u2019eb\u00e1.",
   "receipt.copied": "Kopia ona",
   "receipt.copyToken": "Kopia token",
   "receipt.qrFailed":

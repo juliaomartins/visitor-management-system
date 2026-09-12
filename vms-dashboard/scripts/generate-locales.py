@@ -464,8 +464,16 @@ M = [
     ("receipt.rendering", "Rendering…", "A gerar…", "Kria hela…"),
     ("receipt.downloadPdf", "Download badge PDF",
      "Transferir PDF do crachá", "Deskarrega PDF kartaun"),
-    ("receipt.printBrowser", "Print from browser", "Imprimir pelo navegador",
-     "Imprime husi navegadór"),
+    # Prints the server's PDF, not the page: the old browser-drawn card was the
+    # wrong design and came out across five sheets.
+    ("receipt.print", "Print badge", "Imprimir crachá", "Imprime kartaun"),
+    ("receipt.printFellBack",
+     "This browser cannot print a PDF directly, so the badge was downloaded "
+     "instead. Open the file and print it from there.",
+     "Este navegador não consegue imprimir um PDF diretamente, por isso o crachá "
+     "foi transferido. Abra o ficheiro e imprima a partir daí.",
+     "Navegadór ne’e la bele imprime PDF direta, tan ne’e kartaun deskarrega "
+     "ona. Loke fixeiru no imprime husi ne’ebá."),
     ("receipt.copied", "Copied", "Copiado", "Kopia ona"),
     ("receipt.copyToken", "Copy token", "Copiar token", "Kopia token"),
     ("receipt.qrFailed",

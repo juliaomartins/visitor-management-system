@@ -46,13 +46,23 @@ function today(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+type FetchedFile = { blob: Blob; name: string };
+
 /**
- * Fetch a binary file with the bearer token and hand it to the browser.
+ * Fetch a binary file with the bearer token.
  *
  * A plain `<a href>` would carry no Authorization header and simply 401, which is
  * why every download in this app goes through a blob.
+ *
+ * Split from `save` so that PRINTING makes exactly the request downloading does:
+ * the same sign-in step, the same error wording, the same server-named file. The
+ * receipt puts the two buttons side by side, and they must not fail differently.
  */
-async function download(path: string, fallbackName: string, body?: unknown) {
+async function fetchFile(
+  path: string,
+  fallbackName: string,
+  body?: unknown,
+): Promise<FetchedFile> {
   await ensureAccessToken();
 
   const response = await fetch(path, {
@@ -84,14 +94,23 @@ async function download(path: string, fallbackName: string, body?: unknown) {
   const disposition = response.headers.get("Content-Disposition") ?? "";
   const named = /filename="?([^";]+)"?/.exec(disposition)?.[1];
 
-  const url = URL.createObjectURL(await response.blob());
+  return { blob: await response.blob(), name: named ?? fallbackName };
+}
+
+/** Hand a fetched file to the browser as a download. */
+function save({ blob, name }: FetchedFile) {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = named ?? fallbackName;
+  anchor.download = name;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+async function download(path: string, fallbackName: string, body?: unknown) {
+  save(await fetchFile(path, fallbackName, body));
 }
 
 /** The free print: the receipt still holds the token, so nothing is reissued. */
@@ -104,6 +123,138 @@ export async function downloadBadgeCard(
     { token: rawToken },
     `badge-${badgeSerial}.pdf`,
   );
+}
+
+/** Long enough for a slow LAN render; short enough that a stuck frame falls back. */
+const PRINT_FRAME_TIMEOUT_MS = 15_000;
+
+/**
+ * The frame the previous print used, kept until the next one.
+ *
+ * NOT REMOVED WHEN `print()` RETURNS. Chrome returns from `print()` on a PDF
+ * frame while its dialog is still open, and some builds keep reading the frame
+ * to render the preview; tearing it down then cancels the print the registrar
+ * is looking at. There is no event for "the dialog closed", so the frame lives
+ * until the next print replaces it or the page goes away. One blob URL for the
+ * length of a registration is the whole cost.
+ */
+let lastPrint: { frame: HTMLIFrameElement; url: string } | null = null;
+
+function discardLastPrint() {
+  if (!lastPrint) return;
+  lastPrint.frame.remove();
+  URL.revokeObjectURL(lastPrint.url);
+  lastPrint = null;
+}
+
+/**
+ * Open the print dialog on a PDF, without navigating and without a new tab.
+ *
+ * The PDF goes into an invisible SAME-ORIGIN frame -- a blob URL is same-origin,
+ * which is what makes `contentWindow.print()` allowed at all.
+ *
+ * THE FRAME IS 1px AND TRANSPARENT, NOT `display: none`. Chrome does not start
+ * a PDF viewer inside a frame it is not rendering, and `print()` on a frame with
+ * no viewer prints a blank page with no error anywhere -- the single worst way
+ * this could fail at a registration desk.
+ *
+ * Rejects when printing in place cannot work, so the caller can fall back.
+ */
+function printInFrame(pdf: Blob): Promise<void> {
+  // A browser set to "download PDFs instead of opening them" would load nothing
+  // printable into the frame. It tells us so; asking beats printing a blank.
+  const viewer = (navigator as Navigator & { pdfViewerEnabled?: boolean })
+    .pdfViewerEnabled;
+  if (viewer === false) {
+    return Promise.reject(new Error("this browser has no PDF viewer"));
+  }
+
+  discardLastPrint();
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(pdf);
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.tabIndex = -1;
+    frame.title = "badge print";
+    Object.assign(frame.style, {
+      position: "fixed",
+      right: "0",
+      bottom: "0",
+      width: "1px",
+      height: "1px",
+      border: "0",
+      opacity: "0",
+      pointerEvents: "none",
+    });
+
+    const fail = (reason: unknown) => {
+      frame.remove();
+      URL.revokeObjectURL(url);
+      reject(reason);
+    };
+
+    const timer = window.setTimeout(
+      () => fail(new Error("the PDF frame did not load")),
+      PRINT_FRAME_TIMEOUT_MS,
+    );
+
+    frame.onload = () => {
+      window.clearTimeout(timer);
+      try {
+        const view = frame.contentWindow;
+        if (!view) throw new Error("the PDF frame has no window");
+        view.focus();
+        view.print();
+      } catch (reason) {
+        fail(reason);
+        return;
+      }
+      lastPrint = { frame, url };
+      resolve();
+    };
+
+    frame.src = url;
+    document.body.appendChild(frame);
+  });
+}
+
+/**
+ * Print one badge from the receipt, using the server's own PDF.
+ *
+ * The same `POST /badges/card` request Download makes, so the page that prints
+ * is the card `apps/badges/services.py` draws: 54 x 85.6 mm, circular photo,
+ * the real QR -- identical to what `/badges` produces for one visitor.
+ *
+ * Returns `"dialog"` when the print dialog was opened, and `"downloaded"` when
+ * printing in place was not possible and the file was saved instead, so the
+ * caller can say which happened. A server or network failure still throws, with
+ * the same message Download would show.
+ */
+export async function printBadgeCard(
+  rawToken: string,
+  badgeSerial: string,
+): Promise<"dialog" | "downloaded"> {
+  const file = await fetchFile(
+    "/api/v1/badges/card",
+    `badge-${badgeSerial}.pdf`,
+    { token: rawToken },
+  );
+
+  // The frame needs to be told this is a PDF. The server says so today; a
+  // missing header would otherwise render the bytes as text and print that.
+  const pdf =
+    file.blob.type === "application/pdf"
+      ? file.blob
+      : new Blob([file.blob], { type: "application/pdf" });
+
+  try {
+    await printInFrame(pdf);
+    return "dialog";
+  } catch {
+    save(file);
+    return "downloaded";
+  }
 }
 
 /**

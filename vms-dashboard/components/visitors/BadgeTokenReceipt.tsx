@@ -10,24 +10,28 @@ import {
   QR_LOGO_PLATE_FRACTION,
   QR_LOGO_SRC,
 } from "@/lib/badge-geometry";
-import { downloadBadgeCard } from "@/lib/badges";
+import { downloadBadgeCard, printBadgeCard } from "@/lib/badges";
 import { useT } from "@/lib/i18n";
 import { ApiError, type VisitorIssued } from "@/lib/visitors";
 
 /**
- * The one and only sight of a badge token.
+ * The receipt shown the moment a visitor is registered.
  *
- * The backend stores a SHA-256 digest and nothing else, so this string exists in
- * exactly two places: this screen, and whatever the registrar does with it next.
- * Navigating away destroys it, and the badge can then never be printed — the
- * visitor has to be registered again from scratch.
+ * Registering does not redirect on success, so the registrar prints the card
+ * while the visitor is still at the desk and the next registration starts from a
+ * clean form. That used to be a necessity -- tokens were random, stored only as a
+ * digest, and this screen was the only copy -- and it is now only a workflow.
+ * Tokens are derived, so the same QR can be redrawn from the visitor's page, the
+ * A4 sheet or the .xlsx for the life of the event.
  *
- * That is why registering does not redirect on success. The registrar leaves this
- * screen deliberately, having printed the badge, not because a router decided the
- * job was finished.
- *
- * Phase 5 replaces the print button below with a server-rendered PDF and an A4
- * bulk sheet. Until then this is a real, working badge.
+ * BOTH PRINT BUTTONS USE THE SERVER'S PDF, and there is no browser-drawn badge
+ * any more. There used to be one: a hidden landscape card, 85.6 x 54 mm with a
+ * rectangular photo, from before the PDF existed, printed by `window.print()`
+ * under a print stylesheet that asked for a PORTRAIT 54 mm page. The card was
+ * wider than the page it was pinned into, so names printed one letter per line,
+ * and `visibility: hidden` on the rest of the page kept its layout -- five sheets
+ * of paper for one badge, none of them the badge. It was also simply the wrong
+ * card: the printed one is portrait with a circular photo.
  */
 
 /**
@@ -38,7 +42,7 @@ import { ApiError, type VisitorIssued } from "@/lib/visitors";
  *
  * Error correction M, with the event mark composited into the middle. The mark
  * is drawn OVER the finished code and is not encoded into it, so the string a
- * scanner reads is unchanged — this receipt prints the same credential it always
+ * scanner reads is unchanged — this receipt shows the same credential it always
  * did. The level stayed at M deliberately; the argument is at
  * `QR_ERROR_CORRECTION` in `lib/badge-geometry.ts`, and both numbers mirror
  * `apps/badges/services.py` so the receipt and the PDF cannot drift.
@@ -50,11 +54,10 @@ const QR_OPTIONS = {
 };
 
 /**
- * The event mark, decoded once per page rather than once per canvas.
+ * The event mark, decoded once per page rather than once per registration.
  *
- * Two canvases render on this screen and both want the same bitmap. A module
- * promise also means a second registration reuses the decode instead of going
- * back to the browser cache.
+ * A module promise means a second registration reuses the decode instead of
+ * going back to the browser cache.
  */
 let markRequest: Promise<HTMLImageElement> | null = null;
 
@@ -110,42 +113,39 @@ export function BadgeTokenReceipt({
   visitor: VisitorIssued;
   onRegisterAnother: () => void;
 }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
+  /*
+    One flag for both PDF buttons, not one each. They make the same request, and
+    pressing Print while a Download is still rendering would fetch the card twice
+    and race two results into the same error line.
+  */
+  const [busy, setBusy] = useState<"save" | "print" | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [qrFailed, setQrFailed] = useState(false);
   const screenQr = useRef<HTMLCanvasElement | null>(null);
-  const printQr = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    const targets: [HTMLCanvasElement | null, number][] = [
-      [screenQr.current, 208],
-      // Rendered large and scaled down by CSS, so the print stays crisp at 20 mm.
-      [printQr.current, 320],
-    ];
+    const canvas = screenQr.current;
+    if (!canvas) return;
 
     let live = true;
 
-    Promise.all(
-      targets.map(async ([canvas, width]) => {
-        if (!canvas) return;
-        await QRCode.toCanvas(canvas, visitor.badge_token, {
-          ...QR_OPTIONS,
-          width,
-        });
+    QRCode.toCanvas(canvas, visitor.badge_token, { ...QR_OPTIONS, width: 208 })
+      .then(async () => {
         if (!live) return;
         /*
           The mark is decoration and the code is the credential, so a mark that
           fails to load must not report the QR as failed. Swallowing it here
-          leaves a working, scannable badge with no logo on it -- which is what
-          the card looked like a week ago -- instead of blanking a QR the
-          registrar needs to print right now.
+          leaves a working, scannable code with no logo on it instead of blanking
+          a QR the registrar needs right now.
         */
         await drawEventMark(canvas).catch(() => {});
-      }),
-    ).catch(() => {
-      if (live) setQrFailed(true);
-    });
+      })
+      .catch(() => {
+        if (live) setQrFailed(true);
+      });
 
     return () => {
       live = false;
@@ -153,27 +153,33 @@ export function BadgeTokenReceipt({
   }, [visitor.badge_token]);
 
   /**
-   * Print the card while the visitor is still at the desk.
+   * Get the card out while the visitor is still at the desk.
    *
-   * Nothing about this print is special any more, and that is the point. The
-   * token is derived, so leaving this page costs nothing: the same QR can be
-   * redrawn from the visitor's own page, from the A4 sheet or from the .xlsx,
-   * for the life of the event. It is here because printing now, in front of the
-   * person it belongs to, is simply the fastest way to work a queue.
+   * Download saves the server's PDF. Print sends that same PDF straight to the
+   * print dialog, so the registrar does not have to find a file and open it --
+   * and if this browser cannot print a PDF in place, it downloads instead and
+   * says so, rather than printing a blank page or doing nothing.
    */
-  async function savePdf() {
-    setSaving(true);
+  async function producePdf(kind: "save" | "print") {
+    setBusy(kind);
     setPdfError(null);
+    setNotice(null);
     try {
-      await downloadBadgeCard(visitor.badge_token, visitor.badge_serial);
+      if (kind === "save") {
+        await downloadBadgeCard(visitor.badge_token, visitor.badge_serial);
+      } else {
+        const outcome = await printBadgeCard(
+          visitor.badge_token,
+          visitor.badge_serial,
+        );
+        if (outcome === "downloaded") setNotice(t("receipt.printFellBack"));
+      }
     } catch (cause) {
       setPdfError(
-        cause instanceof ApiError
-          ? cause.message
-          : t("receipt.renderFailed"),
+        cause instanceof ApiError ? cause.message : t("receipt.renderFailed"),
       );
     } finally {
-      setSaving(false);
+      setBusy(null);
     }
   }
 
@@ -188,7 +194,6 @@ export function BadgeTokenReceipt({
     }
   }
 
-  const t = useT();
   const vip = visitor.category === "vip";
 
   return (
@@ -239,22 +244,21 @@ export function BadgeTokenReceipt({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={savePdf}
-                disabled={saving}
+                onClick={() => producePdf("save")}
+                disabled={busy !== null}
                 className="btn btn-primary disabled:opacity-70"
               >
-                {saving
+                {busy === "save"
                   ? t("receipt.rendering")
                   : t("receipt.downloadPdf")}
               </button>
-              {/* Kept alongside the PDF: this one needs nothing but a browser, so
-                  it still works if the server cannot render. */}
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="btn btn-ghost"
+                onClick={() => producePdf("print")}
+                disabled={busy !== null}
+                className="btn btn-ghost disabled:opacity-60"
               >
-                {t("receipt.printBrowser")}
+                {busy === "print" ? t("receipt.rendering") : t("receipt.print")}
               </button>
               <button
                 type="button"
@@ -268,6 +272,12 @@ export function BadgeTokenReceipt({
             {pdfError ? (
               <p role="alert" className="text-xs text-revoked">
                 {pdfError}
+              </p>
+            ) : null}
+
+            {notice ? (
+              <p role="status" className="text-xs text-ink-2">
+                {notice}
               </p>
             ) : null}
 
@@ -320,95 +330,6 @@ export function BadgeTokenReceipt({
         >
           {t("visitor.backToAll")}
         </Link>
-      </div>
-
-      {/*
-        The badge itself. Parked off-screen rather than hidden, so the photo is
-        actually fetched — see the #badge-print rules in globals.css. Sized in
-        millimetres because this is a physical object, not a layout.
-      */}
-      <div id="badge-print" aria-hidden="true">
-        <div
-          style={{
-            width: "85.6mm",
-            height: "54mm",
-            boxSizing: "border-box",
-            padding: "3.5mm",
-            display: "flex",
-            gap: "3mm",
-            alignItems: "stretch",
-            background: "#ffffff",
-            color: "#000000",
-            fontFamily: "var(--font-jakarta), sans-serif",
-            borderLeft: vip ? "3mm solid #a16207" : "3mm solid #17212b",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={visitor.photo}
-            alt=""
-            style={{
-              width: "24mm",
-              height: "32mm",
-              objectFit: "cover",
-              alignSelf: "flex-start",
-            }}
-          />
-
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            {vip ? (
-              <span
-                style={{
-                  fontSize: "2.6mm",
-                  fontWeight: 800,
-                  letterSpacing: "0.6mm",
-                  color: "#a16207",
-                }}
-              >
-                VIP
-              </span>
-            ) : null}
-
-            <span
-              style={{
-                fontSize: "4.6mm",
-                fontWeight: 800,
-                lineHeight: 1.1,
-                marginTop: "0.5mm",
-                overflowWrap: "anywhere",
-              }}
-            >
-              {visitor.full_name}
-            </span>
-
-            <span style={{ fontSize: "3.4mm", marginTop: "1mm" }}>
-              {visitor.country}
-            </span>
-
-            {visitor.organization ? (
-              <span style={{ fontSize: "2.8mm", marginTop: "0.5mm", color: "#4a5560" }}>
-                {visitor.organization}
-              </span>
-            ) : null}
-
-            <span
-              style={{
-                marginTop: "auto",
-                fontSize: "3mm",
-                fontWeight: 600,
-                letterSpacing: "0.3mm",
-                fontFamily: "var(--font-jetbrains), monospace",
-              }}
-            >
-              {visitor.badge_serial}
-            </span>
-          </div>
-
-          <canvas
-            ref={printQr}
-            style={{ width: "20mm", height: "20mm", alignSelf: "flex-end" }}
-          />
-        </div>
       </div>
     </div>
   );

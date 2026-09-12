@@ -502,45 +502,6 @@ body {
   animation: pulse-dot 2.4s ease-in-out infinite;
 }
 
-/*
- * The interim badge, printed from the browser until the PDF is fetched.
- *
- * `#badge-print` is parked off-screen rather than `display: none`, so the browser
- * actually loads the visitor's photo — a hidden image is often never fetched, and
- * a badge that prints with a blank photo is worse than no badge.
- */
-#badge-print {
-  position: absolute;
-  left: -10000px;
-  top: 0;
-}
-
-@media print {
-  @page {
-    size: 54mm 85.6mm;
-    margin: 0;
-  }
-
-  body * {
-    visibility: hidden;
-  }
-
-  #badge-print,
-  #badge-print * {
-    visibility: visible;
-  }
-
-  #badge-print {
-    position: fixed;
-    inset: 0;
-    left: 0;
-    /* Keep the VIP band and rules; a printer dropping backgrounds would strip
-       the one thing that distinguishes a VIP card across a room. */
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
-}
-
 
 /*
   react-image-crop, themed.

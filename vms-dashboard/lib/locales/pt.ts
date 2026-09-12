@@ -213,7 +213,9 @@ export const pt: Messages = {
   "receipt.badgeToken": "Token do crach\u00e1",
   "receipt.rendering": "A gerar\u2026",
   "receipt.downloadPdf": "Transferir PDF do crach\u00e1",
-  "receipt.printBrowser": "Imprimir pelo navegador",
+  "receipt.print": "Imprimir crach\u00e1",
+  "receipt.printFellBack":
+    "Este navegador n\u00e3o consegue imprimir um PDF diretamente, por isso o crach\u00e1 foi transferido. Abra o ficheiro e imprima a partir da\u00ed.",
   "receipt.copied": "Copiado",
   "receipt.copyToken": "Copiar token",
   "receipt.qrFailed":
