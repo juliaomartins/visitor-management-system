@@ -919,7 +919,7 @@ is a navigation to the visitor and back for every small change. The Menu key and
 Shift+F10 open it too, since the row's link is focusable; those report no pointer
 position, so they anchor to the row's box instead of the window corner.
 
-**Visitor photos are 3:4 portrait, 600 × 800 — and the printed photo is a CIRCLE.**
+**Visitor photos are cropped 3:4 by default, NOT always — and the printed photo is a CIRCLE.**
 
 `lib/badge-geometry.ts` is the single source of truth and it derives everything from
 the same millimetres `apps/badges/services.py` prints with. `PHOTO_ASPECT` moved there
@@ -930,10 +930,49 @@ The trap is that these are three different shapes and they get confused constant
 | Thing | Shape | Where |
 |---|---|---|
 | the CR80 card | 54 × 85.6 mm portrait | `CARD_W, CARD_H` |
-| the stored photo | 3:4 portrait, 600 × 800 | `PHOTO_ASPECT`, `OUTPUT_WIDTH` |
+| the stored photo | **any ratio** — 3:4 is only the cropper's default | `PHOTO_ASPECT`, `OUTPUT_WIDTH` |
 | the printed photo | a 19 mm **circle** | `clip.circle(...)` in services.py |
 
-The card and the lobby screen both clip the stored 3:4 image to a circle, so a crop
+**The stored photo is not reliably 3:4, and this table said it was.** `PhotoCropper.tsx`
+offers badge, square and free crops and exports at the selection's own ratio.
+Measured over `media/visitors`: **3 of 15 files were 3:4.** The rest are square-ish
+(600×479 to 600×662), plus whatever a free crop produces.
+
+That mattered because the badge PDF believed the table. It drew every photo into a
+`draw_w × draw_w * 4/3` box with `preserveAspectRatio=False`, so 12 of 15 faces
+printed distorted — the worst at **60% of true width**, a tall free crop at 125% —
+while the `/badges` preview, which uses `object-cover`, showed them correctly. On a
+19 mm circle a face a third too narrow does not read as a bug; it reads as a thin
+person, which is how it reached a print queue.
+
+**Both circles now cover-crop whatever is stored, the same way.**
+`cover_box(*reader.getSize(), diameter)` in `apps/badges/services.py` is
+`object-fit: cover` in millimetres: the shorter side maps to the diameter, the longer
+side overflows into the clip. Nothing was re-cropped and nothing migrated. Verified
+four ways, all against the throwaway SQLite database:
+
+| check | before | after |
+|---|---|---|
+| a round dot in a 600×479 source, printed | 0.600 wide:tall | 1.000 |
+| flat-colour source, gap pixels inside the clip, 18 sizes incl. 3:1 and 1:3 | — | 0 |
+| printed circle vs headless-Chrome `object-cover`, mean diff /255 | 20.7–42.2 | 1.4–2.5 |
+| single card and A4 sheet render | — | both, one shared `draw_card` |
+
+Two traps if you touch it:
+
+- **`preserveAspectRatio=True` is deliberate, and it hides a broken box rather than
+  exposing a distortion.** With a wrong box ReportLab letterboxes instead of
+  stretching — undistorted, ring showing through. So swapping `cover_box` back to the
+  old 3:4 box does **not** reproduce the old bug; a control run needs `False` restored
+  too. Learned by getting a clean "before" column that was not the before.
+- **Do not measure the ring to prove the photo is round.** `canvas.circle()` draws a
+  circle whatever the image inside does. Measure something round *in the source*.
+
+**Still rectangular, and still wrong for square crops:** the visitors list thumbnail
+(42×56) and the registration receipt (24×32 mm) draw the stored file as a 3:4 box.
+Out of scope for the badge fix, and left as named follow-up.
+
+The card and the lobby screen both clip the stored image to a circle, so a crop
 that looks right as a rectangle can still lose a chin. `PhotoCropper.tsx` draws the
 circle over the crop for that reason, and warns below `MIN_OUTPUT_WIDTH` — 225px, which
 is 19 mm at 300dpi — rather than silently upscaling.

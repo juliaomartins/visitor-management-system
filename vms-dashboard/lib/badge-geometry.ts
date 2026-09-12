@@ -15,18 +15,23 @@
  *
  * So the badge photo box has no portrait ratio to inherit -- its bounding box is
  * square. The 3:4 below is NOT derived from it and does not pretend to be: it is
- * the storage format, and it is fixed by three consumers that render the stored
- * file as a rectangle rather than a circle:
+ * the cropper's DEFAULT, not a guarantee about what is on disk. The cropper also
+ * offers square and free crops, and exports at the selection's own ratio.
  *
- *     visitors list thumbnail   42 x 56          3:4
- *     registration receipt      24mm x 32mm      3:4
- *     badge PDF                 draw_h = draw_w * 4 / 3, preserveAspectRatio=False
+ * BOTH CIRCLES COVER-CROP WHATEVER IS STORED, and must keep doing so:
  *
- * That last one is why the format cannot simply be changed to square. The PDF
- * hardcodes the 4/3 assumption and disables aspect preservation, so a square
- * source would print every face stretched by a third. Moving to square storage
- * means teaching the PDF to read the image's real dimensions first, then
- * re-cropping the photos already on file.
+ *     badge-card.tsx    aspect-square rounded-full object-cover
+ *     services.py       cover_box(*reader.getSize(), PHOTO_R * 2), clipped
+ *
+ * The PDF used to hardcode `draw_h = draw_w * 4 / 3` with
+ * `preserveAspectRatio=False`, which printed every non-3:4 file stretched --
+ * 12 of the 15 photos on file, the worst at 60% of true width. It reads the
+ * image's real size now, so the print and this preview crop the same region
+ * the same way for any stored shape, with nothing re-cropped.
+ *
+ * Two surfaces still draw the stored file as a 3:4 RECTANGLE and will show a
+ * square crop letterboxed or stretched: the visitors list thumbnail (42 x 56)
+ * and the registration receipt (24mm x 32mm). Known, and not yet fixed.
  */
 
 /** From `services.py`: CARD_W, CARD_H = 54.0, 85.6 */
@@ -51,9 +56,10 @@ export const PHOTO_BOX_MM = (PHOTO_R_MM + PHOTO_RING_MM) * 2;
 export const PHOTO_BOX_CQW = (PHOTO_BOX_MM / CARD_W_MM) * 100;
 
 /**
- * The stored photo's aspect ratio. Portrait, 3:4.
+ * The cropper's default aspect ratio. Portrait, 3:4.
  *
- * Not the card's and not the circle's — see the note at the top. This is the one
+ * Not the card's and not the circle's — see the note at the top — and not a
+ * promise about stored files, which may be any ratio. This is the one
  * definition; the cropper and the preview both import it.
  */
 export const PHOTO_ASPECT = 3 / 4;

@@ -302,6 +302,45 @@ def photo_reader(visitor: Visitor):
         return None
 
 
+def cover_box(image_width: float, image_height: float, diameter: float):
+    """The smallest box of the image's OWN aspect that covers a `diameter` circle.
+
+    This is `object-fit: cover` in millimetres, and it is the whole reason the
+    printed photo now matches the one on screen. `components/badge-card.tsx`
+    draws the photo with `aspect-square object-cover rounded-full`, so the
+    browser scales the file until it covers a square and crops the overflow. The
+    PDF used to hardcode `draw_h = draw_w * 4 / 3` with
+    `preserveAspectRatio=False`, i.e. it asserted every stored file was 3:4 and
+    stretched whatever it got to fit that claim.
+
+    **THAT ASSERTION WAS FALSE FOR MOST OF THE ROSTER.** `PhotoCropper.tsx`
+    offers badge, square and free crops, and exports at the selection's own
+    ratio — so square and free crops land on disk as square-ish files. Measured
+    over the 15 photos actually stored in `media/visitors`, only 3 were 3:4;
+    the other 12 printed squeezed horizontally, the worst (600x479) at 60% of
+    true width. A face narrowed by a third is not obviously a bug on a 19 mm circle,
+    which is why it reached a print queue: it just makes people look thinner
+    than they are.
+
+    Reading the real size removes the assumption instead of restating it, so
+    every crop mode prints faithfully with nothing re-cropped and no migration.
+
+    A non-positive or unreadable size falls back to a square box. That crops a
+    portrait a little tighter than cover would, and is the one outcome here that
+    cannot distort a face.
+    """
+    if not image_width or not image_height or image_width <= 0 or image_height <= 0:
+        return diameter, diameter
+
+    # Cover means the SHORTER side of the image maps to the diameter and the
+    # longer side overflows, which is the opposite of fit. Getting this branch
+    # backwards produces a box that fits inside the circle, leaving the ring
+    # showing through in two arcs.
+    if image_width >= image_height:
+        return diameter * image_width / image_height, diameter
+    return diameter, diameter * image_height / image_width
+
+
 def _fit_lines(text: str, font: str, size: float, max_width_mm: float, max_lines: int):
     """Wrap `text` to at most `max_lines`, shrinking the font until it fits.
 
@@ -532,18 +571,24 @@ def draw_card(canvas, visitor: Visitor, raw_token: str, x: float, y: float) -> N
         clip = canvas.beginPath()
         clip.circle(cx * mm, cy * mm, PHOTO_R * mm)
         canvas.clipPath(clip, stroke=0, fill=0)
-        # The stored photo is 3:4, so covering a square means overflowing the
-        # height. The clip takes care of the overflow; scaling to fit instead
-        # would leave two bars of empty circle beside the face.
-        draw_w = PHOTO_R * 2
-        draw_h = draw_w * 4 / 3
+        # Cover the circle at the image's own aspect and let the clip take the
+        # overflow — `object-fit: cover`, which is what the preview does. See
+        # `cover_box`: the ratio is READ from the file, never assumed.
+        image_width, image_height = reader.getSize()
+        draw_w, draw_h = cover_box(image_width, image_height, PHOTO_R * 2)
         canvas.drawImage(
             reader,
             (cx - draw_w / 2) * mm,
             (cy - draw_h / 2) * mm,
             draw_w * mm,
             draw_h * mm,
-            preserveAspectRatio=False,
+            # The box already carries the image's ratio, so this preserves
+            # rather than changes anything today. It is `True` deliberately:
+            # if `cover_box` is ever wrong, letterboxing shows up in the circle
+            # where somebody will see it, and `False` would go on silently
+            # stretching faces instead. A visible failure beats an invisible
+            # one in a file nobody opens until the morning they print from it.
+            preserveAspectRatio=True,
             mask="auto",
         )
         canvas.restoreState()
