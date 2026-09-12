@@ -216,7 +216,7 @@ export const tet: Messages = {
   "receipt.downloadPdf": "Deskarrega PDF kartaun",
   "receipt.print": "Imprime kartaun",
   "receipt.printFellBack":
-    "Navegad\u00f3r ne\u2019e la bele imprime PDF direta, tan ne\u2019e kartaun deskarrega ona. Loke fixeiru no imprime husi ne\u2019eb\u00e1.",
+    "Pop-up bloke hela ba site ne\u2019e, tan ne\u2019e kartaun deskarrega ona. Loke fixeiru no imprime husi ne\u2019eb\u00e1.",
   "receipt.copied": "Kopia ona",
   "receipt.copyToken": "Kopia token",
   "receipt.qrFailed":

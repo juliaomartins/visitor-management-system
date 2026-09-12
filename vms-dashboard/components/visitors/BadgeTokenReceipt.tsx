@@ -10,7 +10,7 @@ import {
   QR_LOGO_PLATE_FRACTION,
   QR_LOGO_SRC,
 } from "@/lib/badge-geometry";
-import { downloadBadgeCard, printBadgeCard } from "@/lib/badges";
+import { downloadBadgeCard, openBadgeCard } from "@/lib/badges";
 import { useT } from "@/lib/i18n";
 import { ApiError, type VisitorIssued } from "@/lib/visitors";
 
@@ -155,10 +155,13 @@ export function BadgeTokenReceipt({
   /**
    * Get the card out while the visitor is still at the desk.
    *
-   * Download saves the server's PDF. Print sends that same PDF straight to the
-   * print dialog, so the registrar does not have to find a file and open it --
-   * and if this browser cannot print a PDF in place, it downloads instead and
-   * says so, rather than printing a blank page or doing nothing.
+   * Download saves the server's PDF. Print opens that same PDF in the browser's
+   * viewer in a new tab -- the screen `/badges` users already print from -- so
+   * the registrar presses the printer icon instead of hunting for a file. If
+   * pop-ups are blocked it downloads instead and says so.
+   *
+   * `openBadgeCard` must be reached with no `await` before it: it opens the tab
+   * synchronously, and a pop-up blocker only allows that inside the click.
    */
   async function producePdf(kind: "save" | "print") {
     setBusy(kind);
@@ -168,9 +171,10 @@ export function BadgeTokenReceipt({
       if (kind === "save") {
         await downloadBadgeCard(visitor.badge_token, visitor.badge_serial);
       } else {
-        const outcome = await printBadgeCard(
+        const outcome = await openBadgeCard(
           visitor.badge_token,
           visitor.badge_serial,
+          t("receipt.rendering"),
         );
         if (outcome === "downloaded") setNotice(t("receipt.printFellBack"));
       }

@@ -125,136 +125,86 @@ export async function downloadBadgeCard(
   );
 }
 
-/** Long enough for a slow LAN render; short enough that a stuck frame falls back. */
-const PRINT_FRAME_TIMEOUT_MS = 15_000;
-
 /**
- * The frame the previous print used, kept until the next one.
+ * Open one badge in the browser's own PDF viewer, in a new tab, ready to print.
  *
- * NOT REMOVED WHEN `print()` RETURNS. Chrome returns from `print()` on a PDF
- * frame while its dialog is still open, and some builds keep reading the frame
- * to render the preview; tearing it down then cancels the print the registrar
- * is looking at. There is no event for "the dialog closed", so the frame lives
- * until the next print replaces it or the page goes away. One blob URL for the
- * length of a registration is the whole cost.
+ * This is the `/badges` route to the printer, minus the trip to the downloads
+ * folder: `/badges` hands over the PDF, the registrar opens it in the viewer and
+ * presses its printer icon, and that is the path confirmed to come out at card
+ * size on the CR80 printer. The PDF is the same page, too -- `/badges` for one
+ * visitor calls `render_a4_sheet_pdf`, whose single-visitor branch IS
+ * `render_card_pdf`, measured at 1 page, 54.0 x 85.6 mm, pixel difference 0.0.
+ *
+ * IT REPLACED PRINTING FROM AN INVISIBLE IFRAME, and the reason is the printer,
+ * not the code. `print()` on a hidden frame hands the page straight to the print
+ * dialog, which is the one step headless testing cannot see and the one step
+ * that decides paper size. The viewer is the path people already trust.
+ *
+ * THE TAB IS OPENED BEFORE THE REQUEST, on purpose. Pop-up blockers allow
+ * `window.open` only while the click is still the current user gesture, and an
+ * `await` ends that. Opening after the PDF arrives would be blocked on most
+ * browsers every time, so the tab opens first with a placeholder and is pointed
+ * at the PDF once it exists.
+ *
+ * Returns what happened, so the receipt can say it:
+ *   "opened"     the viewer tab is showing the card
+ *   "downloaded" pop-ups were blocked, so the file was saved as /badges does
+ *   "cancelled"  the registrar closed the tab before the card arrived
+ * A server or network failure closes the tab and throws, with the same message
+ * Download would show.
  */
-let lastPrint: { frame: HTMLIFrameElement; url: string } | null = null;
-
-function discardLastPrint() {
-  if (!lastPrint) return;
-  lastPrint.frame.remove();
-  URL.revokeObjectURL(lastPrint.url);
-  lastPrint = null;
-}
-
-/**
- * Open the print dialog on a PDF, without navigating and without a new tab.
- *
- * The PDF goes into an invisible SAME-ORIGIN frame -- a blob URL is same-origin,
- * which is what makes `contentWindow.print()` allowed at all.
- *
- * THE FRAME IS 1px AND TRANSPARENT, NOT `display: none`. Chrome does not start
- * a PDF viewer inside a frame it is not rendering, and `print()` on a frame with
- * no viewer prints a blank page with no error anywhere -- the single worst way
- * this could fail at a registration desk.
- *
- * Rejects when printing in place cannot work, so the caller can fall back.
- */
-function printInFrame(pdf: Blob): Promise<void> {
-  // A browser set to "download PDFs instead of opening them" would load nothing
-  // printable into the frame. It tells us so; asking beats printing a blank.
-  const viewer = (navigator as Navigator & { pdfViewerEnabled?: boolean })
-    .pdfViewerEnabled;
-  if (viewer === false) {
-    return Promise.reject(new Error("this browser has no PDF viewer"));
-  }
-
-  discardLastPrint();
-
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(pdf);
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    frame.tabIndex = -1;
-    frame.title = "badge print";
-    Object.assign(frame.style, {
-      position: "fixed",
-      right: "0",
-      bottom: "0",
-      width: "1px",
-      height: "1px",
-      border: "0",
-      opacity: "0",
-      pointerEvents: "none",
-    });
-
-    const fail = (reason: unknown) => {
-      frame.remove();
-      URL.revokeObjectURL(url);
-      reject(reason);
-    };
-
-    const timer = window.setTimeout(
-      () => fail(new Error("the PDF frame did not load")),
-      PRINT_FRAME_TIMEOUT_MS,
-    );
-
-    frame.onload = () => {
-      window.clearTimeout(timer);
-      try {
-        const view = frame.contentWindow;
-        if (!view) throw new Error("the PDF frame has no window");
-        view.focus();
-        view.print();
-      } catch (reason) {
-        fail(reason);
-        return;
-      }
-      lastPrint = { frame, url };
-      resolve();
-    };
-
-    frame.src = url;
-    document.body.appendChild(frame);
-  });
-}
-
-/**
- * Print one badge from the receipt, using the server's own PDF.
- *
- * The same `POST /badges/card` request Download makes, so the page that prints
- * is the card `apps/badges/services.py` draws: 54 x 85.6 mm, circular photo,
- * the real QR -- identical to what `/badges` produces for one visitor.
- *
- * Returns `"dialog"` when the print dialog was opened, and `"downloaded"` when
- * printing in place was not possible and the file was saved instead, so the
- * caller can say which happened. A server or network failure still throws, with
- * the same message Download would show.
- */
-export async function printBadgeCard(
+export async function openBadgeCard(
   rawToken: string,
   badgeSerial: string,
-): Promise<"dialog" | "downloaded"> {
-  const file = await fetchFile(
-    "/api/v1/badges/card",
-    `badge-${badgeSerial}.pdf`,
-    { token: rawToken },
-  );
+  placeholder: string,
+): Promise<"opened" | "downloaded" | "cancelled"> {
+  const tab = window.open("", "_blank");
+  if (tab) {
+    try {
+      tab.document.title = badgeSerial;
+      tab.document.body.style.font = "14px system-ui, sans-serif";
+      tab.document.body.textContent = placeholder;
+    } catch {
+      // Cosmetic only; the tab is still ours to navigate.
+    }
+  }
 
-  // The frame needs to be told this is a PDF. The server says so today; a
-  // missing header would otherwise render the bytes as text and print that.
+  let file: FetchedFile;
+  try {
+    file = await fetchFile(
+      "/api/v1/badges/card",
+      `badge-${badgeSerial}.pdf`,
+      { token: rawToken },
+    );
+  } catch (error) {
+    // An empty tab left saying "Rendering…" forever is worse than no tab.
+    tab?.close();
+    throw error;
+  }
+
+  if (!tab) {
+    save(file);
+    return "downloaded";
+  }
+
+  // Closing the placeholder was a decision; a download would override it.
+  if (tab.closed) return "cancelled";
+
+  // The viewer needs to be told this is a PDF. The server says so today; a
+  // missing header would otherwise show the bytes as text.
   const pdf =
     file.blob.type === "application/pdf"
       ? file.blob
       : new Blob([file.blob], { type: "application/pdf" });
 
-  try {
-    await printInFrame(pdf);
-    return "dialog";
-  } catch {
-    save(file);
-    return "downloaded";
-  }
+  /*
+    NOT REVOKED. The viewer in the other tab may read the blob again -- to
+    print, to save, on a reload -- and a revoked URL fails there with nothing
+    on the receipt to explain it. It is released when this page unloads; one
+    card-sized PDF per registration is the whole cost.
+  */
+  tab.location.href = URL.createObjectURL(pdf);
+  return "opened";
 }
 
 /**

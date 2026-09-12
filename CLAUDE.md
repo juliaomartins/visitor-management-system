@@ -1031,14 +1031,29 @@ kept the page's layout — five sheets for one badge, none of them the real card
 The card, the second QR canvas that fed it and both print rules in `globals.css`
 are gone.
 
-`printBadgeCard` in `lib/badges.ts` fetches the same `POST /badges/card` PDF that
+`openBadgeCard` in `lib/badges.ts` fetches the same `POST /badges/card` PDF that
 Download saves (`fetchFile` is shared, so the two buttons cannot fail
-differently), loads it into an invisible same-origin iframe and calls `print()`
-there — one 54 × 85.6 mm page, identical to `/badges` for one visitor. If
-`navigator.pdfViewerEnabled` is false, or the frame does not load, it downloads
-instead and the receipt says so. **Do not "simplify" that to printing a
-`display: none` frame**: Chrome does not load a PDF viewer into an unrendered
-frame, and a frame with no viewer prints a blank page without any error.
+differently) and shows it in the browser's PDF viewer **in a new tab** — the
+screen `/badges` users already print from, confirmed to come out at card size on
+the CR80 printer. It is the same page as `/badges` for one visitor:
+`render_a4_sheet_pdf` with one visitor returns `render_card_pdf`, measured at 1
+page, 54.0 × 85.6 mm, pixel difference 0.0.
+
+It briefly printed from an invisible iframe instead. That was replaced because
+the hidden dialog is the one step that decides paper size and the one step
+headless testing cannot see; the viewer is the path people already trust.
+
+**The tab is opened BEFORE the request, and that order is load-bearing.** A
+pop-up blocker allows `window.open` only inside the click, and the first `await`
+ends it — so the tab opens with a "Rendering…" placeholder and is pointed at the
+blob once it exists. Move the `window.open` below the fetch and it is blocked on
+most browsers every time. A server failure closes the tab; a blocked pop-up
+downloads the file as `/badges` does and the receipt says so; a tab the
+registrar closed first is left closed. The blob URL is not revoked, because the
+viewer may read it again to print.
+
+For the CR80 printer: leave **Scale** on *Default* in the print dialog. The page
+is already 54 × 85.6 mm, and *Fit to page* lets the driver resize it.
 
 **The dashboard proxies `/api` and `/media` to the backend** via rewrites in
 `next.config.ts`, so every browser request is same-origin: no preflight on the

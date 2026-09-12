@@ -215,7 +215,7 @@ export const pt: Messages = {
   "receipt.downloadPdf": "Transferir PDF do crach\u00e1",
   "receipt.print": "Imprimir crach\u00e1",
   "receipt.printFellBack":
-    "Este navegador n\u00e3o consegue imprimir um PDF diretamente, por isso o crach\u00e1 foi transferido. Abra o ficheiro e imprima a partir da\u00ed.",
+    "Os pop-ups est\u00e3o bloqueados para este site, por isso o crach\u00e1 foi transferido. Abra o ficheiro e imprima a partir da\u00ed.",
   "receipt.copied": "Copiado",
   "receipt.copyToken": "Copiar token",
   "receipt.qrFailed":

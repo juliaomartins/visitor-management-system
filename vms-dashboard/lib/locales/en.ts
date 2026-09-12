@@ -214,7 +214,7 @@ export const en = {
   "receipt.downloadPdf": "Download badge PDF",
   "receipt.print": "Print badge",
   "receipt.printFellBack":
-    "This browser cannot print a PDF directly, so the badge was downloaded instead. Open the file and print it from there.",
+    "Pop-ups are blocked for this site, so the badge was downloaded instead. Open the file and print it from there.",
   "receipt.copied": "Copied",
   "receipt.copyToken": "Copy token",
   "receipt.qrFailed":
