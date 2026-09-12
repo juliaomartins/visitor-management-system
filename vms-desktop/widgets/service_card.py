@@ -234,6 +234,17 @@ class ServiceCard(QFrame):
         """Non-optional services are always included."""
         return True if self._enable is None else self._enable.isChecked()
 
+    def set_include_in_run_all(self, include: bool) -> None:
+        """Tick or clear the box. A no-op on a service that has none.
+
+        Emits `enabled_changed` through the box's own signal, so a programmatic
+        change reaches the window the same way a click does -- Run All's
+        enabled state is computed from this, and a setter that bypassed the
+        signal would leave the button describing the previous answer.
+        """
+        if self._enable is not None:
+            self._enable.setChecked(include)
+
     def retranslate(self) -> None:
         self._title.setText(t(self._name_key))
         where = (
