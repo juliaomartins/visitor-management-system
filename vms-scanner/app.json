@@ -4,19 +4,19 @@
     "slug": "vms-scanner",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/brand/drcc-event.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "vmsscanner",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B1016",
+    "backgroundColor": "#FFFFFF",
     "ios": {
-      "icon": "./assets/images/brand/drcc-event.png"
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/brand/drcc-event.png",
-        "backgroundImage": "./assets/images/brand/drcc-event.png",
-        "monochromeImage": "./assets/images/brand/drcc-event.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -30,7 +30,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/brand/drcc-event.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",
@@ -38,12 +38,12 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#0B1016",
-          "image": "./assets/images/brand/drcc-event.png",
+          "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "dark": {
             "backgroundColor": "#0B1016",
-            "image": "./assets/images/brand/drcc-event.png"
+            "image": "./assets/images/icon.png"
           }
         }
       ],
