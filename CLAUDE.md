@@ -967,6 +967,15 @@ Two traps if you touch it:
   too. Learned by getting a clean "before" column that was not the before.
 - **Do not measure the ring to prove the photo is round.** `canvas.circle()` draws a
   circle whatever the image inside does. Measure something round *in the source*.
+- **The screen had the mirror-image bug, and `object-cover` did not prevent it.** The
+  preview's photo plate is `aspect-square`, but an `aspect-ratio` box keeps
+  `min-height: auto` and grows to fit its content, and a portrait photo at `w-full`
+  is taller than the square. Measured in headless Chrome on a 270px card: 600×798
+  made the plate 106×137, an oval that pushed the name down; 600×479 stayed 106×106.
+  So after the PDF fix the print was right and the preview was wrong for exactly
+  the 3:4 photos the PDF used to get right. `overflow-hidden` on the plate
+  (`components/badge-card.tsx`) removes the content-based minimum. Do not drop it
+  as unused — nothing visibly overflows, which is why it looks removable.
 
 **Still rectangular, and still wrong for square crops:** the visitors list thumbnail
 (42×56) and the registration receipt (24×32 mm) draw the stored file as a 3:4 box.

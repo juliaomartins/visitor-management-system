@@ -122,8 +122,17 @@ export function BadgeCard({
       <div
         // Width comes from lib/badge-geometry, which derives it from the same
         // millimetres services.py prints with, so the preview cannot drift.
+        //
+        // `overflow-hidden` IS WHAT KEEPS THIS ROUND, not decoration. An
+        // `aspect-ratio` box still has `min-height: auto`, so it grows to fit
+        // its content -- and a portrait photo at `w-full` is taller than the
+        // square. Measured in Chrome at a 270px card: a 600x798 photo made this
+        // 106x137, an oval that pushed the name down, while a landscape photo
+        // stayed 106x106. Any overflow other than `visible` drops that
+        // content-based minimum, so the box is square for every stored shape
+        // and `object-cover` crops exactly what `cover_box` in services.py does.
         style={{ width: `${PHOTO_BOX_CQW}cqw` }}
-        className={`mt-[2cqw] aspect-square shrink-0 rounded-full p-[2cqw] ${
+        className={`mt-[2cqw] aspect-square shrink-0 overflow-hidden rounded-full p-[2cqw] ${
           vip ? "bg-vip" : "bg-graphite-950"
         }`}
       >
