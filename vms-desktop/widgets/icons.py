@@ -259,6 +259,79 @@ def globe(colour: str, size: int = 16, ratio: float | None = None) -> QIcon:
     return _icon(draw, colour, size, ratio)
 
 
+# ------------------------------------------------------------------ mode --
+#
+# SOURCE OR ARTIFACT, which is what the two modes actually are here. Development
+# runs `next dev`, which compiles source as it serves; production runs
+# `next start`, which serves a bundle `npm run build` already made. Angle
+# brackets and a sealed carton say that. A rocket and a wrench -- the pair these
+# always become -- would say "live" and "tinkering", which is a mood rather than
+# a mechanism, and would not tell anybody that production needs a build first.
+
+
+def code(colour: str, size: int = 16, ratio: float | None = None) -> QIcon:
+    """Development: source, compiled as it is served.
+
+    Two chevrons and no slash between them. The slash is the third stroke in a
+    16px box and it is the one that closes up first -- at this size the mark
+    reads as a solid blob with it and as brackets without it.
+    """
+
+    def draw(p: QPainter, _c: QColor) -> None:
+        left = QPainterPath()
+        left.moveTo(9.4, 7.0)
+        left.lineTo(4.4, 12.0)
+        left.lineTo(9.4, 17.0)
+        p.drawPath(left)
+
+        right = QPainterPath()
+        right.moveTo(14.6, 7.0)
+        right.lineTo(19.6, 12.0)
+        right.lineTo(14.6, 17.0)
+        p.drawPath(right)
+
+    return _icon(draw, colour, size, ratio)
+
+
+def package(colour: str, size: int = 16, ratio: float | None = None) -> QIcon:
+    """Production: a built bundle, sealed and served as it is.
+
+    ISOMETRIC, AND THE FLAT VERSION WAS WRONG. This was first drawn as a carton
+    seen face on -- a rounded rectangle with a lid seam -- on the reasoning that
+    an isometric cube at 16px would collapse into three near-parallel lines.
+    Rendered side by side with the rest of the set, that is not what happened:
+    the flat carton was nearly indistinguishable from `browser`, which sits on
+    the Dashboard card two inches away, so one silhouette carried two meanings.
+    The cube collides with nothing here and keeps its shape at 16.
+
+    Hexagon silhouette, a Y join for the three visible faces.
+    """
+
+    def draw(p: QPainter, _c: QColor) -> None:
+        hexagon = QPainterPath()
+        hexagon.moveTo(12.0, 3.4)
+        hexagon.lineTo(20.0, 7.9)
+        hexagon.lineTo(20.0, 16.1)
+        hexagon.lineTo(12.0, 20.6)
+        hexagon.lineTo(4.0, 16.1)
+        hexagon.lineTo(4.0, 7.9)
+        hexagon.closeSubpath()
+        p.drawPath(hexagon)
+
+        top = QPainterPath()
+        top.moveTo(4.0, 7.9)
+        top.lineTo(12.0, 12.4)
+        top.lineTo(20.0, 7.9)
+        p.drawPath(top)
+
+        spine = QPainterPath()
+        spine.moveTo(12.0, 12.4)
+        spine.lineTo(12.0, 20.6)
+        p.drawPath(spine)
+
+    return _icon(draw, colour, size, ratio)
+
+
 # --------------------------------------------------------------- services --
 #
 # One mark per service, so a card is recognisable before the name is read. They
