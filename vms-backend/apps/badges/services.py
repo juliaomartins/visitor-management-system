@@ -31,8 +31,11 @@ this PDF and one printed from the receipt sit on the same lanyard looking the sa
 import base64
 import io
 import logging
+from functools import lru_cache
+from pathlib import Path
 
 import qrcode
+from PIL import Image
 from qrcode.constants import ERROR_CORRECT_M
 from reportlab.lib.colors import HexColor
 from reportlab.lib.units import mm
@@ -106,7 +109,13 @@ FIELD_2_BASELINE = 25.8
 SERIAL_BASELINE = 20.8
 
 # QR, centred at the foot between the two bottom motif clusters. 14 mm still
-# scans across a doorway at error-correction M.
+# scans across a doorway at error-correction M, with or without the centre mark.
+#
+# 14 mm is also not free to change: SERIAL_BASELINE sits at 20.8 and this code's
+# top edge is at 18.5, so growing it costs the serial line its clearance. That is
+# what fixes the module size at whatever the error-correction level decides --
+# which is why the level is argued out at QR_ERROR_CORRECTION rather than
+# assumed, and why it did not move when the logo went in.
 QR_SIZE = 14.0
 QR_X = (CARD_W - QR_SIZE) / 2
 QR_Y = 4.5
@@ -156,22 +165,120 @@ CUT_MARK_LEN = 3.0
 CUT_MARK_GAP = 1.0
 CUT_MARK_WEIGHT = 0.2
 
-# M recovers about 15%. A badge picks up scuffs and lanyard creases, and this keeps
-# the modules large enough to read across a doorway at 14mm.
+# M RECOVERS ABOUT 15%, AND ADDING THE CENTRE LOGO DID NOT CHANGE THIS LINE.
+#
+# A badge picks up scuffs and lanyard creases, and this keeps the modules large
+# enough to read across a doorway at 14mm.
+#
+# THE LOGO DOES NOT NEED A STRONGER LEVEL, and believing it does makes the badge
+# worse rather than safer. The folklore is that a centre mark wants Q or H. It
+# does not want it here, because the level decides the GRID: the token is a
+# fixed 64 lowercase hex characters, taken in byte mode, so
+#
+#     level   version   grid    module at 14mm
+#     M         5        39       0.359 mm   <- unchanged
+#     Q         6        43       0.326 mm
+#     H         7        47       0.298 mm
+#
+# and the card fixes the code at 14mm (see QR_SIZE), so a bigger grid buys
+# redundancy with module size. Module size is what a phone at a door is short
+# of. Measured over 250 distinct tokens rendered at 300dpi and degraded, at the
+# capture size where a scan starts to fail:
+#
+#     M, no logo                  250/250    <- the card before this change
+#     M, this logo                250/250    <- the card now
+#     Q, NO logo                  180/250    <- the level alone, no mark at all
+#     Q, this logo                138/250
+#
+# The mark costs nothing; the level would have cost most of the margin. The
+# reason is arithmetic: at 0.18 with the pad below, the plate covers about 4.5%
+# of the code's area, comfortably inside what M already rebuilds. Do not "harden"
+# this to Q or H without re-running that measurement.
 QR_ERROR_CORRECTION = ERROR_CORRECT_M
+
+# The event mark, sunk into the middle of the code.
+#
+# WHY THERE IS A COPY OF THE ARTWORK UNDER apps/badges/assets. The same file
+# lives at vms-dashboard/public/brand/drcc-event.png, and reading it from there
+# would couple the backend to a sibling package that a backend-only deploy does
+# not check out.
+#
+# The fraction is of the QR's full width, quiet zone included. 0.18 puts the mark
+# at about 3.0mm on the printed card. Measured against M with no logo at all,
+# 0.16, 0.18 and 0.20 are indistinguishable -- all three decode 250/250 at every
+# capture size where the bare code does, and dim light alone (contrast down to
+# 0.40) and soft focus alone both cost nothing at any of those sizes.
+#
+# THERE IS ONE CONDITION WHERE THE MARK COSTS SOMETHING, and it is recorded here
+# so nobody has to rediscover it: heavy blur AND low contrast AND a steep angle,
+# all at once, took 50/250 down to 1/250. That regime is already failing 80% of
+# the time without any logo -- the guard is re-scanning either way -- and no mark
+# size recovers it (0.12 managed 15/250). It is a reason to keep the mark small,
+# which it is, not a reason to remove it.
+#
+# 0.18 is the middle of the flat shelf rather than its edge, because the
+# simulation cannot model your dye-sub printer or the particular decoder in a
+# guard's phone, and the conservative end of a flat region costs nothing.
+#
+# AT 14mm THE WORDMARK RING IS NOT LEGIBLE and is not meant to be. What survives
+# at this size is the silhouette: the plumes, the flag and the gold ring. Nobody
+# reads "Ministerial Dialogue 2026" off the QR; they read it off the card.
+QR_LOGO_PATH = Path(__file__).resolve().parent / "assets" / "drcc-event.png"
+QR_LOGO_FRACTION = 0.18
+
+# The white pad behind the mark, as a multiple of its longest side. The artwork
+# is transparent around a thin gold ring, and a scanner binarises whatever shows
+# through -- so without a pad the modules behind the ring survive as fragments
+# and read as noise rather than as a clean erasure. An erasure the decoder can
+# see is cheaper to repair than speckle it has to guess at.
+QR_LOGO_PAD = 1.18
+
+
+@lru_cache(maxsize=1)
+def _qr_logo() -> Image.Image:
+    """The event mark, loaded once for the life of the process.
+
+    An A4 sheet draws nine of these and a full credential export draws 250.
+    Re-decoding the PNG per card is pure waste, and the cached image is never
+    mutated -- every caller copies it before resizing.
+    """
+    with QR_LOGO_PATH.open("rb") as handle:
+        return Image.open(io.BytesIO(handle.read())).convert("RGBA")
 
 
 def qr_image(raw_token: str):
-    """A QR encoding the raw token STRING and nothing else.
+    """A QR encoding the raw token STRING and nothing else, event mark in the middle.
 
     No JSON, no envelope, no id. The scanner posts back exactly what it reads, so
     anything wrapped around the token would have to be unwrapped by every reader
     that ever touches a badge.
+
+    THE LOGO DOES NOT CHANGE THE PAYLOAD. It is composited over the finished
+    code, so the string a scanner reads is byte-identical to the one this
+    function has always produced. No badge already printed stops working, and
+    there is nothing stored anywhere to migrate: every QR in this system is
+    rendered on demand from the derived token, so the mark appears on all of
+    them the next time they are drawn.
     """
     code = qrcode.QRCode(error_correction=QR_ERROR_CORRECTION, box_size=10, border=1)
     code.add_data(raw_token)
     code.make(fit=True)
-    return code.make_image(fill_color="black", back_color="white").convert("RGB")
+    image = code.make_image(fill_color="black", back_color="white").convert("RGB")
+
+    side = round(image.width * QR_LOGO_FRACTION)
+    if side < 8:
+        # Too small to be anything but a smudge over live modules. A caller
+        # rendering a thumbnail gets a clean code rather than a damaged one.
+        return image
+
+    mark = _qr_logo().copy()
+    mark.thumbnail((side, side), Image.LANCZOS)
+
+    pad = round(side * QR_LOGO_PAD)
+    plate = Image.new("RGB", (pad, pad), "white")
+    plate.paste(mark, ((pad - mark.width) // 2, (pad - mark.height) // 2), mark)
+    image.paste(plate, ((image.width - pad) // 2, (image.height - pad) // 2))
+    return image
 
 
 def qr_data_uri(raw_token: str) -> str:

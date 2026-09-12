@@ -80,6 +80,16 @@ CELL_BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 
 # Tall enough for a 90 px QR to sit inside the row without spilling.
 QR_ROW_HEIGHT = 72
+# DISPLAY size only -- the embedded PNG is the full-resolution one qr_image draws,
+# so printing or zooming the sheet is unaffected.
+#
+# THE CENTRE LOGO DID NOT CHANGE THIS NUMBER, and that is worth saying because it
+# nearly did. The unit that matters for reading a code off somebody's screen is
+# pixels per QR module, and the mark is composited onto a grid that is still 39
+# modules across -- error correction stayed at M precisely so it would be (see
+# QR_ERROR_CORRECTION in services.py). Had the level gone to Q the grid would
+# have become 43, quietly dropping 2.26 px/module to 2.05 in the one export whose
+# whole purpose is that the codes in it are scannable.
 QR_PIXELS = 88
 
 # The photo keeps the 3:4 portrait it is stored in (CLAUDE.md: 600x800), scaled

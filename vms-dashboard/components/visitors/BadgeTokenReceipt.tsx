@@ -4,6 +4,12 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  QR_ERROR_CORRECTION,
+  QR_LOGO_PAD,
+  QR_LOGO_PLATE_FRACTION,
+  QR_LOGO_SRC,
+} from "@/lib/badge-geometry";
 import { downloadBadgeCard } from "@/lib/badges";
 import { useT } from "@/lib/i18n";
 import { ApiError, type VisitorIssued } from "@/lib/visitors";
@@ -30,14 +36,72 @@ import { ApiError, type VisitorIssued } from "@/lib/visitors";
  * anything wrapped around the token would have to be unwrapped by every reader
  * that ever touches a badge.
  *
- * Error correction M: a badge picks up scuffs and lanyard creases, and M recovers
- * ~15% while keeping the modules large enough to read across a doorway.
+ * Error correction M, with the event mark composited into the middle. The mark
+ * is drawn OVER the finished code and is not encoded into it, so the string a
+ * scanner reads is unchanged — this receipt prints the same credential it always
+ * did. The level stayed at M deliberately; the argument is at
+ * `QR_ERROR_CORRECTION` in `lib/badge-geometry.ts`, and both numbers mirror
+ * `apps/badges/services.py` so the receipt and the PDF cannot drift.
  */
 const QR_OPTIONS = {
-  errorCorrectionLevel: "M" as const,
+  errorCorrectionLevel: QR_ERROR_CORRECTION,
   margin: 1,
   color: { dark: "#000000", light: "#ffffff" },
 };
+
+/**
+ * The event mark, decoded once per page rather than once per canvas.
+ *
+ * Two canvases render on this screen and both want the same bitmap. A module
+ * promise also means a second registration reuses the decode instead of going
+ * back to the browser cache.
+ */
+let markRequest: Promise<HTMLImageElement> | null = null;
+
+function eventMark(): Promise<HTMLImageElement> {
+  markRequest ??= new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("event mark did not load"));
+    image.src = QR_LOGO_SRC;
+  });
+  return markRequest;
+}
+
+/**
+ * Paint the white plate and the mark onto a QR that `toCanvas` has finished.
+ *
+ * The plate is filled rather than relying on the artwork's own background: the
+ * PNG is transparent around a thin gold ring, and modules surviving behind that
+ * ring read as speckle a decoder has to guess at instead of an erasure it can
+ * simply repair.
+ */
+async function drawEventMark(canvas: HTMLCanvasElement) {
+  const mark = await eventMark();
+  const context = canvas.getContext("2d");
+  if (!context) return;
+
+  const plate = canvas.width * QR_LOGO_PLATE_FRACTION;
+  const left = (canvas.width - plate) / 2;
+  const top = (canvas.height - plate) / 2;
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(left, top, plate, plate);
+
+  // `contain`, not `cover`: the artwork is 3:2 and cropping it to a square would
+  // cut the plumes off the mark.
+  const inner = plate / QR_LOGO_PAD;
+  const scale = Math.min(inner / mark.width, inner / mark.height);
+  const width = mark.width * scale;
+  const height = mark.height * scale;
+  context.drawImage(
+    mark,
+    left + (plate - width) / 2,
+    top + (plate - height) / 2,
+    width,
+    height,
+  );
+}
 
 export function BadgeTokenReceipt({
   visitor,
@@ -60,13 +124,32 @@ export function BadgeTokenReceipt({
       [printQr.current, 320],
     ];
 
+    let live = true;
+
     Promise.all(
-      targets.map(([canvas, width]) =>
-        canvas
-          ? QRCode.toCanvas(canvas, visitor.badge_token, { ...QR_OPTIONS, width })
-          : Promise.resolve(),
-      ),
-    ).catch(() => setQrFailed(true));
+      targets.map(async ([canvas, width]) => {
+        if (!canvas) return;
+        await QRCode.toCanvas(canvas, visitor.badge_token, {
+          ...QR_OPTIONS,
+          width,
+        });
+        if (!live) return;
+        /*
+          The mark is decoration and the code is the credential, so a mark that
+          fails to load must not report the QR as failed. Swallowing it here
+          leaves a working, scannable badge with no logo on it -- which is what
+          the card looked like a week ago -- instead of blanking a QR the
+          registrar needs to print right now.
+        */
+        await drawEventMark(canvas).catch(() => {});
+      }),
+    ).catch(() => {
+      if (live) setQrFailed(true);
+    });
+
+    return () => {
+      live = false;
+    };
   }, [visitor.badge_token]);
 
   /**

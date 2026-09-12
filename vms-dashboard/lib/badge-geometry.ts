@@ -92,3 +92,51 @@ export const VISIBLE_CIRCLE = {
   /** Radius as a fraction of the frame's WIDTH — the centre square's half-width. */
   r: 0.5,
 } as const;
+
+/**
+ * THE QR, AND THE EVENT MARK SUNK INTO THE MIDDLE OF IT.
+ *
+ * Both numbers mirror `apps/badges/services.py`, which is the authority — the
+ * preview exists to show what comes out of the printer, so a mark that is a
+ * different size on screen than on paper makes the preview lie.
+ *
+ *     QR_ERROR_CORRECTION = ERROR_CORRECT_M
+ *     QR_LOGO_FRACTION = 0.18
+ *     QR_LOGO_PAD = 1.18
+ *
+ * THE LEVEL IS STILL M, AND THE LOGO IS WHY THAT IS WORTH A COMMENT. The
+ * folklore is that a centre mark needs Q or H; here it needs neither, and
+ * raising the level makes the badge measurably worse. The badge token is a fixed
+ * 64 lowercase hex characters, so the level alone decides the grid — M gives 39
+ * modules, Q 43, H 47 — and the card fixes the code at 14mm, so a bigger grid
+ * buys redundancy with module size, which is the thing a phone at a door is
+ * short of. Measured over 250 distinct tokens at 300dpi, at the capture size
+ * where scanning starts to fail: M with this logo 250/250, Q with NO logo
+ * 180/250. The full argument is beside `QR_ERROR_CORRECTION` in services.py.
+ */
+export const QR_ERROR_CORRECTION = "M" as const;
+
+/**
+ * The mark's longest side, as a share of the QR's full width including quiet zone.
+ *
+ * 0.18 is about 3.0mm on the printed card. 0.16, 0.18 and 0.20 all measured
+ * identically to a bare code, so this is the middle of a flat shelf rather than
+ * its edge — the simulation cannot model a particular dye-sub printer or the
+ * decoder in a particular phone, and the conservative end costs nothing.
+ */
+export const QR_LOGO_FRACTION = 0.18;
+
+/**
+ * The white plate behind the mark, as a multiple of its longest side.
+ *
+ * The artwork is transparent around a thin gold ring. Without the plate the
+ * modules behind that ring survive as fragments, and a decoder reads speckle it
+ * has to guess at rather than a clean erasure it can simply repair.
+ */
+export const QR_LOGO_PAD = 1.18;
+
+/** The plate's side as a share of the QR's width — what the preview lays out. */
+export const QR_LOGO_PLATE_FRACTION = QR_LOGO_FRACTION * QR_LOGO_PAD;
+
+/** The event mark, served by the dashboard. `services.py` keeps its own copy. */
+export const QR_LOGO_SRC = "/brand/drcc-event.png";

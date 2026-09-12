@@ -3,7 +3,13 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 
-import { PHOTO_BOX_CQW } from "@/lib/badge-geometry";
+import {
+  PHOTO_BOX_CQW,
+  QR_ERROR_CORRECTION,
+  QR_LOGO_PAD,
+  QR_LOGO_PLATE_FRACTION,
+  QR_LOGO_SRC,
+} from "@/lib/badge-geometry";
 import { useT } from "@/lib/i18n";
 
 /**
@@ -215,9 +221,18 @@ export function BadgeCard({
  * pixel size to fight with, so the card's own container query decides how big it
  * is, and it stays sharp whether the card is a 60mm tile or a full-width hero.
  *
- * Error correction M, matching the PDF: a badge collects scuffs and lanyard
- * creases, and M recovers about 15% while keeping the modules large enough to
- * read across a doorway.
+ * Error correction M with the event mark in the middle, matching the PDF. The
+ * level did NOT change when the mark went in, and raising it would make the
+ * badge worse — see `QR_ERROR_CORRECTION` in `lib/badge-geometry.ts` and the
+ * measurement it points at. The mark is composited over the finished code
+ * rather than encoded into it, so the string a scanner reads is unchanged and
+ * every card already printed keeps working.
+ *
+ * THE MARK IS AN OVERLAY, NOT PART OF THE SVG, and that follows from the note
+ * above: the QR is an `<img>` sized by the card's container query, so the mark
+ * is a second absolutely-positioned `<img>` in a relative wrapper. Injecting an
+ * `<image>` into the SVG string would work too, and would reintroduce exactly
+ * the intrinsic-size fight this component already solved once.
  *
  * The colours are literal black on white on purpose. This is the one element on
  * the page that is not decoration but data — a scanner needs the contrast the
@@ -258,7 +273,7 @@ function QrPanel({
 
     QRCode.toString(token, {
       type: "svg",
-      errorCorrectionLevel: "M",
+      errorCorrectionLevel: QR_ERROR_CORRECTION,
       // One module of quiet zone, as the PDF draws it. The spec asks for four;
       // the card's own white margin supplies the rest.
       margin: 1,
@@ -285,12 +300,44 @@ function QrPanel({
 
   if (settled?.src) {
     return (
-      /* eslint-disable-next-line @next/next/no-img-element */
-      <img
-        src={settled.src}
-        alt={`QR code for badge ${serial}`}
-        className="cr80-qr mt-[2cqw] mb-[4cqw] aspect-square shrink-0 rounded-[1cqw] bg-white"
-      />
+      <div className="cr80-qr relative mt-[2cqw] mb-[4cqw] aspect-square shrink-0 rounded-[1cqw] bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={settled.src}
+          alt={`QR code for badge ${serial}`}
+          className="h-full w-full"
+        />
+        {/*
+          The white plate, then the mark inset within it. Two elements rather
+          than one padded image because the plate is the thing with a job: it is
+          the clean erasure the decoder repairs, and it must be opaque white
+          right up to its edge whatever the artwork's own transparency does.
+
+          aria-hidden, and the plate is not described: the QR's own alt text
+          already says what this graphic is. A screen reader announcing the
+          conference logo here would be reading out decoration sitting on top of
+          the only element on the card that is data.
+        */}
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-white"
+          style={{
+            width: `${QR_LOGO_PLATE_FRACTION * 100}%`,
+            height: `${QR_LOGO_PLATE_FRACTION * 100}%`,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={QR_LOGO_SRC}
+            alt=""
+            className="object-contain"
+            style={{
+              width: `${(1 / QR_LOGO_PAD) * 100}%`,
+              height: `${(1 / QR_LOGO_PAD) * 100}%`,
+            }}
+          />
+        </span>
+      </div>
     );
   }
 

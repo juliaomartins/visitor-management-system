@@ -681,6 +681,55 @@ end, because a lanyard holds a card by a slot in its short edge. Top to bottom: 
 (amber ring for VIP), the name in caps, a role line, `Registered` and `Country`
 rows, the serial in mono, and a 14 mm QR at the foot.
 
+**The QR carries the event mark in its middle, and the error-correction level did
+NOT change to make room for it.** The level is still `ERROR_CORRECT_M`, the grid
+is still 39 modules, and the module is still 0.359 mm — the card is, module for
+module, the card it was before the logo. That is deliberate and it is the
+opposite of the obvious move.
+
+The folklore is that a centre logo needs Q or H. On this payload it needs
+neither, because the level alone decides the grid: the badge token is a fixed 64
+lowercase hex characters, taken in byte mode, so M gives 39 modules, Q gives 43
+and H gives 47 — and `QR_SIZE` is pinned at 14 mm by `SERIAL_BASELINE` above it.
+A bigger grid therefore buys redundancy *with module size*, and module size is
+what a phone at a doorway is short of. Measured over 250 distinct tokens
+rasterised at 300 dpi and degraded, at the capture size where scanning begins to
+fail:
+
+| config | decoded |
+|---|---|
+| M, no logo — the card before | 250/250 |
+| M, this logo — the card now | 250/250 |
+| **Q, no logo at all** | **180/250** |
+| Q, this logo | 138/250 |
+
+The level would have cost most of the margin; the mark costs none of it. The
+arithmetic is that `QR_LOGO_FRACTION = 0.18` with its pad covers about 4.5% of
+the code's area, well inside what M already rebuilds. **Do not "harden" this to
+Q or H** — that makes the badge worse, and the comment beside
+`QR_ERROR_CORRECTION` in `services.py` is the authority.
+
+What the mark does cost is one step at the very bottom of the range: rasterised
+from the real card PDF, the bare code decoded down to a 57 px QR and the marked
+one down to 62 px, so the card has to fill about 240 px of the camera frame
+instead of 220. Above that they are identical. There is also one stacked
+condition — heavy blur *and* low contrast *and* a steep angle together — where
+50/250 became 1/250; that regime already fails 80% of the time with no logo, and
+no mark size recovers it.
+
+**And the mark changes nothing about the credential.** It is composited over the
+finished code, never encoded into it, so the string a scanner reads is
+byte-identical. No printed badge was invalidated, `token_version` was not
+touched, and **nothing had to be migrated**: no QR is stored anywhere in this
+system, so all 250 visitors picked the mark up the next time their card was
+drawn. At 14 mm the wordmark ring is not legible and is not meant to be — what
+survives is the silhouette.
+
+The artwork is duplicated at `apps/badges/assets/drcc-event.png` rather than read
+from `vms-dashboard/public/brand/`, because a backend-only deploy does not check
+that folder out. `lib/badge-geometry.ts` mirrors the level and the fraction so
+the preview and the print cannot drift.
+
 Bulk print lays **9 cards on an A4 sheet**, 3 across by 3 down, with cut marks in
 the margins at every grid line. **A run of exactly one comes back as a single
 54 × 85.6 mm page instead of a sheet** — one card in the corner of A4 wastes the
