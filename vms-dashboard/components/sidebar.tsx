@@ -188,6 +188,12 @@ const GROUPS: { headingKey: MessageKey; items: Item[] }[] = [
         hintKey: "nav.reports.hint",
         icon: IconChart,
       },
+      {
+        href: "/settings",
+        labelKey: "nav.settings",
+        hintKey: "nav.settings.hint",
+        icon: IconSliders,
+      },
     ],
   },
 ];
@@ -510,6 +516,42 @@ function IconDevice({ className }: { className?: string }) {
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * Sliders rather than a cog.
+ *
+ * A cog says "the machinery of the app"; this page is two dials somebody sets
+ * -- an address they read and a pair of preferences they pick. Sliders also
+ * stay legible at 20px, which a toothed circle does not.
+ */
+function IconSliders({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M5 7h14M5 17h14"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle
+        cx="10"
+        cy="7"
+        r="2.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        fill="var(--color-card)"
+      />
+      <circle
+        cx="15"
+        cy="17"
+        r="2.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        fill="var(--color-card)"
       />
     </svg>
   );

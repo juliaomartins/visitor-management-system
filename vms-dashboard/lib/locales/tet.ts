@@ -38,6 +38,8 @@ export const tet: Messages = {
   "nav.collapse": "Taka menu",
   "nav.signOut": "Sai",
   "nav.signingOut": "Sai hela\u2026",
+  "nav.settings": "Konfigurasaun",
+  "nav.settings.hint": "Servidor no hahalok",
   "nav.silentDevices": "Aparellu {count} seidauk komunika",
   "shell.restoringSession": "Restaura sesaun hela",
   "topbar.localTime": "Oras lok\u00e1l",
@@ -500,4 +502,36 @@ export const tet: Messages = {
   // --------------------------------------------------------------- brand --
   "brand.organisedBy": "Organiza husi {first} no {second}.",
   "brand.dates": "D\u00edli, 2\u20133 Outubru 2026",
+  "settings.title": "Konfigurasaun",
+  "settings.subtitle":
+    "Servidor ida ne\u2019e, no oinsa painel ne\u2019e hatudu",
+  "settings.server": "Servidor no ligasaun",
+  "settings.serverNote":
+    "Saida servidor dehan kona-ba nia an. Hatudu telefone no ekr\u00e1n hotu ba enderesu iha kraik.",
+  "settings.lanAddress": "Enderesu iha rede",
+  "settings.lanAddressNote": "Aparelhu sira liga ba servidor iha ne\u2019e",
+  "settings.copy": "Kopia",
+  "settings.copied": "Kopia ona",
+  "settings.reachable": "Bele hetan",
+  "settings.reachableYes": "Responde iha {ms} ms",
+  "settings.reachableNo": "La responde",
+  "settings.unreachableBody":
+    "Painel liga ba nia servidor rasik maibe la liga ba backend. Haree se uvicorn la\u2019o hela.",
+  "settings.service": "Servisu",
+  "settings.serverClock": "Rel\u00f3jiu servidor",
+  "settings.browserClock": "Navegador ne\u2019e",
+  "settings.drift": "Diferensa rel\u00f3jiu",
+  "settings.driftAhead": "{amount} avansa",
+  "settings.driftBehind": "{amount} atrasu",
+  "settings.driftLevel": "Hanesan",
+  "settings.driftNote":
+    "Telefone guarda nian marka nia oras leitura rasik, no relat\u00f3riu grupu sira tuir oras. Rel\u00f3jiu ne\u2019ebe diferensa liu minutu ida bele tau xegada iha oras sala.",
+  "settings.checkedAt": "Verifika iha {time}",
+  "settings.checkAgain": "Verifika fali",
+  "settings.checking": "Verifika hela\u2026",
+  "settings.appearance": "Hahalok",
+  "settings.appearanceNote":
+    "Rai iha navegador ne\u2019e. Meza ida-idak bele hili nian.",
+  "settings.themeLabel": "Tema",
+  "settings.languageLabel": "Lian",
 };

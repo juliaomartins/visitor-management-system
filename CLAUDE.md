@@ -708,7 +708,33 @@ app/(dashboard)/visitors/[id]/edit
 app/(dashboard)/badges             print queue, nine to a sheet, real QR on every card
 app/(dashboard)/devices            pairing codes + paired device list
 app/(dashboard)/reports            entrance log + CSV/XLSX/PDF export
+app/(dashboard)/settings           server address + clock check, theme, language
 ```
+
+**`/settings` is deliberately two panels and no more.** Server and connection
+reads `GET /api/v1/health` — the address every phone and screen must be pointed
+at, which CLAUDE.md notes is the most-asked question at the event and today
+requires running `ipconfig` on the server itself. It also reports the gap
+between the server's clock and the browser's: the scanner stamps its own
+`scanned_at` because the offline queue may not reach the server for minutes, and
+the report buckets those by hour, so clocks more than a minute apart file an
+arrival in the wrong one with no error anywhere. Drift is corrected for latency
+(`server_time - (sent + rtt/2)`) so a 40 ms network is not reported as 40 ms of
+skew. **Not polled** — `useDevices` polls because a quiet door is news, and none
+of this is.
+
+Appearance mirrors the topbar's theme and language controls rather than moving
+them: a registrar mid-queue should not navigate to change a language. They are
+radio groups here because `ThemeToggle` deliberately labels its *destination*
+("Dark" switches to dark) and a settings page needs the opposite — the current
+state, visible without pressing anything.
+
+What is NOT there, and why: change-password and "signed in as" need endpoints
+that do not exist (there is no `/me`), and anything persisted per-user needs a
+preferences model this backend does not have — a migration bought to hold a
+theme that already lives in `localStorage`. The export banner in `exports.py`
+would be the first thing worth making editable, and that is its own piece of
+work.
 
 - Route groups: `(auth)/login`, `(dashboard)/*` behind the guard.
 - All API types from `@vms/contracts`. Never hand-write a type mirroring a serializer.
@@ -817,6 +843,18 @@ headless Chrome. Two traps if you do it: the `(dashboard)` route group is behind
 which looks exactly like a horizontal overflow and is not one. Three screenshots
 were read that way before the page was asked for its own `scrollWidth`. Put the
 page in a 400px `<iframe>` instead; an iframe has a viewport of its own.
+
+**AND DRIVE THE THEME THROUGH `setTheme`, NEVER `classList.add("dark")`.** A
+harness that pokes the class straight onto `documentElement` leaves `useTheme()`
+still reporting light while the page paints dark, so every className chosen by a
+ternary is computed against the wrong theme. The symptom is not subtle and it is
+deeply misleading: buttons and selected rows render with their LIGHT colours on
+a dark page, and `getComputedStyle` confirms it — while insisting the element's
+own `--color-accent-soft` is the dark value, which looks impossible and sends
+you hunting for a CSS bug that is not there. Settled by loading the built
+stylesheet into a static `<html class="dark">` with no React at all: every
+colour was correct. The rule is that the store and the DOM must not be allowed
+to disagree, and `lib/theme` is the only thing that keeps them together.
 
 **Dark mode is class-based, not `prefers-color-scheme`.** `@custom-variant dark
 (&:where(.dark, .dark *))` in `globals.css`, toggled by `components/theme-toggle.tsx`.

@@ -39,6 +39,8 @@ export const en = {
   "nav.collapse": "Collapse menu",
   "nav.signOut": "Sign out",
   "nav.signingOut": "Signing out\u2026",
+  "nav.settings": "Settings",
+  "nav.settings.hint": "Server and appearance",
   "nav.silentDevices": "{count} device not checked in recently",
   "shell.restoringSession": "Restoring session",
   "topbar.localTime": "Local time",
@@ -491,6 +493,37 @@ export const en = {
   // --------------------------------------------------------------- brand --
   "brand.organisedBy": "Organised by {first} and {second}.",
   "brand.dates": "D\u00edli, 2\u20133 October 2026",
+  "settings.title": "Settings",
+  "settings.subtitle": "This server, and how this dashboard looks",
+  "settings.server": "Server and connection",
+  "settings.serverNote":
+    "What the server says about itself. Point every phone and screen at the address below.",
+  "settings.lanAddress": "LAN address",
+  "settings.lanAddressNote": "Devices reach the server here",
+  "settings.copy": "Copy",
+  "settings.copied": "Copied",
+  "settings.reachable": "Reachable",
+  "settings.reachableYes": "Answered in {ms} ms",
+  "settings.reachableNo": "No answer",
+  "settings.unreachableBody":
+    "The dashboard reached its own server but not the backend. Check that uvicorn is running.",
+  "settings.service": "Service",
+  "settings.serverClock": "Server clock",
+  "settings.browserClock": "This browser",
+  "settings.drift": "Clock difference",
+  "settings.driftAhead": "{amount} ahead",
+  "settings.driftBehind": "{amount} behind",
+  "settings.driftLevel": "In step",
+  "settings.driftNote":
+    "A guard\u2019s phone stamps its own scan time, and the report groups those by hour. Clocks more than a minute apart can file an arrival in the wrong one.",
+  "settings.checkedAt": "Checked at {time}",
+  "settings.checkAgain": "Check again",
+  "settings.checking": "Checking\u2026",
+  "settings.appearance": "Appearance",
+  "settings.appearanceNote":
+    "Kept in this browser. Every desk can choose its own.",
+  "settings.themeLabel": "Theme",
+  "settings.languageLabel": "Language",
 } as const;
 
 /** Every message key in the dashboard. */
