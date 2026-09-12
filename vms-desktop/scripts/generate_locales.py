@@ -164,6 +164,15 @@ M = [
      "Sentru kontrolu la hahú sira. Se ida husi sira mak buat seluk ne'ebé "
      "Ita uza hela, taka ida ne'e no para rasik."),
 
+    # Why a control is greyed out, said before it is pressed rather than by
+    # nothing happening after it is. Each names the state, not the rule.
+    ("app.runAllDone", "Everything is already running",
+     "Ja esta tudo a correr", "Buat hotu hala'o ona"),
+    ("app.runAllBusy", "Starting services...", "A iniciar servicos...",
+     "Hahu servisu sira..."),
+    ("app.stopAllIdle", "Nothing is running", "Nada esta a correr",
+     "Laiha buat ida hala'o"),
+
     ("//", "development or production", "", ""),
     # The button says which mode it is IN, not which it would switch to. A
     # control that names the other state is read as a label by half the people

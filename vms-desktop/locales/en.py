@@ -84,6 +84,9 @@ MESSAGES = {
     "dlg.freePortTitle": "Free port {port}?",
     "dlg.freePortBody":
         "This will stop the following, and anything they started:\n\n{who}\n\nThe control centre did not start them. If one of these is something else you are using, close this and stop it yourself.",
+    "app.runAllDone": "Everything is already running",
+    "app.runAllBusy": "Starting services...",
+    "app.stopAllIdle": "Nothing is running",
 
     # ----------------------------------- development or production --
     "mode.dev": "Development",

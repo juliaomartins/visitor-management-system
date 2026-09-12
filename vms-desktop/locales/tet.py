@@ -85,6 +85,9 @@ MESSAGES = {
     "dlg.freePortTitle": "Libera porta {port}?",
     "dlg.freePortBody":
         "Ida ne'e sei para tuir mai, no buat hotu ne'eb\u00e9 sira hah\u00fa:\n\n{who}\n\nSentru kontrolu la hah\u00fa sira. Se ida husi sira mak buat seluk ne'eb\u00e9 Ita uza hela, taka ida ne'e no para rasik.",
+    "app.runAllDone": "Buat hotu hala'o ona",
+    "app.runAllBusy": "Hahu servisu sira...",
+    "app.stopAllIdle": "Laiha buat ida hala'o",
 
     # ----------------------------------- development or production --
     "mode.dev": "Dezenvolvimentu",

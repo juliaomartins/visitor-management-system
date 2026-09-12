@@ -87,6 +87,9 @@ MESSAGES = {
     "dlg.freePortTitle": "Libertar a porta {port}?",
     "dlg.freePortBody":
         "Isto vai parar o seguinte, e tudo o que tenha iniciado:\n\n{who}\n\nO centro de controlo n\u00e3o os iniciou. Se algum for outra coisa que esteja a usar, feche isto e pare-o voc\u00ea mesmo.",
+    "app.runAllDone": "Ja esta tudo a correr",
+    "app.runAllBusy": "A iniciar servicos...",
+    "app.stopAllIdle": "Nada esta a correr",
 
     # ----------------------------------- development or production --
     "mode.dev": "Desenvolvimento",
