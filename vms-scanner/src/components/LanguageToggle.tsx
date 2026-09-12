@@ -18,6 +18,14 @@ import { colors, HIT_SIZE, radius, spacing } from "@/theme";
  *
  * Targets use the app's own HIT_SIZE. This is pressed with a thumb, sometimes
  * wearing a glove, in a doorway.
+ *
+ * THE ROW IS SIZED BY ITS LONGEST LABEL, WHICH IS "PORTUGUES", NOT BY ENGLISH.
+ * Three equal thirds of a phone's width leave about 85pt of text room a side,
+ * and at 15pt that word is wider than that -- so it wrapped to "Portugue / s"
+ * on the pairing screen, which is the first thing a guard sees. The type is
+ * sized and the padding tightened to fit it with room to spare, and
+ * `numberOfLines` makes the failure bounded if a longer language is ever added:
+ * it would clip, not reflow the control.
  */
 export function LanguageToggle() {
   const { locale, setLocale } = useLocale();
@@ -47,7 +55,10 @@ export function LanguageToggle() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.label, active && styles.labelActive]}>
+            <Text
+              style={[styles.label, active && styles.labelActive]}
+              numberOfLines={1}
+            >
               {entry.label}
             </Text>
           </Pressable>
@@ -69,7 +80,7 @@ const styles = StyleSheet.create({
     minHeight: HIT_SIZE,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -83,7 +94,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   label: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textMuted,
   },
   labelActive: {

@@ -193,26 +193,61 @@ export default function SettingsScreen() {
             )}
           </Pressable>
 
-          <Pressable
-            onPress={save}
-            disabled={!passed || busy}
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.primary,
-              (!passed || busy) && styles.disabled,
-              pressed && passed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.primaryLabel}>{t("server.save")}</Text>
-          </Pressable>
+          {/*
+            LEAVE AND COMMIT, SIDE BY SIDE.
+
+            Cancel used to be a grey word on its own at the very foot of the
+            page, under the language block -- past a section it has nothing to
+            do with, with no border, no fill and a 34pt target on a screen where
+            everything else is 56. It read as a caption rather than a control.
+            It is the counterpart to Save, so it sits next to Save, at the
+            weight of a way out rather than an action: a hairline and muted ink
+            against a filled button.
+          */}
+          <View style={styles.actions}>
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              android_ripple={{ color: "rgba(244,248,251,0.12)" }}
+              style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}
+            >
+              <Text style={styles.cancelLabel} numberOfLines={1}>
+                {t("server.cancel")}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={save}
+              disabled={!passed || busy}
+              accessibilityRole="button"
+              android_ripple={{ color: "rgba(255,255,255,0.18)" }}
+              style={({ pressed }) => [
+                styles.primary,
+                styles.primaryWide,
+                (!passed || busy) && styles.disabled,
+                pressed && passed && styles.pressed,
+              ]}
+            >
+              {/* Portuguese's "Guardar endereco" is half again the length of
+                  the English. It gets the wider half of the row, and one line
+                  whatever happens. */}
+              <Text style={styles.primaryLabel} numberOfLines={1}>
+                {t("server.save")}
+              </Text>
+            </Pressable>
+          </View>
 
           {!passed ? (
             <Text style={styles.hint}>{t("settings.testFirst")}</Text>
           ) : null}
 
           {saved ? (
-            <Pressable onPress={useDefault} accessibilityRole="button">
-              <Text style={styles.tertiary}>{t("server.useBuiltIn")}</Text>
+            <Pressable
+              onPress={useDefault}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.tertiary, pressed && styles.pressed]}
+            >
+              <Text style={styles.tertiaryLabel}>{t("server.useBuiltIn")}</Text>
             </Pressable>
           ) : null}
 
@@ -220,10 +255,6 @@ export default function SettingsScreen() {
             <Text style={styles.label}>{t("language.label")}</Text>
             <LanguageToggle />
           </View>
-
-          <Pressable onPress={() => router.back()} accessibilityRole="button">
-            <Text style={styles.tertiary}>{t("server.cancel")}</Text>
-          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -328,11 +359,29 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.75 },
 
-  hint: { color: colors.textFaint, fontSize: 13, textAlign: "center" },
-  tertiary: {
-    color: colors.textMuted,
-    fontSize: 15,
-    textAlign: "center",
-    paddingVertical: spacing.sm,
+  actions: { flexDirection: "row", alignItems: "stretch", gap: spacing.sm },
+  cancel: {
+    flex: 1,
+    minHeight: HIT_SIZE,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+    overflow: "hidden",
   },
+  cancelLabel: { color: colors.textMuted, fontSize: 16, fontWeight: "600" },
+  // The commit side carries the longer word in every language.
+  primaryWide: { flex: 1.7, paddingHorizontal: spacing.sm, overflow: "hidden" },
+
+  hint: { color: colors.textFaint, fontSize: 13, textAlign: "center" },
+  // A link by weight, a button by target: 48 is the floor, not 34.
+  tertiary: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+  },
+  tertiaryLabel: { color: colors.textMuted, fontSize: 15, textAlign: "center" },
 });

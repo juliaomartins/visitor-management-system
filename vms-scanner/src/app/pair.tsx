@@ -258,7 +258,11 @@ export default function PairScreen() {
 }
 
 const styles = StyleSheet.create({
-  languageRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  // NO HORIZONTAL PADDING OF ITS OWN: the scroll container already pays
+  // `spacing.lg` a side, and adding it again here inset this row 48pt while
+  // every other block on the screen sat at 24 -- which is a third of the width
+  // taken off the one control that has to hold "Portugues".
+  languageRow: { paddingTop: spacing.xs },
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   scroll: {
