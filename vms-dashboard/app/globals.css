@@ -452,6 +452,32 @@ body {
 .cr80 {
   aspect-ratio: 54 / 85.6;
   container-type: inline-size;
+
+  /*
+    THE CARD IS PAPER, AND PAPER HAS NO DARK MODE.
+
+    The card paints a literal white ground (`bg-white`) while everything on it is
+    drawn with theme tokens -- text-ink, text-ink-3, bg-line, bg-graphite-950,
+    text-vip. `.dark` redefines those on the root, the card inherited them, and in
+    dark mode the name, date, country and serial became #f4f8fb on white, about
+    1.07:1 -- invisible -- beside a navy divider and a glaring #fcb400 VIP line.
+    Only the QR survived, because it is literal black on white.
+
+    So the light palette is pinned HERE, on the card, for every token the card
+    uses. Tokens are CSS variables resolved at the element, so this one rule
+    re-lights everything inside the card in both themes, and the preview looks
+    the same as the printed card whichever theme the desk chose. A token newly
+    used inside the card must be listed here too. These are the light values from
+    @theme above: change one there, change it here.
+  */
+  --color-ink: #0b1016;
+  --color-ink-2: #4a5560;
+  --color-ink-3: #8a94a0;
+  --color-line: #e6e8ee;
+  --color-line-strong: #d6dae3;
+  --color-graphite-950: #0b1016;
+  --color-vip: #8a6200;
+  color-scheme: light;
 }
 
 /* 19 mm photo inside a 21.2 mm ring. */

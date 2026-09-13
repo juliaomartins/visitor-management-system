@@ -912,6 +912,15 @@ small inline bootstrap script in `app/layout.tsx` sets the class before first pa
 `<html>` carries `suppressHydrationWarning` — without it React reports a mismatch on
 every load.
 
+**The badge card does not follow the theme, on purpose.** `components/badge-card.tsx`
+is a picture of paper: it paints a literal white ground, but its text, divider,
+slot, photo ring and VIP line all use theme tokens. In dark mode those inherited the
+`.dark` values, so the name, date, country and serial rendered #f4f8fb on white —
+invisible on `/badges`, `/visitors/[id]` and the registration preview. The fix is
+the `.cr80` rule in `globals.css`, which pins the light values of every token the
+card uses. **A token newly used inside the card must be added to that rule**, or it
+will quietly go dark again in dark mode.
+
 **Right-click a card on `/badges` for Print / Export to Excel**, through the same
 `RowContextMenu`. Who it acts on follows the file-manager rule, and it has a wrong
 answer that looks fine:
