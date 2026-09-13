@@ -38,31 +38,22 @@ from openpyxl.utils import get_column_letter
 from PIL import Image as PilImage
 from PIL import ImageOps
 
+from apps.common.report_header import HEADER_ROWS, write_xlsx_header
 from apps.visitors.models import Visitor, VisitorCategory
 from apps.visitors.services import badge_token
 
 from .services import qr_image
 
-# The event this roster is printed for. One event, one fixed set of dates, both
-# already in CLAUDE.md -- so these are constants rather than settings. A second
-# event would be a second deployment, not a configuration change.
+# Each workbook's title line. Everything else in the header -- the logo, the
+# navy bar, the event name and the dates -- is shared with every other report
+# and lives in `apps/common/report_header.py`.
 #
-# NOT TRANSLATED, and for the same reason the printed badge is not: this sheet
-# is a printing worklist that goes to whoever runs the card printer, and
+# NOT TRANSLATED, and for the same reason the printed badge is not: these sheets
+# are printing worklists that go to whoever runs the card printer, and
 # `services.py` draws the card itself in English. A Tetun worklist against an
 # English card would be a sheet that disagrees with what comes out.
-SHEET_TITLE = "VISITOR BADGE & QR CODE PRINTING LIST"
-EVENT_NAME = "DRCC AND MINISTERIAL DIALOGUE 2026"
-EVENT_WHEN = "2–3 OCTOBER 2026 · DÍLI, TIMOR-LESTE"
-
-# The event's own blue, sampled from the RDTL and SECoop logos -- the same
-# `--color-brand-blue` the dashboard, the badge and the lobby screen use. The
-# reference this layout copies used a brighter royal blue; matching the palette
-# matters more than matching one spreadsheet.
-BANNER_FILL = PatternFill("solid", fgColor="00309C")
-BANNER_FONT = Font(color="FFFFFF", bold=True, size=14)
-EVENT_FONT = Font(bold=True, italic=True, size=11)
-WHEN_FONT = Font(italic=True, size=10, color="4A5560")
+ROSTER_TITLE = "VISITOR LIST AND QR CODE PRINTING LIST"
+CREDENTIAL_TITLE = "VISITOR BADGE & QR CODE PRINTING LIST"
 # A tint of the same blue, so the column headings read as part of the banner
 # rather than as a second, competing bar.
 COLUMN_FILL = PatternFill("solid", fgColor="CFD9F0")
@@ -138,59 +129,37 @@ def _sheet_title(count: int, *, with_qr: bool) -> str:
     return f"{kind} ({count})"
 
 
-#: Rows 1-3 are the banner, row 4 the column headings, so data starts here.
-FIRST_DATA_ROW = 5
+#: Rows 1-3 are the shared report header, row 4 the column headings.
+HEADING_ROW = HEADER_ROWS + 1
+FIRST_DATA_ROW = HEADING_ROW + 1
 
 
-def _write_banner(sheet, columns: list[tuple[str, int]]) -> None:
-    """Three merged title rows over the column headings.
+def _write_banner(sheet, columns: list[tuple[str, int]], title: str) -> None:
+    """The shared report header over the column headings.
 
     This is the shape the organisers already circulate their committee lists
     in, and a printing worklist that looks like every other list on the desk is
     one nobody has to be taught to read.
 
-    BOTH workbooks use this. The credential export had its own single heading
-    row at row 1 until it was asked to match; `_write_header` and the two
-    graphite constants it used went with it, because one banner writer with two
-    callers is the whole point and a second unused one is just somewhere for the
-    next change to go wrong.
+    BOTH workbooks use this, and so does every other report through
+    `write_xlsx_header` -- see that module for the logo and the merge rules.
+
+    The headings and column widths go in FIRST. The header centres the logo in
+    column A's final width and sizes the banner from the widths it can see.
+    Column A is "No.", six characters wide, and the header widens it to fit the
+    logo; that is the one cost of the logo on these sheets.
     """
-    span = f"A{{row}}:{get_column_letter(len(columns))}{{row}}"
-
-    for row, (text, font, height) in enumerate(
-        [
-            (SHEET_TITLE, BANNER_FONT, 30),
-            (EVENT_NAME, EVENT_FONT, 20),
-            (EVENT_WHEN, WHEN_FONT, 18),
-        ],
-        start=1,
-    ):
-        sheet.merge_cells(span.format(row=row))
-
-        # STYLE ONLY THE ANCHOR, and painting the other six would be wasted
-        # work rather than thoroughness. `Worksheet._clean_merge_range` replaces
-        # every cell but the top-left with a fresh `MergedCell` and its
-        # `format()` restores BORDERS only -- deliberately, because Excel draws
-        # a merged range using the top-left cell's fill, font and alignment but
-        # does not carry its border around the outside. Fills written to the
-        # others are discarded on merge whichever order you write them in.
-        cell = sheet.cell(row=row, column=1, value=text)
-        cell.font = font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        if row == 1:
-            cell.fill = BANNER_FILL
-        sheet.row_dimensions[row].height = height
-
     for index, (label, width) in enumerate(columns, start=1):
-        cell = sheet.cell(row=4, column=index, value=label)
+        cell = sheet.cell(row=HEADING_ROW, column=index, value=label)
         cell.fill = COLUMN_FILL
         cell.font = COLUMN_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = CELL_BORDER
         sheet.column_dimensions[get_column_letter(index)].width = width
 
-    sheet.row_dimensions[4].height = 22
-    # Keep the banner and the headings visible through 250 rows.
+    sheet.row_dimensions[HEADING_ROW].height = 22
+    write_xlsx_header(sheet, title, last_column=len(columns))
+    # Keep the header and the headings visible through 250 rows.
     sheet.freeze_panes = f"A{FIRST_DATA_ROW}"
 
 
@@ -289,7 +258,7 @@ def build_roster_workbook(visitors: list[Visitor]) -> bytes:
     sheet = workbook.active
     sheet.title = _sheet_title(len(visitors), with_qr=False)
 
-    _write_banner(sheet, ROSTER_COLUMNS)
+    _write_banner(sheet, ROSTER_COLUMNS, ROSTER_TITLE)
 
     # openpyxl reads each image lazily when the workbook is saved, so every
     # buffer has to outlive the loop that made it.
@@ -388,7 +357,7 @@ def build_credential_workbook(issued: list[tuple[Visitor, str]]) -> bytes:
     sheet = workbook.active
     sheet.title = _sheet_title(len(issued), with_qr=True)
 
-    _write_banner(sheet, CREDENTIAL_COLUMNS)
+    _write_banner(sheet, CREDENTIAL_COLUMNS, CREDENTIAL_TITLE)
 
     # openpyxl reads each image lazily when the workbook is saved, so the buffers
     # have to outlive this loop.
@@ -458,7 +427,8 @@ def _add_warning_sheet(workbook: Workbook, count: int) -> None:
     had revisited. The endpoint stopped reissuing; this tab did not notice.
     """
     sheet = workbook.create_sheet("Read me")
-    sheet.column_dimensions["A"].width = 100
+    # Column A is the header's logo cell; the text reads down column B.
+    sheet.column_dimensions["B"].width = 100
 
     lines = [
         ("WHAT THIS FILE IS", True),
@@ -508,12 +478,14 @@ def _add_warning_sheet(workbook: Workbook, count: int) -> None:
         ),
     ]
 
-    for index, (text, bold) in enumerate(lines, start=1):
-        cell = sheet.cell(row=index, column=1, value=text)
+    for index, (text, bold) in enumerate(lines, start=FIRST_DATA_ROW):
+        cell = sheet.cell(row=index, column=2, value=text)
         cell.font = Font(bold=bold, size=12 if bold else 10)
         cell.alignment = Alignment(wrap_text=True, vertical="top")
         if not bold and text:
             sheet.row_dimensions[index].height = 30
+
+    write_xlsx_header(sheet, CREDENTIAL_TITLE, last_column=2)
 
 
 def _save(workbook: Workbook) -> bytes:

@@ -553,9 +553,9 @@ sprinkle it onto other callers for tidiness.
 
 **`roster.xlsx` now crosses that same boundary, and it used to be the one export
 that did not.** It is laid out as the printing worklist the organisers already
-circulate: a merged navy banner over rows 1-3 (`SHEET_TITLE`, `EVENT_NAME`,
-`EVENT_WHEN` in `exports.py`), column headings on row 4, data from row 5, frozen
-at `A5`. Columns are `No. | Name | Country | Organization | Photo | QR Code |
+circulate: the shared report header over rows 1-3 (see **EVERY EXCEL AND PDF
+REPORT CARRIES ONE HEADER** below), titled `VISITOR LIST AND QR CODE PRINTING
+LIST`, column headings on row 4, data from row 5, frozen at `A5`. Columns are `No. | Name | Country | Organization | Photo | QR Code |
 Registered` — so the file is a set of working badges — one click
 from `/visitors`, with no confirmation in front of it. Two things make that
 defensible and it is worth knowing which: the QR is `badge_token(visitor)`, the
@@ -594,6 +594,38 @@ Country | Organization | Category | Badge Serial | Photo | QR Code | Registered
 | QR payload` — because it is the card producer's sheet: the serial is printed
 on the card, the category decides the amber VIP ring, and the payload is the
 exact string the QR encodes so it can be re-rendered at another size.
+
+**EVERY EXCEL AND PDF REPORT CARRIES ONE HEADER**, written by
+`apps/common/report_header.py` and nowhere else: the event logo in a white cell of
+its own at the left, a navy bar with the report's title, then `DRCC AND
+MINISTERIAL DIALOGUE 2026` and `2–3 OCTOBER 2026 · DÍLI, TIMOR-LESTE`. Only the
+title belongs to the caller:
+
+| file | title |
+|---|---|
+| `GET /badges/roster.xlsx` (`/visitors` Export Excel) | VISITOR LIST AND QR CODE PRINTING LIST |
+| `POST /badges/export` (`/badges` Export Excel), every tab | VISITOR BADGE & QR CODE PRINTING LIST |
+| `GET /reports/entries.xlsx`, all six tabs | ENTRANCE REPORT |
+| `GET /reports/entries.pdf`, every page | ENTRANCE REPORT |
+
+**CSV and the badge PDFs have no header, on purpose.** A CSV is read by other
+programs and banner rows break them; the card and the A4 sheet are the badges.
+
+Four things about it that are not obvious:
+
+- **The logo sits on white, never on the navy bar.** It is a full-colour emblem
+  with a blue plume and a black ribbon, and both vanish on `#00309C`.
+- **`apps/common/brand/logo.png` is a copy** of `vms-dashboard/public/brand/logo.png`,
+  trimmed of its transparent border and scaled to 320 px — duplicated for the
+  same reason as the badge artwork. Replace both together.
+- **Write a sheet's column widths BEFORE the header.** The header centres the logo
+  in column A's final width (widening it to 14 if narrower — which is why "No." is
+  wider than it was) and sizes the banner from the widths it can see.
+- **The banner runs past a narrow table.** A merged cell clips its text rather than
+  overflowing, so a three-column tab would cut the date line off;
+  `_banner_last_column` keeps spanning until the text fits. And every table tab's
+  data starts at row 5, so the hourly chart reads its series names from row 4 —
+  reading from row 1 would title the series with the event name.
 
 **`POST /badges/export` IS NOT DESTRUCTIVE, and three separate places said it
 was.** `collect_badge_tokens` recomputes the derived token and

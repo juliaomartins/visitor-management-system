@@ -37,9 +37,12 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from apps.common.report_header import PDF_HEADER_HEIGHT, draw_pdf_header
 from apps.scans.models import ScanEvent, ScanResult
 
 from .services import event_timezone
+
+REPORT_TITLE = "ENTRANCE REPORT"
 
 INK = colors.HexColor("#111827")
 MUTED = colors.HexColor("#6B7280")
@@ -54,7 +57,8 @@ CRIT = colors.HexColor("#DC2626")
 NEUTRAL = colors.HexColor("#94A3B8")
 
 PAGE_MARGIN = 16 * mm
-HEADER_H = 26 * mm
+# The shared report header's height; the body frame starts below it.
+HEADER_H = PDF_HEADER_HEIGHT
 
 RESULT_LABEL = {
     ScanResult.VALID: "Valid",
@@ -269,30 +273,22 @@ def build_document(
     generated = timezone.localtime(timezone.now(), zone)
 
     def chrome(canvas, document):
-        """The band at the top of every page, and the page number at the foot."""
+        """The shared report header on every page, and the page number at the foot.
+
+        The header replaced a dark band that spent a strip of toner on every
+        page; it is white with one navy bar, like every other report's.
+        """
+        draw_pdf_header(
+            canvas,
+            page_width=A4[0],
+            page_height=A4[1],
+            margin=PAGE_MARGIN,
+            title=REPORT_TITLE,
+            meta_left=f"{span}   ·   times in {zone}",
+            meta_right=f"Generated {generated:%d %b %Y %H:%M}",
+        )
+
         canvas.saveState()
-
-        canvas.setFillColor(INK)
-        canvas.rect(0, A4[1] - HEADER_H, A4[0], HEADER_H, stroke=0, fill=1)
-
-        canvas.setFillColor(colors.white)
-        canvas.setFont("Helvetica-Bold", 15)
-        canvas.drawString(PAGE_MARGIN, A4[1] - 13 * mm, "Entrance report")
-
-        canvas.setFillColor(colors.HexColor("#9CA3AF"))
-        canvas.setFont("Helvetica", 8.4)
-        canvas.drawString(PAGE_MARGIN, A4[1] - 19 * mm, f"{span}   ·   times in {zone}")
-
-        canvas.setFont("Helvetica", 8)
-        canvas.drawRightString(
-            A4[0] - PAGE_MARGIN, A4[1] - 13 * mm, "Visitor Management"
-        )
-        canvas.drawRightString(
-            A4[0] - PAGE_MARGIN,
-            A4[1] - 19 * mm,
-            f"Generated {generated:%d %b %Y %H:%M}",
-        )
-
         canvas.setFillColor(MUTED)
         canvas.setFont("Helvetica", 7.6)
         canvas.drawCentredString(A4[0] / 2, 10 * mm, f"Page {document.page}")
@@ -302,10 +298,10 @@ def build_document(
         PAGE_MARGIN,
         14 * mm,
         A4[0] - 2 * PAGE_MARGIN,
-        A4[1] - HEADER_H - 20 * mm,
+        A4[1] - HEADER_H - 16 * mm,
         leftPadding=0,
         rightPadding=0,
-        topPadding=6 * mm,
+        topPadding=2 * mm,
         bottomPadding=0,
         id="body",
     )
