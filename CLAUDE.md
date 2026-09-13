@@ -921,6 +921,18 @@ the `.cr80` rule in `globals.css`, which pins the light values of every token th
 card uses. **A token newly used inside the card must be added to that rule**, or it
 will quietly go dark again in dark mode.
 
+**A Tailwind utility cannot override `.btn`, `.btn-ghost`, `.card` or `.field`.**
+Those component classes are plain, unlayered CSS in `globals.css`, and Tailwind v4
+puts every utility in `@layer utilities` — and unlayered declarations beat layered
+ones whatever the specificity. So `btn btn-ghost text-revoked` renders in
+`.btn-ghost`'s grey, not red. That is why Delete on `/visitors/[id]` was never
+red; it now uses its own `.btn-danger-ghost`. **The same trap still silently
+cancels** `text-revoked` on Deactivate and `text-valid` on Activate on that page
+(both render grey), and any `px-*` / `text-xs` meant to resize a `.btn`. Give a
+variant its own component class, or move these classes into `@layer components`
+— the second is the cleaner fix but changes every button that relied on an
+override being ignored, so check them all first.
+
 **Right-click a card on `/badges` for Print / Export to Excel**, through the same
 `RowContextMenu`. Who it acts on follows the file-manager rule, and it has a wrong
 answer that looks fine:

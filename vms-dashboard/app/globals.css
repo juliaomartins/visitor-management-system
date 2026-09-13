@@ -335,6 +335,37 @@ body {
   color: var(--color-ink);
 }
 
+/*
+  The outline button for an action that destroys something.
+
+  A class of its own, beside .btn-ghost and unlayered like it. Colouring a
+  .btn-ghost with `text-revoked` does NOT work: these component classes are
+  plain CSS, Tailwind's utilities live in `@layer utilities`, and unlayered
+  declarations win the cascade whatever their specificity. The Delete button on
+  /visitors/[id] was written that way and was never red.
+
+  Red text and a tinted border rather than a solid red fill: on the page this
+  button opens a confirmation, it does not delete anything itself.
+*/
+.btn-danger-ghost {
+  border: 1px solid color-mix(in oklab, var(--color-revoked) 40%, var(--color-line-strong));
+  background: var(--color-card);
+  color: var(--color-revoked);
+}
+
+/*
+  The hover tint lifts the background toward red, which LOWERS the text's
+  contrast -- in dark mode #f24141 on #331416 measured 4.48:1, just under AA. So
+  the text moves too, a fifth of the way toward --color-ink. Ink is near-black
+  in light mode and near-white in dark, so one rule deepens the red on a light
+  tint and brightens it on a dark one, and the label stays clearly red in both.
+*/
+.btn-danger-ghost:hover:not(:disabled) {
+  border-color: var(--color-revoked);
+  background: var(--color-revoked-soft);
+  color: color-mix(in oklab, var(--color-revoked) 80%, var(--color-ink));
+}
+
 .btn-danger {
   background: var(--color-revoked);
   color: #fff;

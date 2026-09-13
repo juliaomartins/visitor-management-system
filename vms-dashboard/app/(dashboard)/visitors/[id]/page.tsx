@@ -8,6 +8,12 @@ import { BadgeCard } from "@/components/badge-card";
 import { useSetPageMeta } from "@/components/page-meta";
 import { DeactivateDialog } from "@/components/visitors/DeactivateDialog";
 import { PurgeDialog } from "@/components/visitors/PurgeDialog";
+import {
+  BanIcon,
+  CheckCircleIcon,
+  PencilIcon,
+  TrashIcon,
+} from "@/components/visitors/RowContextMenu";
 import { useErrorText, useFormat, useT } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/locales";
 import {
@@ -189,10 +195,16 @@ export default function VisitorDetailPage() {
           </dl>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
+            {/*
+              The same glyphs as the right-click menu on /visitors, so an action
+              looks the same wherever it is offered. They are aria-hidden inside
+              the icon components; the label stays the accessible name.
+            */}
             <Link
               href={`/visitors/${visitor.id}/edit`}
               className="btn btn-ghost"
             >
+              <PencilIcon />
               {t("visitors.menu.edit")}
             </Link>
 
@@ -214,6 +226,7 @@ export default function VisitorDetailPage() {
                 disabled={activate.isPending}
                 className="btn btn-ghost text-valid hover:text-valid disabled:opacity-60"
               >
+                <CheckCircleIcon />
                 {activate.isPending
                   ? t("visitor.activating")
                   : t("visitors.menu.activate")}
@@ -224,6 +237,7 @@ export default function VisitorDetailPage() {
                 onClick={() => setConfirming(true)}
                 className="btn btn-ghost text-revoked hover:text-revoked"
               >
+                <BanIcon />
                 {t("visitors.menu.deactivate")}
               </button>
             )}
@@ -236,11 +250,21 @@ export default function VisitorDetailPage() {
             */}
             <span aria-hidden className="h-5 w-px bg-line" />
 
+            {/*
+              RED BY ITS OWN COMPONENT CLASS, NOT BY `text-revoked`. This button
+              used to say `btn btn-ghost text-ink-3 hover:text-revoked` and was
+              never red: `.btn-ghost` is unlayered CSS in globals.css while
+              Tailwind utilities live in `@layer utilities`, and unlayered
+              declarations win the cascade whatever their specificity. So its
+              colour came from `.btn-ghost` alone. `.btn-danger-ghost` sits
+              beside `.btn-ghost`, unlayered too, so its colour actually applies.
+            */}
             <button
               type="button"
               onClick={() => setPurging(true)}
-              className="btn btn-ghost text-ink-3 hover:text-revoked"
+              className="btn btn-danger-ghost"
             >
+              <TrashIcon />
               {t("visitors.menu.delete")}
             </button>
           </div>
