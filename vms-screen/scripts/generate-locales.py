@@ -7,8 +7,9 @@ now lives on `/pair` alone and the wall is English, so the wall's words moved
 to `lib/wall-copy.ts` as plain constants and this table kept only what is
 actually translated: the language control, pairing, and finding the server.
 
-Fifteen keys, all of them read by somebody standing at the kiosk during setup
-and by nobody afterwards. A key in here is a promise that the string is
+Seventeen keys, all of them read by somebody standing at the kiosk during setup
+and by nobody afterwards. Two of them label the display-name field; the name
+itself is data and is never in here. A key in here is a promise that the string is
 translated; leaving "Welcome" behind would have kept that promise on file and
 broken it in the room.
 
@@ -83,6 +84,17 @@ M = [
      "Kódigu pareia ho karakter neen"),
     ("pair.pairing", "Pairing…", "A emparelhar…", "Pareia hela…"),
     ("pair.submit", "Pair display", "Emparelhar ecrã", "Pareia ekrán"),
+    ("pair.nameLabel", "Display name", "Nome do ecrã", "Naran ekrán"),
+    ("pair.nameHint",
+     "Suggested from this browser. Change it to where the display stands, "
+     "e.g. Main entrance — this is its name in the device list and the "
+     "server log.",
+     "Sugerido a partir deste navegador. Altere para o local onde o ecrã "
+     "está, p. ex. Entrada principal — é o nome na lista de dispositivos e "
+     "no registo do servidor.",
+     "Sujere husi browser ne’e. Troka ba fatin ne’ebé ekrán hamriik, ez. "
+     "Entrada prinsipál — ne’e naran iha lista dispozitivu no rejistu "
+     "servidór."),
     ("pair.finding", "Finding the server…", "A procurar o servidor…",
      "Buka servidór hela…"),
     ("pair.noServer", "No server found", "Nenhum servidor encontrado",
