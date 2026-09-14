@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { PhotoCropper } from "@/components/visitors/PhotoCropper";
-import { PHOTO_ASPECT } from "@/lib/badge-geometry";
 import { checkFaces, warmFaceCheck, type FaceCheck } from "@/lib/face-check";
 import { useT } from "@/lib/i18n";
 
 import { CameraCapture } from "./CameraCapture";
+import { PhotoReview } from "./PhotoReview";
 
 const subscribeNever = () => () => {};
 
+type Origin = "file" | "camera";
+
 /**
- * Photo in, cropped to the badge, face-checked.
+ * Photo in, reviewed with a free crop, face-checked.
  *
  * THE FILE INPUT IS THE REAL PATH. `capture="user"` opens the front camera on a
  * phone and works over plain http. The live camera preview is offered only
@@ -20,10 +21,10 @@ const subscribeNever = () => () => {};
  * event's `http://<lan-ip>` means localhost and nowhere else (CLAUDE.md, the
  * scanner-on-web section, measured it undefined on phones).
  *
- * The crop is the desk's own `PhotoCropper` with the badge circle drawn over it,
- * so a self-registered photo meets the same 225 px print floor and frames the
- * same circle as one taken at the desk. Its output -- a 600 px wide JPEG -- is
- * the client-side downscale: nothing larger ever leaves the phone.
+ * Whichever way the photo arrived, `PhotoReview` shows it full screen with two
+ * choices. ✕ goes back the same way it came -- the camera again, or the picker
+ * again -- because "not this one" means "another one", not "no photo". Its
+ * output fits 600 x 800 and is never upscaled: nothing larger leaves the phone.
  *
  * The face check runs on the CROPPED photo, because that is what prints.
  */
@@ -40,9 +41,8 @@ export function PhotoStep({
 }) {
   const t = useT();
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [source, setSource] = useState<{ url: string; name: string } | null>(null);
+  const [source, setSource] = useState<{ url: string; origin: Origin } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [cropping, setCropping] = useState(false);
   const [camera, setCamera] = useState(false);
 
   const canUseCamera = useSyncExternalStore(
@@ -67,15 +67,29 @@ export function PhotoStep({
     [],
   );
 
-  const open = useCallback((file: File | Blob | null | undefined, name = "photo") => {
+  const open = useCallback((file: File | Blob | null | undefined, origin: Origin) => {
     if (!file || !file.type.startsWith("image/")) return;
     warmFaceCheck();
     setSource((current) => {
       if (current) URL.revokeObjectURL(current.url);
-      return { url: URL.createObjectURL(file), name };
+      return { url: URL.createObjectURL(file), origin };
     });
-    setCropping(true);
   }, []);
+
+  const closeReview = useCallback(() => {
+    setSource((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return null;
+    });
+  }, []);
+
+  function retake() {
+    const origin = source?.origin;
+    closeReview();
+    // Still inside the ✕ click, so the browser allows the picker to open.
+    if (origin === "camera") setCamera(true);
+    else inputRef.current?.click();
+  }
 
   const applied = useCallback(
     async (file: File) => {
@@ -84,7 +98,7 @@ export function PhotoStep({
         if (current) URL.revokeObjectURL(current);
         return url;
       });
-      setCropping(false);
+      closeReview();
       onPhoto(file);
 
       const image = new Image();
@@ -96,7 +110,7 @@ export function PhotoStep({
         onFaceCheck({ outcome: "unavailable" });
       }
     },
-    [onPhoto, onFaceCheck],
+    [closeReview, onPhoto, onFaceCheck],
   );
 
   return (
@@ -106,12 +120,12 @@ export function PhotoStep({
 
       {preview ? (
         <div className="mt-2.5 flex items-center gap-4">
+          {/* The photo as it will be sent: the crop's own shape, not boxed to 3:4. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={preview}
             alt=""
-            className="w-24 shrink-0 rounded-xl object-cover ring-1 ring-line"
-            style={{ aspectRatio: PHOTO_ASPECT }}
+            className="max-h-32 w-auto max-w-28 shrink-0 rounded-xl ring-1 ring-line"
           />
           <div className="min-w-0 space-y-2">
             <FaceMessage face={face} />
@@ -167,7 +181,7 @@ export function PhotoStep({
         tabIndex={-1}
         aria-hidden
         onChange={(event) => {
-          open(event.target.files?.[0], event.target.files?.[0]?.name);
+          open(event.target.files?.[0], "file");
           event.target.value = "";
         }}
       />
@@ -182,28 +196,21 @@ export function PhotoStep({
         <CameraCapture
           onCapture={(blob) => {
             setCamera(false);
-            open(blob, "camera.jpg");
+            open(blob, "camera");
           }}
           onCancel={() => setCamera(false)}
         />
       ) : null}
 
-      {cropping && source ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("publicRegister.photo")}
-          className="fixed inset-0 z-50 overflow-y-auto bg-graphite-950/70 p-3"
-        >
-          <div className="card mx-auto w-full max-w-3xl p-3">
-            <PhotoCropper
-              source={source}
-              onApply={(file) => void applied(file)}
-              onCancel={() => setCropping(false)}
-              onChangeImage={() => inputRef.current?.click()}
-            />
-          </div>
-        </div>
+      {source ? (
+        <PhotoReview
+          // A new photo starts a fresh review, not the last photo's crop.
+          key={source.url}
+          source={source.url}
+          onUse={(file) => void applied(file)}
+          onRetake={retake}
+          onClose={closeReview}
+        />
       ) : null}
     </div>
   );
