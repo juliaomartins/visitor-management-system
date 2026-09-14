@@ -356,6 +356,99 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
           description: ''
+  /api/v1/public/registrations:
+    post:
+      operationId: public_registrations_create
+      description: Public, unauthenticated. Creates a visitor with category `normal`
+        and issues their badge. Returns only what a success screen needs to draw the
+        QR. 403 while registration is closed; 413 above the upload limit; 429 when
+        rate-limited.
+      summary: Register yourself as a visitor
+      tags:
+      - public
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PublicRegistrationRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicRegistrationResult'
+          description: ''
+        '400':
+          description: A field failed validation.
+        '403':
+          description: Registration is closed.
+        '413':
+          description: The upload is too large.
+        '429':
+          description: Too many registrations.
+  /api/v1/public/registrations/status:
+    get:
+      operationId: public_registrations_status_retrieve
+      description: Whether the form should render at all.
+      summary: Is public registration open?
+      tags:
+      - public
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicRegistrationStatus'
+          description: ''
+  /api/v1/registration-settings:
+    get:
+      operationId: registration_settings_retrieve
+      description: The admin switch. Admin-only, on the admin router, never under
+        /public.
+      summary: Read the public registration switch
+      tags:
+      - registration-settings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSettings'
+          description: ''
+    patch:
+      operationId: registration_settings_partial_update
+      description: The admin switch. Admin-only, on the admin router, never under
+        /public.
+      summary: Open or close public registration
+      tags:
+      - registration-settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRegistrationSettingsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRegistrationSettingsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRegistrationSettingsRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSettings'
+          description: ''
   /api/v1/reports/entries:
     get:
       operationId: reports_entries_retrieve
@@ -672,6 +765,15 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: source
+        schema:
+          type: string
+          enum:
+          - admin
+          - self
+        description: 'Who created the registration: `admin` at the desk, or `self`
+          through the public form.'
       - in: query
         name: with_tokens
         schema:
@@ -1370,6 +1472,12 @@ components:
           $ref: '#/components/schemas/KindEnum'
       required:
       - kind
+    PatchedRegistrationSettingsRequest:
+      type: object
+      description: The admin's view of the switch.
+      properties:
+        public_registration_enabled:
+          type: boolean
     PatchedVisitorRequest:
       type: object
       description: |-
@@ -1397,6 +1505,58 @@ components:
           format: binary
         category:
           $ref: '#/components/schemas/CategoryEnum'
+    PublicRegistrationRequest:
+      type: object
+      description: '`POST /public/registrations`, multipart. Exactly these four fields.'
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        country:
+          type: string
+          minLength: 1
+          maxLength: 100
+        organization:
+          type: string
+          default: ''
+          maxLength: 200
+        photo:
+          type: string
+          format: binary
+          description: JPEG, PNG or WebP, at most 5 MB. Re-encoded by the server.
+      required:
+      - country
+      - full_name
+      - photo
+    PublicRegistrationResult:
+      type: object
+      description: |-
+        Only what the success screen draws.
+
+        `badge_token` is the QR payload -- a working credential, returned to the
+        person it was just issued to and to nobody else. No id, no token hash, no
+        photo URL: nothing here lets a caller find or fetch any other visitor.
+      properties:
+        full_name:
+          type: string
+        badge_serial:
+          type: string
+          description: Printed on the card; quoted at the kiosk desk if a scan fails.
+        badge_token:
+          type: string
+          description: Raw badge token for the QR code. Returned once, never again.
+      required:
+      - badge_serial
+      - badge_token
+      - full_name
+    PublicRegistrationStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+      - enabled
     RefreshTokenRequest:
       type: object
       description: |-
@@ -1407,6 +1567,25 @@ components:
       properties:
         refresh:
           type: string
+    RegistrationSettings:
+      type: object
+      description: The admin's view of the switch.
+      properties:
+        public_registration_enabled:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_by:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          readOnly: true
+          nullable: true
+      required:
+      - updated_at
+      - updated_by
     ReissueResponse:
       type: object
       properties:
@@ -1779,6 +1958,14 @@ components:
       required:
       - events
       - last_id
+    SourceEnum:
+      enum:
+      - admin
+      - self
+      type: string
+      description: |-
+        * `admin` - Registered at the desk
+        * `self` - Self-registered
     User:
       type: object
       description: Admin account, as the dashboard sees it. Never exposes the password
@@ -1864,6 +2051,14 @@ components:
           format: uri
         category:
           $ref: '#/components/schemas/CategoryEnum'
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEnum'
+          readOnly: true
+        possible_duplicate:
+          type: boolean
+          readOnly: true
+          description: Another registration has the same name and country.
         badge_serial:
           type: string
           readOnly: true
@@ -1886,6 +2081,8 @@ components:
       - id
       - is_active
       - photo
+      - possible_duplicate
+      - source
       - updated_at
     VisitorDetail:
       type: object
@@ -1910,6 +2107,14 @@ components:
           format: uri
         category:
           $ref: '#/components/schemas/CategoryEnum'
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEnum'
+          readOnly: true
+        possible_duplicate:
+          type: boolean
+          readOnly: true
+          description: Another registration has the same name and country.
         badge_serial:
           type: string
           readOnly: true
@@ -1943,7 +2148,9 @@ components:
       - id
       - is_active
       - photo
+      - possible_duplicate
       - scan_events
+      - source
       - updated_at
     VisitorIssued:
       type: object
@@ -1971,6 +2178,14 @@ components:
           format: uri
         category:
           $ref: '#/components/schemas/CategoryEnum'
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEnum'
+          readOnly: true
+        possible_duplicate:
+          type: boolean
+          readOnly: true
+          description: Another registration has the same name and country.
         badge_serial:
           type: string
           readOnly: true
@@ -1998,6 +2213,8 @@ components:
       - id
       - is_active
       - photo
+      - possible_duplicate
+      - source
       - updated_at
     VisitorIssuedRequest:
       type: object
@@ -2057,6 +2274,14 @@ components:
           format: uri
         category:
           $ref: '#/components/schemas/CategoryEnum'
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEnum'
+          readOnly: true
+        possible_duplicate:
+          type: boolean
+          readOnly: true
+          description: Another registration has the same name and country.
         badge_serial:
           type: string
           readOnly: true
@@ -2083,6 +2308,8 @@ components:
       - id
       - is_active
       - photo
+      - possible_duplicate
+      - source
       - updated_at
     VisitorPurged:
       type: object
