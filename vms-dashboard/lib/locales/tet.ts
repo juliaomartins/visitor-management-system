@@ -317,6 +317,8 @@ export const tet: Messages = {
   "settings.registrationNoAddress":
     "Seidauk hatene enderesu rede servid\u00f3r nian.",
   "settings.registrationSaveFailed": "La bele muda. Koko fali.",
+  "settings.registrationLoadFailed":
+    "Servid\u00f3r la hat\u00e1n ba konfigurasaun ida-ne'e. Se foin atualiza, tenke hah\u00fa fali.",
   "settings.registrationSaveQr": "Rai k\u00f3digu QR",
   "settings.registrationUpdated": "Muda ikus iha {time} husi {user}",
 
