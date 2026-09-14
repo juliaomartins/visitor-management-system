@@ -1,10 +1,15 @@
 "use client";
 
 import { AppearancePanel } from "@/components/settings/AppearancePanel";
+import { RegistrationPanel } from "@/components/settings/RegistrationPanel";
 import { ServerPanel } from "@/components/settings/ServerPanel";
 import { useSetPageMeta } from "@/components/page-meta";
 import { useHealth } from "@/lib/health";
 import { useT } from "@/lib/i18n";
+import {
+  useRegistrationSettings,
+  useSetPublicRegistration,
+} from "@/lib/registration";
 
 /**
  * Settings: this server, and how this dashboard looks.
@@ -30,6 +35,8 @@ import { useT } from "@/lib/i18n";
 export default function SettingsPage() {
   const t = useT();
   const health = useHealth();
+  const registration = useRegistrationSettings();
+  const setRegistration = useSetPublicRegistration();
 
   useSetPageMeta({
     title: t("settings.title"),
@@ -42,6 +49,14 @@ export default function SettingsPage() {
         health={health.data}
         checking={health.isFetching}
         onCheckAgain={() => health.refetch()}
+      />
+      <RegistrationPanel
+        settings={registration.data}
+        loadFailed={registration.isError}
+        saving={setRegistration.isPending}
+        saveFailed={setRegistration.isError}
+        onToggle={(enabled) => setRegistration.mutate(enabled)}
+        lanIp={health.data?.lanIp}
       />
       <AppearancePanel />
     </div>
