@@ -8,6 +8,7 @@ import { LanguageToggle } from "@/components/language-toggle";
 import { useT } from "@/lib/i18n";
 import {
   PUBLIC_STATUS_KEY,
+  RegistrationError,
   fetchPublicRegistrationStatus,
   parsePass,
   readPass,
@@ -73,7 +74,15 @@ export function RegisterFlow() {
             {t("publicRegister.loading")}
           </p>
         ) : status.isError ? (
-          <Notice title={t("publicRegister.unreachable")} />
+          status.error instanceof RegistrationError &&
+          status.error.kind === "network" ? (
+            <Notice title={t("publicRegister.unreachable")} />
+          ) : (
+            <Notice
+              title={t("publicRegister.unavailableTitle")}
+              body={t("publicRegister.closedBody")}
+            />
+          )
         ) : status.data ? (
           <RegisterForm />
         ) : (
