@@ -325,7 +325,9 @@ export const en = {
   "publicRegister.fullName": "Full name",
   "publicRegister.country": "Country",
   "publicRegister.countryPlaceholder": "Start typing your country",
-  "publicRegister.countryInvalid": "Choose a country from the list.",
+  "country.listLabel": "Countries",
+  "country.noMatch": "No countries match \u201c{text}\u201d",
+  "country.invalid": "Select your country from the list.",
   "publicRegister.organization": "Organization (optional)",
   "publicRegister.photo": "Your photo",
   "publicRegister.photoHint":
@@ -336,6 +338,10 @@ export const en = {
   "publicRegister.cancel": "Cancel",
   "publicRegister.cameraFailed": "The camera could not be opened.",
   "publicRegister.changePhoto": "Change photo",
+  "publicRegister.reviewPhoto": "Crop your photo",
+  "publicRegister.usePhoto": "Use this photo",
+  "publicRegister.retakePhoto": "Take the photo again",
+  "publicRegister.cropTooSmall": "Too small to print. Drag the corners out.",
   "publicRegister.checkingFace": "Checking the photo\u2026",
   "publicRegister.faceNone":
     "No face found. Face the camera in good light and try again.",
