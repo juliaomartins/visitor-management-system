@@ -353,6 +353,7 @@ export const tet: Messages = {
   "publicRegister.closedBody": "Fav\u00f3r ba balkaun rejistu.",
   "publicRegister.unreachable":
     "La bele liga ba servid\u00f3r eventu nian. Haree katak ita iha Wi-Fi eventu nian.",
+  "publicRegister.unavailableTitle": "Rejistu la dispon\u00edvel agora",
   "publicRegister.failed":
     "Rejistu la susesu. Koko fali, ka ba balkaun rejistu.",
   "publicRegister.tooMany":
