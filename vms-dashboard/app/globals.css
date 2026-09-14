@@ -480,6 +480,52 @@ body {
  * own width, so one component serves a small tile and a large hero from one set
  * of rules. These figures are the PDF's millimetres over 54 mm.
  */
+/*
+  THE PUBLIC REGISTRATION PAGE IS ALWAYS LIGHT.
+
+  The success screen is a QR a phone has to read at a door, often in daylight. A
+  dark page drags the whole screen's brightness down and the guard's camera
+  exposes for the whole screen, so the code scans worse on a dark phone than on a
+  light one. So this page ignores the stored theme and the phone's dark mode.
+
+  Pinned here as the light token values on the page's wrapper -- the same move
+  as `.cr80` below -- rather than by touching the `dark` class on <html>. The
+  theme store and the DOM must never disagree (see CLAUDE.md), and an admin
+  opening /register on the desk laptop keeps their dark console everywhere else.
+  These are the @theme light values above: change one there, change it here.
+*/
+.public-light {
+  --color-ground: #f7f8fa;
+  --color-card: #ffffff;
+  --color-card-2: #f7f8fa;
+  --color-paper: #f7f8fa;
+  --color-line: #e6e8ee;
+  --color-line-strong: #d6dae3;
+  --color-ink: #0b1016;
+  --color-ink-2: #4a5560;
+  --color-ink-3: #8a94a0;
+  --color-graphite-950: #0b1016;
+  --color-graphite-900: #141b24;
+  --color-graphite-800: #1f2833;
+  --color-graphite-700: #2e3a47;
+  --color-graphite-500: #707c8b;
+  --color-graphite-300: #b6bcc7;
+  --color-accent: #00309c;
+  --color-accent-2: #0a45c4;
+  --color-accent-soft: #e5eaf5;
+  --color-valid: #006c30;
+  --color-valid-soft: #e0ede6;
+  --color-vip: #8a6200;
+  --color-vip-fill: #fcb400;
+  --color-vip-soft: #f7eeda;
+  --color-revoked: #cc0000;
+  --color-revoked-soft: #f9e0e0;
+  --color-neutral-mark: #8a94a0;
+  color-scheme: light;
+  background: var(--color-ground);
+  color: var(--color-ink);
+}
+
 .cr80 {
   aspect-ratio: 54 / 85.6;
   container-type: inline-size;
