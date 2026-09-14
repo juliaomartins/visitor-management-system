@@ -313,6 +313,8 @@ export const en = {
     "The server's network address is not known yet.",
   "settings.registrationSaveFailed":
     "The switch could not be changed. Try again.",
+  "settings.registrationLoadFailed":
+    "The server did not answer for this setting. If it was just updated, it needs a restart.",
   "settings.registrationSaveQr": "Save QR code",
   "settings.registrationUpdated": "Last changed {time} by {user}",
 
