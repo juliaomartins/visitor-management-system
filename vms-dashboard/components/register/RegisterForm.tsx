@@ -3,7 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { matchCountry } from "@/lib/countries";
+import { CountryCombobox } from "@/components/country-combobox";
+import { COUNTRY_NAMES } from "@/lib/countries";
 import type { FaceCheck } from "@/lib/face-check";
 import { useT } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/locales";
@@ -14,7 +15,6 @@ import {
   submitPublicRegistration,
 } from "@/lib/registration";
 
-import { CountryField } from "./CountryField";
 import { PhotoStep } from "./PhotoStep";
 
 const FAILURE_MESSAGE: Record<string, MessageKey> = {
@@ -45,21 +45,23 @@ export function RegisterForm() {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<MessageKey | null>(null);
   const [fields, setFields] = useState<Record<string, string[]>>({});
-  const [countryInvalid, setCountryInvalid] = useState(false);
+  // Checked once the field is left, and cleared while it is being typed in, so
+  // "Port" on its way to "Portugal" is never called an error.
+  const [countryChecked, setCountryChecked] = useState(false);
+  const countryInvalid = countryChecked && !COUNTRY_NAMES.has(country);
 
   const faceOk =
     face !== null &&
     face !== "checking" &&
     (face.outcome === "one" || face.outcome === "unavailable");
-  const ready = Boolean(fullName.trim() && country.trim() && photo && faceOk);
+  const ready = Boolean(fullName.trim() && country && photo && faceOk);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!photo || !faceOk) return;
 
-    const canonical = matchCountry(country);
-    if (!canonical) {
-      setCountryInvalid(true);
+    if (!COUNTRY_NAMES.has(country)) {
+      setCountryChecked(true);
       return;
     }
 
@@ -70,7 +72,7 @@ export function RegisterForm() {
     try {
       const result = await submitPublicRegistration({
         full_name: fullName.trim(),
-        country: canonical,
+        country,
         organization: organization.trim(),
         photo,
       });
@@ -109,15 +111,31 @@ export function RegisterForm() {
         errors={fields.full_name}
       />
 
-      <CountryField
-        value={country}
-        onChange={(value) => {
-          setCountry(value);
-          setCountryInvalid(false);
-        }}
-        invalid={countryInvalid}
-        errors={fields.country}
-      />
+      <div>
+        <label htmlFor="country" className="block text-sm font-medium text-ink-2">
+          {t("publicRegister.country")}
+        </label>
+        <CountryCombobox
+          id="country"
+          name="country"
+          value={country}
+          onValueChange={setCountry}
+          onFocus={() => setCountryChecked(false)}
+          onBlur={() => setCountryChecked(true)}
+          placeholder={t("publicRegister.countryPlaceholder")}
+          required
+          aria-invalid={countryInvalid || fields.country ? true : undefined}
+          aria-describedby={
+            countryInvalid || fields.country ? "country-error" : undefined
+          }
+          className="field mt-1.5 text-base"
+        />
+        {countryInvalid || fields.country ? (
+          <p id="country-error" role="alert" className="mt-1.5 text-xs text-revoked">
+            {countryInvalid ? t("country.invalid") : fields.country?.join(" ")}
+          </p>
+        ) : null}
+      </div>
 
       <TextField
         id="organization"
