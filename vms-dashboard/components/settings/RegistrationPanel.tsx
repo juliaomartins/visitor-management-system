@@ -39,16 +39,21 @@ export function RegistrationPanel({
   const format = useFormat();
   const enabled = settings?.public_registration_enabled ?? false;
 
+  /*
+    A STRING, NEVER AN OBJECT. React compares snapshots with Object.is, so a
+    getSnapshot that builds `{ protocol, port }` returns a "new" value on every
+    read, React treats that as a change, re-renders, reads again -- "The result
+    of getSnapshot should be cached", then "Maximum update depth exceeded", and
+    /settings never renders. Two strings compare equal; an object never does.
+  */
   const origin = useSyncExternalStore(
     subscribeNever,
-    () => ({ protocol: window.location.protocol, port: window.location.port }),
-    () => null,
-    // A new object per read would loop; the values are stable for the page.
+    () => `${window.location.protocol}//|${window.location.port}`,
+    () => "",
   );
+  const [scheme, port] = origin.split("|");
   const url =
-    lanIp && origin
-      ? `${origin.protocol}//${lanIp}${origin.port ? `:${origin.port}` : ""}/register`
-      : null;
+    lanIp && origin ? `${scheme}${lanIp}${port ? `:${port}` : ""}/register` : null;
 
   const [qr, setQr] = useState<{ url: string; svg: string } | null>(null);
   useEffect(() => {
