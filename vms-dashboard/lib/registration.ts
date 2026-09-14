@@ -38,12 +38,26 @@ export class RegistrationError extends Error {
   }
 }
 
+/**
+ * Whether the form is open.
+ *
+ * "NO ANSWER" AND "A BAD ANSWER" ARE DIFFERENT FAILURES, and the page must say
+ * different things. A fetch that throws never reached the server -- the phone is
+ * on the wrong network, and "check the Wi-Fi" is the right advice. A 404 or 500
+ * DID reach it: the phone is fine and the server is the problem (a backend not
+ * restarted after a deploy answers this route with 404). Telling a visitor to
+ * check their Wi-Fi in that case sends them the wrong way.
+ */
 export async function fetchPublicRegistrationStatus(
   signal?: AbortSignal,
 ): Promise<boolean> {
-  const { data, error } = await api.GET("/api/v1/public/registrations/status", {
-    signal,
-  });
+  let outcome;
+  try {
+    outcome = await api.GET("/api/v1/public/registrations/status", { signal });
+  } catch {
+    throw new RegistrationError("network");
+  }
+  const { data, error } = outcome;
   if (error || !data) throw new RegistrationError("server");
   return data.enabled;
 }
