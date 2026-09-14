@@ -19,9 +19,22 @@ const SESSION_HINT = "vms_session";
 const HOME = "/dashboard";
 const SIGN_IN = "/login";
 
+/**
+ * Pages anyone may open, with or without a session.
+ *
+ * `/register` is the public self-registration form. It is not merely excluded
+ * for signed-out visitors: a signed-in admin opening it on the desk laptop must
+ * see the same form, not be bounced to the dashboard.
+ */
+const PUBLIC_PAGES = ["/register"];
+
 export default function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const signedIn = request.cookies.has(SESSION_HINT);
+
+  if (PUBLIC_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`))) {
+    return NextResponse.next();
+  }
 
   if (pathname === "/") {
     return NextResponse.redirect(new URL(signedIn ? HOME : SIGN_IN, request.url));
@@ -55,7 +68,12 @@ export const config = {
       page then rendered its own logos as broken images, on the one screen that by
       definition has no session. Any static extension that can appear in `public/`
       belongs here.
+
+      `json` and `bin` are the face model's two files
+      (`public/models/blazeface/model.json` and its `.bin` weight shard). Left
+      out, the public form's face check would fetch a 307 to the sign-in page
+      instead of its weights, on the one page built for people with no session.
     */
-    "/((?!api/|media/|_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|avif|gif|ico)$).*)",
+    "/((?!api/|media/|_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|avif|gif|ico|json|bin)$).*)",
   ],
 };
