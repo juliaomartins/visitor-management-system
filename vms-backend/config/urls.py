@@ -19,6 +19,9 @@ urlpatterns = [
     path("api/v1/", include("apps.scans.urls")),
     path("api/v1/", include("apps.badges.urls")),
     path("api/v1/", include("apps.reports.urls")),
+    path("api/v1/", include("apps.registrations.urls")),
+    # Everything reachable without a token, on a router of its own.
+    path("api/v1/public/", include("apps.registrations.public_urls")),
 ]
 
 if settings.DEBUG:
