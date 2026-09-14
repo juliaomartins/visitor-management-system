@@ -15,6 +15,14 @@ class VisitorSerializer(serializers.ModelSerializer):
     working across the whole cycle.
     """
 
+    # Set by the view's queryset annotation: another live registration has the
+    # same name and country, case-insensitively. A hint for the kiosk desk, not a
+    # verdict -- two people can share a name. False wherever the row did not come
+    # through that queryset (a create or update response).
+    possible_duplicate = serializers.SerializerMethodField(
+        help_text="Another registration has the same name and country."
+    )
+
     class Meta:
         model = Visitor
         fields = [
@@ -24,6 +32,8 @@ class VisitorSerializer(serializers.ModelSerializer):
             "organization",
             "photo",
             "category",
+            "source",
+            "possible_duplicate",
             "badge_serial",
             "is_active",
             "created_at",
@@ -31,11 +41,15 @@ class VisitorSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "source",
             "badge_serial",
             "is_active",
             "created_at",
             "updated_at",
         ]
+
+    def get_possible_duplicate(self, visitor: Visitor) -> bool:
+        return bool(getattr(visitor, "possible_duplicate", False))
 
 
 class VisitorIssuedSerializer(VisitorSerializer):
