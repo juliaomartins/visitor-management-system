@@ -57,7 +57,16 @@ from widgets.log_viewer import LogViewer  # noqa: E402
 from widgets.network_card import NetworkCard  # noqa: E402
 from widgets.service_card import ServiceCard  # noqa: E402
 
-APP_NAME = "VMS Control Center"
+#: The title bar, the taskbar and the "ready" line in the log.
+#:
+#: NOT THE SETTINGS KEY. Saved theme, language and mode live under the fixed
+#: `QSettings(i18n.ORGANISATION, i18n.APPLICATION)` pair, deliberately not under
+#: this name -- so renaming the window does not quietly reset an event machine
+#: back to development mode. Change those two constants and it would.
+#:
+#: Nor the executable: `dist/VMS Control Center/VMS Control Center.exe` keeps its
+#: name, which is the `.spec` file's `app_name`.
+APP_NAME = "DRCC Control Panel"
 
 #: How long the wait cursor stays after a start is asked for.
 #:
@@ -387,7 +396,10 @@ class ControlCenter(QMainWindow):
 
         left = QVBoxLayout()
         left.setSpacing(1)
-        self._heading = QLabel("VMS CONTROL CENTER")
+        # Sentence case, not the capitals it used to be set in: the name is
+        # already the largest, boldest thing in the header, and upper-casing
+        # it as well spends a second emphasis on something that needs one.
+        self._heading = QLabel("DRCC Control Center")
         font = self._heading.font()
         font.setPointSize(17)
         font.setWeight(font.Weight.Bold)
