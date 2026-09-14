@@ -295,6 +295,79 @@ export const tet: Messages = {
   "badges.menu.exportOne": "Esporta ba Excel\u2026",
   "badges.menu.exportMany": "Esporta {count} ba Excel\u2026",
 
+  // ----------------------------------------------- visitors list: source --
+  "visitors.filterSource": "Filtra tuir s\u00e9 mak rejistu",
+  "visitors.source.all": "Hotu",
+  "visitors.source.admin": "Balkaun",
+  "visitors.source.self": "Rejistu rasik",
+  "visitors.possibleDuplicate": "Bele duplikadu",
+  "visitors.possibleDuplicateTitle":
+    "Rejistu seluk iha naran no nasaun hanesan.",
+
+  // --------------------------------------- settings: public registration --
+  "settings.registration": "Rejistu p\u00fabliku",
+  "settings.registrationNote":
+    "Permite vizitante sira rejistu an rasik husi sira-nia telem\u00f3vel iha rede eventu nian. Ida-idak rejistu kedas ho kartaun norm\u00e1l.",
+  "settings.registrationToggle": "Permite rejistu p\u00fabliku",
+  "settings.registrationOpen": "Loke",
+  "settings.registrationClosed": "Taka",
+  "settings.registrationUrl": "Link rejistu",
+  "settings.registrationUrlNote":
+    "Telem\u00f3vel tenke iha Wi-Fi eventu nian atu loke.",
+  "settings.registrationNoAddress":
+    "Seidauk hatene enderesu rede servid\u00f3r nian.",
+  "settings.registrationSaveFailed": "La bele muda. Koko fali.",
+  "settings.registrationSaveQr": "Rai k\u00f3digu QR",
+  "settings.registrationUpdated": "Muda ikus iha {time} husi {user}",
+
+  // -------------------------------------------- public registration page --
+  "publicRegister.title": "Rejistu ba eventu",
+  "publicRegister.intro":
+    "Prienxe ita-nia dadus no aumenta foto ida. Ita sei simu k\u00f3digu QR ida atu hatudu iha entrada.",
+  "publicRegister.fullName": "Naran kompletu",
+  "publicRegister.country": "Nasaun",
+  "publicRegister.countryPlaceholder": "Hah\u00fa hakerek ita-nia nasaun",
+  "publicRegister.countryInvalid": "Hili nasaun ida husi lista.",
+  "publicRegister.organization": "Organizasaun (opsion\u00e1l)",
+  "publicRegister.photo": "Ita-nia foto",
+  "publicRegister.photoHint":
+    "Hateke ba k\u00e1mara iha naroman di\u2019ak, la iha ema seluk iha imajen.",
+  "publicRegister.choosePhoto": "Foti ka hili foto",
+  "publicRegister.useCamera": "Uza k\u00e1mara",
+  "publicRegister.capture": "Foti foto",
+  "publicRegister.cancel": "Kansela",
+  "publicRegister.cameraFailed": "La bele loke k\u00e1mara.",
+  "publicRegister.changePhoto": "Muda foto",
+  "publicRegister.checkingFace": "Verifika hela foto\u2026",
+  "publicRegister.faceNone":
+    "La hetan oin. Hateke ba k\u00e1mara iha naroman di\u2019ak no koko fali.",
+  "publicRegister.faceMany":
+    "Hetan oin liu ida. Tenke ita mesak de\u2019it iha foto.",
+  "publicRegister.faceOk": "Foto di\u2019ak.",
+  "publicRegister.consent":
+    "Ita-nia foto no dadus uza ba asesu eventu nian no sei hamoos depois eventu.",
+  "publicRegister.submit": "Rejistu",
+  "publicRegister.submitting": "Rejistu hela\u2026",
+  "publicRegister.loading": "Karrega hela\u2026",
+  "publicRegister.closedTitle": "Rejistu taka ona",
+  "publicRegister.closedBody": "Fav\u00f3r ba balkaun rejistu.",
+  "publicRegister.unreachable":
+    "La bele liga ba servid\u00f3r eventu nian. Haree katak ita iha Wi-Fi eventu nian.",
+  "publicRegister.failed":
+    "Rejistu la susesu. Koko fali, ka ba balkaun rejistu.",
+  "publicRegister.tooMany":
+    "Rejistu barak liu husi koneksaun ne\u2019e. Fav\u00f3r ba balkaun rejistu.",
+  "publicRegister.tooLarge": "Foto boot liu. Hili seluk.",
+  "publicRegister.successTitle": "Ita rejistu ona",
+  "publicRegister.successShow": "Hatudu k\u00f3digu QR ne\u2019e iha entrada.",
+  "publicRegister.brightness":
+    "Hasa\u2019e naroman ekr\u00e1n nian molok eskaneia.",
+  "publicRegister.deskHelp":
+    "Se eskaneia la la\u2019o, ba balkaun no temi {serial}.",
+  "publicRegister.keepPage":
+    "Husik p\u00e1jina ne\u2019e loke to\u2019o ita tama.",
+  "publicRegister.qrAlt": "K\u00f3digu QR ba kartaun {serial}",
+
   // ------------------------------------------------------- export dialog --
   "export.titleOne": "Esporta k\u00f3digu kartaun ba vizitante {count}?",
   "export.titleMany": "Esporta k\u00f3digu kartaun ba vizitante {count}?",
