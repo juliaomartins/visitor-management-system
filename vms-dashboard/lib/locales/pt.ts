@@ -357,6 +357,8 @@ export const pt: Messages = {
   "publicRegister.closedBody": "Dirija-se ao balc\u00e3o de registo.",
   "publicRegister.unreachable":
     "N\u00e3o \u00e9 poss\u00edvel contactar o servidor do evento. Confirme que est\u00e1 no Wi-Fi do evento.",
+  "publicRegister.unavailableTitle":
+    "O registo n\u00e3o est\u00e1 dispon\u00edvel neste momento",
   "publicRegister.failed":
     "O registo falhou. Tente novamente ou dirija-se ao balc\u00e3o de registo.",
   "publicRegister.tooMany":
