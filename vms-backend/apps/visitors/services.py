@@ -128,7 +128,9 @@ def register_visitor(validated_data: dict, *, actor=None) -> tuple[Visitor, str]
     with transaction.atomic():
         visitor.save()
 
-    log_visitor_action(actor, "create", visitor, category=visitor.category)
+    log_visitor_action(
+        actor, "create", visitor, category=visitor.category, source=visitor.source
+    )
     return visitor, raw_token
 
 
