@@ -8,6 +8,8 @@ The list is unpaginated on purpose: the event is ~250 visitors on a LAN, and the
 dashboard filters a single fetched collection far more smoothly than it pages.
 """
 
+from django.db.models import Exists, OuterRef
+from django.db.models.functions import Lower
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import filters, status, viewsets
@@ -18,7 +20,7 @@ from rest_framework.response import Response
 from apps.common.permissions import IsAdmin
 
 from . import services
-from .models import Visitor, VisitorCategory
+from .models import Visitor, VisitorCategory, VisitorSource
 from .serializers import (
     VisitorDetailSerializer,
     VisitorIssuedSerializer,
@@ -53,6 +55,15 @@ FALSE_VALUES = {"0", "false", "no", "off"}
                 "country",
                 OpenApiTypes.STR,
                 description="Exact country match, case-insensitive.",
+            ),
+            OpenApiParameter(
+                "source",
+                OpenApiTypes.STR,
+                description=(
+                    "Who created the registration: `admin` at the desk, or `self` "
+                    "through the public form."
+                ),
+                enum=[s.value for s in VisitorSource],
             ),
             OpenApiParameter(
                 "with_tokens",
@@ -101,6 +112,22 @@ class VisitorViewSet(viewsets.ModelViewSet):
         # Soft-deleted registrations are invisible everywhere in the API.
         queryset = Visitor.objects.filter(deleted_at__isnull=True)
 
+        # `possible_duplicate`: another live registration with the same name and
+        # country, case-insensitively. Self-registration has no approval step,
+        # so the same person submitting twice is the kiosk desk's to clean up,
+        # and this is how the list points at it. An EXISTS per row over ~250
+        # visitors; no index needed at this size.
+        twins = (
+            Visitor.objects.filter(deleted_at__isnull=True)
+            .exclude(pk=OuterRef("pk"))
+            .annotate(name_key=Lower("full_name"), country_key=Lower("country"))
+            .filter(
+                name_key=Lower(OuterRef("full_name")),
+                country_key=Lower(OuterRef("country")),
+            )
+        )
+        queryset = queryset.annotate(possible_duplicate=Exists(twins))
+
         if self.action == "retrieve":
             # ...__device because ScanEventSerializer renders the device name;
             # without it the detail page costs one query per scan.
@@ -115,6 +142,10 @@ class VisitorViewSet(viewsets.ModelViewSet):
         country = params.get("country")
         if country:
             queryset = queryset.filter(country__iexact=country)
+
+        source = params.get("source")
+        if source:
+            queryset = queryset.filter(source=source)
 
         is_active = (params.get("is_active") or "").lower()
         if is_active in TRUE_VALUES:
