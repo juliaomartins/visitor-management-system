@@ -329,7 +329,9 @@ export const tet: Messages = {
   "publicRegister.fullName": "Naran kompletu",
   "publicRegister.country": "Nasaun",
   "publicRegister.countryPlaceholder": "Hah\u00fa hakerek ita-nia nasaun",
-  "publicRegister.countryInvalid": "Hili nasaun ida husi lista.",
+  "country.listLabel": "Nasaun sira",
+  "country.noMatch": "La iha nasaun ne'eb\u00e9 hanesan \u201c{text}\u201d",
+  "country.invalid": "Hili ita-nia nasaun husi lista.",
   "publicRegister.organization": "Organizasaun (opsion\u00e1l)",
   "publicRegister.photo": "Ita-nia foto",
   "publicRegister.photoHint":
@@ -340,6 +342,11 @@ export const tet: Messages = {
   "publicRegister.cancel": "Kansela",
   "publicRegister.cameraFailed": "La bele loke k\u00e1mara.",
   "publicRegister.changePhoto": "Muda foto",
+  "publicRegister.reviewPhoto": "Tesi ita-nia foto",
+  "publicRegister.usePhoto": "Uza foto ida-ne\u2019e",
+  "publicRegister.retakePhoto": "Foti foto fali",
+  "publicRegister.cropTooSmall":
+    "Ki\u2019ik liu atu imprime. Dada kantu sira ba li\u2019ur.",
   "publicRegister.checkingFace": "Verifika hela foto\u2026",
   "publicRegister.faceNone":
     "La hetan oin. Hateke ba k\u00e1mara iha naroman di\u2019ak no koko fali.",
