@@ -20,6 +20,9 @@ export const tet: Messages = {
   "pair.codeLabel": "K\u00f3digu pareia ho karakter neen",
   "pair.pairing": "Pareia hela\u2026",
   "pair.submit": "Pareia ekr\u00e1n",
+  "pair.nameLabel": "Naran ekr\u00e1n",
+  "pair.nameHint":
+    "Sujere husi browser ne\u2019e. Troka ba fatin ne\u2019eb\u00e9 ekr\u00e1n hamriik, ez. Entrada prinsip\u00e1l \u2014 ne\u2019e naran iha lista dispozitivu no rejistu servid\u00f3r.",
   "pair.finding": "Buka servid\u00f3r hela\u2026",
   "pair.noServer": "La hetan servid\u00f3r",
   "pair.unreachable":
