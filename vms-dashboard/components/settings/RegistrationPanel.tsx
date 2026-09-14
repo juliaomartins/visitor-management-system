@@ -110,16 +110,29 @@ export function RegistrationPanel({
               }`}
             />
           </button>
-          {/* The state in words as well as position and colour. */}
-          <span
-            className={`pill-status ${enabled ? "bg-valid-soft text-valid" : "bg-card-2 text-ink-2"}`}
-          >
-            {enabled ? t("settings.registrationOpen") : t("settings.registrationClosed")}
-          </span>
+          {/* The state in words as well as position and colour. Unknown until the
+              server answers: a default "Closed" would state a fact nobody read. */}
+          {settings ? (
+            <span
+              className={`pill-status ${enabled ? "bg-valid-soft text-valid" : "bg-card-2 text-ink-2"}`}
+            >
+              {enabled ? t("settings.registrationOpen") : t("settings.registrationClosed")}
+            </span>
+          ) : null}
         </label>
       </div>
 
-      {saveFailed || loadFailed ? (
+      {/* A failed LOAD is not a failed save. A backend still running the code from
+          before this feature answers the route with 404, and "could not be changed,
+          try again" sent the admin to press a switch that could never work. */}
+      {loadFailed && !settings ? (
+        <p
+          role="alert"
+          className="mx-5 mt-3 rounded-lg bg-revoked-soft px-4 py-2.5 text-sm text-revoked"
+        >
+          {t("settings.registrationLoadFailed")}
+        </p>
+      ) : saveFailed ? (
         <p
           role="alert"
           className="mx-5 mt-3 rounded-lg bg-revoked-soft px-4 py-2.5 text-sm text-revoked"
