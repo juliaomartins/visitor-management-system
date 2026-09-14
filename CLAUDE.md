@@ -13,7 +13,8 @@ lobby screen shows welcome with photo, name, country.
 
 This is NOT an office visitor system. There are no appointments, no hosts, no approval
 workflow, no check-out. Badges are printed in advance and stay valid for the event. A
-scan is simply an arrival event.
+scan is simply an arrival event. Visitors can also register themselves from a phone at
+`/register` — with no approval step either; see **PUBLIC SELF-REGISTRATION**.
 
 ---
 
@@ -392,6 +393,7 @@ class Visitor(BaseModel):
     badge_serial  = CharField(max_length=20, unique=True)   # human-readable, printed
     token_hash    = CharField(max_length=64, unique=True, db_index=True)
     token_version = PositiveIntegerField(default=1)         # only rotation bumps it
+    source        = CharField(choices=[("admin","Admin"), ("self","Self")])  # who created it
     is_active     = BooleanField(default=True)              # deactivate / activate
     deleted_at    = DateTimeField(null=True, db_index=True) # soft delete
 
@@ -453,7 +455,7 @@ POST   /api/v1/auth/token/blacklist
 GET    /api/v1/health                        LAN address + liveness
 
 GET    /api/v1/visitors                      list/filter/search    [admin]
-       ?category= &is_active= &country= &search= &ordering=
+       ?category= &is_active= &country= &source= &search= &ordering=
        ?with_tokens=true                     adds `badge_token` to every row
 POST   /api/v1/visitors                      register              [admin]
 GET    /api/v1/visitors/{id}                 detail + scans + token[admin]
@@ -473,6 +475,11 @@ POST   /api/v1/devices/pairing-code          generate setup code   [admin]
 GET    /api/v1/devices                       list paired devices   [admin]
 POST   /api/v1/devices/{id}/revoke           kill a lost phone     [admin]
 POST   /api/v1/devices/pair                  redeem setup code     [public, throttled]
+
+POST   /api/v1/public/registrations          register yourself     [public, throttled, switch]
+GET    /api/v1/public/registrations/status   is the form open?     [public, throttled]
+GET    /api/v1/registration-settings         read the switch       [admin]
+PATCH  /api/v1/registration-settings         open or close it      [admin]
 
 POST   /api/v1/scans                         guard scans a badge   [scanner device]
 GET    /api/v1/screen/feed?since={id}        reconnect backfill    [screen device]
@@ -645,7 +652,8 @@ destroy 250 working badges, on the strength of a sentence nobody revisited after
 tokens became derived. All four now agree, and the tab keeps the warning that IS
 true — anyone holding the file can produce a badge that scans.
 
-Only `/devices/pair` is reachable without a token.
+Only `/devices/pair` and the two `/public/registrations` routes are reachable without a
+token — see **PUBLIC SELF-REGISTRATION**.
 
 ---
 
@@ -789,10 +797,13 @@ app/(dashboard)/visitors/[id]/edit
 app/(dashboard)/badges             print queue, nine to a sheet, real QR on every card
 app/(dashboard)/devices            pairing codes + paired device list
 app/(dashboard)/reports            entrance log + CSV/XLSX/PDF export
-app/(dashboard)/settings           server address + clock check, theme, language
+app/(dashboard)/settings           server address + clock check, registration switch, theme, language
+app/(public)/register              public self-registration form — no session, always light
 ```
 
-**`/settings` is deliberately two panels and no more.** Server and connection
+**`/settings` is deliberately three panels and no more** — the third, the public
+registration switch, is event-wide state with a database row behind it, which is what the
+"no preferences model" argument below does not cover. Server and connection
 reads `GET /api/v1/health` — the address every phone and screen must be pointed
 at, which CLAUDE.md notes is the most-asked question at the event and today
 requires running `ipconfig` on the server itself. It also reports the gap
@@ -1107,6 +1118,65 @@ viewer may read it again to print.
 
 For the CR80 printer: leave **Scale** on *Default* in the print dialog. The page
 is already 54 × 85.6 mm, and *Fit to page* lets the driver resize it.
+
+**PUBLIC SELF-REGISTRATION.** A visitor opens `/register` on a phone on the event
+Wi-Fi, fills in name, country, organisation and a photo, and is registered at once —
+no approval, `category=normal`, `source=self`. They get a QR on screen; anything that
+goes wrong at the door is handled at the kiosk desk. VIP is set by an admin afterwards.
+
+- **Isolated backend.** `apps.registrations` — its own create-only viewset, its own
+  router at `/api/v1/public/`, a plain `Serializer` declaring exactly four writable
+  fields. The response is `full_name`, `badge_serial`, `badge_token`: no id, no hash,
+  no photo URL. Creation calls the same `visitors.services.register_visitor` as the
+  desk. **No PDF is rendered at creation**, and the desk path never rendered one
+  either — cards are drawn on demand.
+- **The switch is a database row, enforced by the endpoint.** `RegistrationSettings`
+  is a singleton (pk pinned to 1 by a check constraint), **closed by default**. The
+  `RegistrationOpen` permission answers 403 whatever the client does. The `/settings`
+  panel flips it optimistically and builds the public link from `GET /health`'s
+  `lan_ip` plus this tab's port — never `localhost`, never `.env`.
+- **Throttles: 10/hour per client address, 200/hour in total, every POST counted.**
+  Keyed on `REMOTE_ADDR` only, never Django-side `X-Forwarded-For`. **The per-address
+  limit is forgeable through the dashboard, and the global cap is the real guard.**
+  Next's `base-server.js` sets `x-forwarded-for` with `??=` — a value the client sent
+  survives — its rewrite proxy adds only `x-forwarded-host`, and uvicorn trusts
+  forwarded headers from 127.0.0.1, which is where the rewrite comes from. Check at
+  the dress rehearsal whether phones reach the server with distinct addresses.
+- **Photos are re-encoded, never stored as sent** (`photos.py`): ≤5 MB, JPEG/PNG/WebP
+  by the file's own bytes, ≤8000 px a side and ≤40 MP read from the header *before*
+  decoding, one frame, ≥225 px a side; out comes a JPEG q88, long side ≤1200, no EXIF,
+  no ICC, a server-chosen filename. Bodies over the limit get 413 before parsing.
+  Names beginning `= + - @` are refused (spreadsheet formulas).
+- **The QR on a phone relaxes constraint 3, as an accepted risk.** A screenshot can be
+  forwarded. With no approval step the recipient gains nothing they could not get by
+  registering themselves; the guard's phone and the lobby screen both show the
+  registrant's photo; and a printed card can be photocopied too. There is no device
+  binding — it would break re-entry through another door.
+- **Making a self-registered visitor VIP changes no token.** The token is
+  `hmac(id:token_version)`; category is not in it. Scanner and lobby read category at
+  scan time, and a card printed afterwards gets the amber ring with the same QR.
+- **Duplicates are flagged, never answered.** `possible_duplicate` (same name and
+  country, case-insensitive) is annotated on the admin list with a pill and a
+  `?source=` filter. The public endpoint must never reply "already registered" with an
+  existing QR — that would hand any named visitor's badge to whoever typed the name.
+- **Face check: blazeface, offline, guidance only.** tfjs-core/converter/webgl (cpu
+  fallback) and `@tensorflow-models/blazeface` are bundled and lazy-loaded when a photo
+  is chosen; the weights are committed at `public/models/blazeface/`
+  (`model.json` + one 402 KB shard, downloaded once from tfhub). **`proxy.ts` excludes
+  `json` and `bin`**, or the model fetch is 307'd to sign-in. A face counts at
+  probability ≥ 0.90 **and** a box ≥ 12% of the image width, so a stranger in the
+  background does not reject a good selfie. If the model cannot run, the photo is not
+  blocked — the API never trusted the check anyway.
+- **The live camera preview only exists in a secure context** — localhost, never
+  `http://<lan-ip>` (see the scanner-on-web section). The real path is the file input
+  with `capture="user"`, then the desk's own `PhotoCropper`, whose 600 px output is the
+  client-side downscale.
+- **The page is always light** (`.public-light` pins the light tokens on its wrapper,
+  never the `dark` class on `<html>`): a dark page lowers screen brightness and the
+  guard's camera exposes for the whole screen. **The pass lives in `sessionStorage`**
+  for this tab, so a reload does not cost the QR; it is the visitor's own credential
+  on their own phone and dies with the tab. Countries are an English list
+  (`lib/countries.ts`) so the reports do not split one delegation three ways.
 
 **The dashboard proxies `/api` and `/media` to the backend** via rewrites in
 `next.config.ts`, so every browser request is same-origin: no preflight on the
