@@ -296,6 +296,83 @@ export const pt: Messages = {
   "badges.menu.exportOne": "Exportar para Excel\u2026",
   "badges.menu.exportMany": "Exportar {count} para Excel\u2026",
 
+  // ----------------------------------------------- visitors list: source --
+  "visitors.filterSource": "Filtrar por quem registou",
+  "visitors.source.all": "Todos",
+  "visitors.source.admin": "Balc\u00e3o",
+  "visitors.source.self": "Autorregisto",
+  "visitors.possibleDuplicate": "Poss\u00edvel duplicado",
+  "visitors.possibleDuplicateTitle":
+    "Outro registo tem o mesmo nome e pa\u00eds.",
+
+  // --------------------------------------- settings: public registration --
+  "settings.registration": "Registo p\u00fablico",
+  "settings.registrationNote":
+    "Permite que os visitantes se registem pelo telem\u00f3vel na rede do evento. Cada um fica registado de imediato com um crach\u00e1 normal.",
+  "settings.registrationToggle": "Permitir registo p\u00fablico",
+  "settings.registrationOpen": "Aberto",
+  "settings.registrationClosed": "Fechado",
+  "settings.registrationUrl": "Liga\u00e7\u00e3o de registo",
+  "settings.registrationUrlNote":
+    "Os telem\u00f3veis t\u00eam de estar no Wi-Fi do evento para a abrir.",
+  "settings.registrationNoAddress":
+    "O endere\u00e7o de rede do servidor ainda n\u00e3o \u00e9 conhecido.",
+  "settings.registrationSaveFailed":
+    "N\u00e3o foi poss\u00edvel alterar o interruptor. Tente novamente.",
+  "settings.registrationSaveQr": "Guardar c\u00f3digo QR",
+  "settings.registrationUpdated":
+    "Alterado pela \u00faltima vez {time} por {user}",
+
+  // -------------------------------------------- public registration page --
+  "publicRegister.title": "Registo no evento",
+  "publicRegister.intro":
+    "Preencha os seus dados e adicione uma fotografia. Recebe um c\u00f3digo QR para mostrar \u00e0 entrada.",
+  "publicRegister.fullName": "Nome completo",
+  "publicRegister.country": "Pa\u00eds",
+  "publicRegister.countryPlaceholder": "Comece a escrever o seu pa\u00eds",
+  "publicRegister.countryInvalid": "Escolha um pa\u00eds da lista.",
+  "publicRegister.organization": "Organiza\u00e7\u00e3o (opcional)",
+  "publicRegister.photo": "A sua fotografia",
+  "publicRegister.photoHint":
+    "Olhe para a c\u00e2mara com boa luz, sem mais ningu\u00e9m na imagem.",
+  "publicRegister.choosePhoto": "Tirar ou escolher fotografia",
+  "publicRegister.useCamera": "Usar a c\u00e2mara",
+  "publicRegister.capture": "Tirar fotografia",
+  "publicRegister.cancel": "Cancelar",
+  "publicRegister.cameraFailed":
+    "N\u00e3o foi poss\u00edvel abrir a c\u00e2mara.",
+  "publicRegister.changePhoto": "Mudar fotografia",
+  "publicRegister.checkingFace": "A verificar a fotografia\u2026",
+  "publicRegister.faceNone":
+    "Nenhum rosto encontrado. Olhe para a c\u00e2mara com boa luz e tente novamente.",
+  "publicRegister.faceMany":
+    "Foi encontrado mais de um rosto. S\u00f3 deve estar voc\u00ea na fotografia.",
+  "publicRegister.faceOk": "A fotografia est\u00e1 boa.",
+  "publicRegister.consent":
+    "A sua fotografia e os seus dados s\u00e3o usados para o acesso ao evento e apagados depois do evento.",
+  "publicRegister.submit": "Registar",
+  "publicRegister.submitting": "A registar\u2026",
+  "publicRegister.loading": "A carregar\u2026",
+  "publicRegister.closedTitle": "O registo est\u00e1 fechado",
+  "publicRegister.closedBody": "Dirija-se ao balc\u00e3o de registo.",
+  "publicRegister.unreachable":
+    "N\u00e3o \u00e9 poss\u00edvel contactar o servidor do evento. Confirme que est\u00e1 no Wi-Fi do evento.",
+  "publicRegister.failed":
+    "O registo falhou. Tente novamente ou dirija-se ao balc\u00e3o de registo.",
+  "publicRegister.tooMany":
+    "Demasiados registos a partir desta liga\u00e7\u00e3o. Dirija-se ao balc\u00e3o de registo.",
+  "publicRegister.tooLarge":
+    "A fotografia \u00e9 demasiado grande. Escolha outra.",
+  "publicRegister.successTitle": "Est\u00e1 registado",
+  "publicRegister.successShow": "Mostre este c\u00f3digo QR \u00e0 entrada.",
+  "publicRegister.brightness":
+    "Aumente o brilho do ecr\u00e3 antes de ler o c\u00f3digo.",
+  "publicRegister.deskHelp":
+    "Se a leitura falhar, dirija-se ao balc\u00e3o e indique {serial}.",
+  "publicRegister.keepPage":
+    "Mantenha esta p\u00e1gina aberta at\u00e9 entrar.",
+  "publicRegister.qrAlt": "C\u00f3digo QR do crach\u00e1 {serial}",
+
   // ------------------------------------------------------- export dialog --
   "export.titleOne":
     "Exportar c\u00f3digos de crach\u00e1 de {count} visitante?",
