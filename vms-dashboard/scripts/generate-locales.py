@@ -745,6 +745,12 @@ M = [
      "do evento.",
      "La bele liga ba servidór eventu nian. Haree katak ita iha Wi-Fi eventu "
      "nian."),
+    # The server answered, but not with the form's status -- a 404 from a
+    # backend not yet restarted, or a 500. Not the visitor's Wi-Fi.
+    ("publicRegister.unavailableTitle",
+     "Registration is not available right now",
+     "O registo não está disponível neste momento",
+     "Rejistu la disponível agora"),
     ("publicRegister.failed",
      "Registration failed. Try again, or go to the registration desk.",
      "O registo falhou. Tente novamente ou dirija-se ao balcão de registo.",
