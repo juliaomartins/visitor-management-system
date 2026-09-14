@@ -319,6 +319,8 @@ export const pt: Messages = {
     "O endere\u00e7o de rede do servidor ainda n\u00e3o \u00e9 conhecido.",
   "settings.registrationSaveFailed":
     "N\u00e3o foi poss\u00edvel alterar o interruptor. Tente novamente.",
+  "settings.registrationLoadFailed":
+    "O servidor n\u00e3o respondeu a esta defini\u00e7\u00e3o. Se foi atualizado agora, tem de ser reiniciado.",
   "settings.registrationSaveQr": "Guardar c\u00f3digo QR",
   "settings.registrationUpdated":
     "Alterado pela \u00faltima vez {time} por {user}",
