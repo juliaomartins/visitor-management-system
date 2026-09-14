@@ -10,6 +10,13 @@ class VisitorCategory(models.TextChoices):
     VIP = "vip", "VIP"
 
 
+class VisitorSource(models.TextChoices):
+    """Who created the registration. Existing rows are all admin-made."""
+
+    ADMIN = "admin", "Registered at the desk"
+    SELF = "self", "Self-registered"
+
+
 class Visitor(BaseModel):
     full_name = models.CharField(max_length=200)
     country = models.CharField(max_length=100)
@@ -19,6 +26,15 @@ class Visitor(BaseModel):
         max_length=10,
         choices=VisitorCategory.choices,
         default=VisitorCategory.NORMAL,
+    )
+    # Self-registrations are created from a public form with no approval step,
+    # so the dashboard needs to be able to find them -- to filter the list, and
+    # to put a likely duplicate in front of the kiosk desk.
+    source = models.CharField(
+        max_length=10,
+        choices=VisitorSource.choices,
+        default=VisitorSource.ADMIN,
+        db_index=True,
     )
     # Human-readable and printed on the card, so staff can talk about a badge.
     badge_serial = models.CharField(max_length=20, unique=True)
