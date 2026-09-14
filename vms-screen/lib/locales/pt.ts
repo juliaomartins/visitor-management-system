@@ -18,6 +18,9 @@ export const pt: Messages = {
   "pair.codeLabel": "C\u00f3digo de emparelhamento de seis caracteres",
   "pair.pairing": "A emparelhar\u2026",
   "pair.submit": "Emparelhar ecr\u00e3",
+  "pair.nameLabel": "Nome do ecr\u00e3",
+  "pair.nameHint":
+    "Sugerido a partir deste navegador. Altere para o local onde o ecr\u00e3 est\u00e1, p. ex. Entrada principal \u2014 \u00e9 o nome na lista de dispositivos e no registo do servidor.",
   "pair.finding": "A procurar o servidor\u2026",
   "pair.noServer": "Nenhum servidor encontrado",
   "pair.unreachable":
