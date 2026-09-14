@@ -290,6 +290,79 @@ export const en = {
   "badges.menu.exportOne": "Export to Excel\u2026",
   "badges.menu.exportMany": "Export {count} to Excel\u2026",
 
+  // ----------------------------------------------- visitors list: source --
+  "visitors.filterSource": "Filter by who registered",
+  "visitors.source.all": "Everyone",
+  "visitors.source.admin": "Desk",
+  "visitors.source.self": "Self-registered",
+  "visitors.possibleDuplicate": "Possible duplicate",
+  "visitors.possibleDuplicateTitle":
+    "Another registration has the same name and country.",
+
+  // --------------------------------------- settings: public registration --
+  "settings.registration": "Public registration",
+  "settings.registrationNote":
+    "Lets visitors register themselves from their phone on the event network. Each one is registered immediately with a normal badge.",
+  "settings.registrationToggle": "Allow public registration",
+  "settings.registrationOpen": "Open",
+  "settings.registrationClosed": "Closed",
+  "settings.registrationUrl": "Registration link",
+  "settings.registrationUrlNote":
+    "Phones must be on the event Wi-Fi to open it.",
+  "settings.registrationNoAddress":
+    "The server's network address is not known yet.",
+  "settings.registrationSaveFailed":
+    "The switch could not be changed. Try again.",
+  "settings.registrationSaveQr": "Save QR code",
+  "settings.registrationUpdated": "Last changed {time} by {user}",
+
+  // -------------------------------------------- public registration page --
+  "publicRegister.title": "Register for the event",
+  "publicRegister.intro":
+    "Fill in your details and add a photo. You will get a QR code to show at the entrance.",
+  "publicRegister.fullName": "Full name",
+  "publicRegister.country": "Country",
+  "publicRegister.countryPlaceholder": "Start typing your country",
+  "publicRegister.countryInvalid": "Choose a country from the list.",
+  "publicRegister.organization": "Organization (optional)",
+  "publicRegister.photo": "Your photo",
+  "publicRegister.photoHint":
+    "Face the camera in good light, with nobody else in the picture.",
+  "publicRegister.choosePhoto": "Take or choose a photo",
+  "publicRegister.useCamera": "Use the camera",
+  "publicRegister.capture": "Take photo",
+  "publicRegister.cancel": "Cancel",
+  "publicRegister.cameraFailed": "The camera could not be opened.",
+  "publicRegister.changePhoto": "Change photo",
+  "publicRegister.checkingFace": "Checking the photo\u2026",
+  "publicRegister.faceNone":
+    "No face found. Face the camera in good light and try again.",
+  "publicRegister.faceMany":
+    "More than one face found. Only you should be in the photo.",
+  "publicRegister.faceOk": "Photo looks good.",
+  "publicRegister.consent":
+    "Your photo and details are used for event access and deleted after the event.",
+  "publicRegister.submit": "Register",
+  "publicRegister.submitting": "Registering\u2026",
+  "publicRegister.loading": "Loading\u2026",
+  "publicRegister.closedTitle": "Registration is closed",
+  "publicRegister.closedBody": "Please go to the registration desk.",
+  "publicRegister.unreachable":
+    "The event server cannot be reached. Check that you are on the event Wi-Fi.",
+  "publicRegister.failed":
+    "Registration failed. Try again, or go to the registration desk.",
+  "publicRegister.tooMany":
+    "Too many registrations from this connection. Please go to the registration desk.",
+  "publicRegister.tooLarge": "The photo is too large. Choose another one.",
+  "publicRegister.successTitle": "You are registered",
+  "publicRegister.successShow": "Show this QR code at the entrance.",
+  "publicRegister.brightness":
+    "Turn your screen brightness up before you scan.",
+  "publicRegister.deskHelp":
+    "If the scan fails, go to the kiosk desk and quote {serial}.",
+  "publicRegister.keepPage": "Keep this page open until you are inside.",
+  "publicRegister.qrAlt": "QR code for badge {serial}",
+
   // ------------------------------------------------------- export dialog --
   "export.titleOne": "Export badge codes for {count} visitor?",
   "export.titleMany": "Export badge codes for {count} visitors?",
