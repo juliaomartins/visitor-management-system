@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "apps.devices",
     "apps.scans",
     "apps.reports",
+    "apps.registrations",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -191,6 +192,11 @@ REST_FRAMEWORK = {
         # at the event shares the router's address, so this budget is shared —
         # which is why it counts only failures and why it is not 5.
         "pairing": "20/hour",
+        # Public self-registration. Every POST counts, per client address and in
+        # total -- see apps/registrations/throttling.py for why there are two.
+        "public_registration": "10/hour",
+        "public_registration_global": "200/hour",
+        "public_status": "60/min",
     },
 }
 
