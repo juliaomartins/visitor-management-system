@@ -287,6 +287,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register yourself as a visitor
+         * @description Public, unauthenticated. Creates a visitor with category `normal` and issues their badge. Returns only what a success screen needs to draw the QR. 403 while registration is closed; 413 above the upload limit; 429 when rate-limited.
+         */
+        post: operations["public_registrations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/registrations/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Is public registration open?
+         * @description Whether the form should render at all.
+         */
+        get: operations["public_registrations_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/registration-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the public registration switch
+         * @description The admin switch. Admin-only, on the admin router, never under /public.
+         */
+        get: operations["registration_settings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Open or close public registration
+         * @description The admin switch. Admin-only, on the admin router, never under /public.
+         */
+        patch: operations["registration_settings_partial_update"];
+        trace?: never;
+    };
     "/api/v1/reports/entries": {
         parameters: {
             query?: never;
@@ -722,6 +786,10 @@ export interface components {
         PairingCodeRequest: {
             kind: components["schemas"]["KindEnum"];
         };
+        /** @description The admin's view of the switch. */
+        PatchedRegistrationSettingsRequest: {
+            public_registration_enabled?: boolean;
+        };
         /**
          * @description `token_hash` is deliberately absent — it never leaves the database.
          *
@@ -739,6 +807,35 @@ export interface components {
             photo?: string;
             category?: components["schemas"]["CategoryEnum"];
         };
+        /** @description `POST /public/registrations`, multipart. Exactly these four fields. */
+        PublicRegistrationRequest: {
+            full_name: string;
+            country: string;
+            /** @default  */
+            organization: string;
+            /**
+             * Format: binary
+             * @description JPEG, PNG or WebP, at most 5 MB. Re-encoded by the server.
+             */
+            photo: string;
+        };
+        /**
+         * @description Only what the success screen draws.
+         *
+         *     `badge_token` is the QR payload -- a working credential, returned to the
+         *     person it was just issued to and to nobody else. No id, no token hash, no
+         *     photo URL: nothing here lets a caller find or fetch any other visitor.
+         */
+        PublicRegistrationResult: {
+            full_name: string;
+            /** @description Printed on the card; quoted at the kiosk desk if a scan fails. */
+            badge_serial: string;
+            /** @description Raw badge token for the QR code. Returned once, never again. */
+            badge_token: string;
+        };
+        PublicRegistrationStatus: {
+            enabled: boolean;
+        };
         /**
          * @description Body for refresh/blacklist.
          *
@@ -747,6 +844,14 @@ export interface components {
          */
         RefreshTokenRequest: {
             refresh?: string;
+        };
+        /** @description The admin's view of the switch. */
+        RegistrationSettings: {
+            public_registration_enabled?: boolean;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
+            readonly updated_by: string | null;
         };
         ReissueResponse: {
             readonly issued: components["schemas"]["ReissuedBadge"][];
@@ -913,6 +1018,12 @@ export interface components {
             readonly events: components["schemas"]["ScreenEvent"][];
             readonly last_id: number;
         };
+        /**
+         * @description * `admin` - Registered at the desk
+         *     * `self` - Self-registered
+         * @enum {string}
+         */
+        SourceEnum: "admin" | "self";
         /** @description Admin account, as the dashboard sees it. Never exposes the password hash. */
         User: {
             readonly id: number;
@@ -960,6 +1071,9 @@ export interface components {
             /** Format: uri */
             photo: string;
             category?: components["schemas"]["CategoryEnum"];
+            readonly source: components["schemas"]["SourceEnum"];
+            /** @description Another registration has the same name and country. */
+            readonly possible_duplicate: boolean;
             readonly badge_serial: string;
             readonly is_active: boolean;
             /** Format: date-time */
@@ -977,6 +1091,9 @@ export interface components {
             /** Format: uri */
             photo: string;
             category?: components["schemas"]["CategoryEnum"];
+            readonly source: components["schemas"]["SourceEnum"];
+            /** @description Another registration has the same name and country. */
+            readonly possible_duplicate: boolean;
             readonly badge_serial: string;
             readonly is_active: boolean;
             /** Format: date-time */
@@ -1002,6 +1119,9 @@ export interface components {
             /** Format: uri */
             photo: string;
             category?: components["schemas"]["CategoryEnum"];
+            readonly source: components["schemas"]["SourceEnum"];
+            /** @description Another registration has the same name and country. */
+            readonly possible_duplicate: boolean;
             readonly badge_serial: string;
             readonly is_active: boolean;
             /** Format: date-time */
@@ -1044,6 +1164,9 @@ export interface components {
             /** Format: uri */
             photo: string;
             category?: components["schemas"]["CategoryEnum"];
+            readonly source: components["schemas"]["SourceEnum"];
+            /** @description Another registration has the same name and country. */
+            readonly possible_duplicate: boolean;
             readonly badge_serial: string;
             readonly is_active: boolean;
             /** Format: date-time */
@@ -1389,6 +1512,120 @@ export interface operations {
             };
         };
     };
+    public_registrations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["PublicRegistrationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicRegistrationResult"];
+                };
+            };
+            /** @description A field failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Registration is closed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The upload is too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many registrations. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    public_registrations_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicRegistrationStatus"];
+                };
+            };
+        };
+    };
+    registration_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationSettings"];
+                };
+            };
+        };
+    };
+    registration_settings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRegistrationSettingsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRegistrationSettingsRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRegistrationSettingsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationSettings"];
+                };
+            };
+        };
+    };
     reports_entries_retrieve: {
         parameters: {
             query?: {
@@ -1572,6 +1809,8 @@ export interface operations {
                 ordering?: string;
                 /** @description A search term. */
                 search?: string;
+                /** @description Who created the registration: `admin` at the desk, or `self` through the public form. */
+                source?: "admin" | "self";
                 /** @description Include `badge_token` on every row. Off by default. Each token is a working credential, so this turns one request into a set of usable badges -- ask for it only where the codes are the point, such as a print queue that draws the real QR. The same codes are already in the .xlsx export. */
                 with_tokens?: boolean;
             };
