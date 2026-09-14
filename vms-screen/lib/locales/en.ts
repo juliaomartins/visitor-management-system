@@ -25,6 +25,9 @@ export const en = {
   "pair.codeLabel": "Six character pairing code",
   "pair.pairing": "Pairing\u2026",
   "pair.submit": "Pair display",
+  "pair.nameLabel": "Display name",
+  "pair.nameHint":
+    "Suggested from this browser. Change it to where the display stands, e.g. Main entrance \u2014 this is its name in the device list and the server log.",
   "pair.finding": "Finding the server\u2026",
   "pair.noServer": "No server found",
   "pair.unreachable":
