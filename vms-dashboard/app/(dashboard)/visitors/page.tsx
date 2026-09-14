@@ -33,6 +33,7 @@ import {
 } from "@/lib/visitors";
 
 type CategoryFilter = VisitorCategory | "all";
+type SourceFilter = Visitor["source"] | "all";
 
 /* Keys, not words: this is a module constant built before any translator
    exists. Same reason the nav rail holds keys -- see components/sidebar.tsx. */
@@ -40,6 +41,14 @@ const CATEGORY_TABS: { value: CategoryFilter; labelKey: MessageKey }[] = [
   { value: "all", labelKey: "visitors.tab.all" },
   { value: "normal", labelKey: "visitors.tab.normal" },
   { value: "vip", labelKey: "visitors.tab.vip" },
+];
+
+/* Who created the registration: the desk, or the public form. Self-registration
+   has no approval step, so this is how the kiosk desk finds what came in. */
+const SOURCE_TABS: { value: SourceFilter; labelKey: MessageKey }[] = [
+  { value: "all", labelKey: "visitors.source.all" },
+  { value: "admin", labelKey: "visitors.source.admin" },
+  { value: "self", labelKey: "visitors.source.self" },
 ];
 
 /** Long enough to finish typing a surname, short enough to feel immediate. */
@@ -62,6 +71,7 @@ export default function VisitorsPage() {
   const errorText = useErrorText();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
+  const [source, setSource] = useState<SourceFilter>("all");
   const debouncedSearch = useDebounced(search.trim(), SEARCH_DEBOUNCE_MS);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
@@ -116,8 +126,9 @@ export default function VisitorsPage() {
     () => ({
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(category === "all" ? {} : { category }),
+      ...(source === "all" ? {} : { source }),
     }),
-    [debouncedSearch, category],
+    [debouncedSearch, category, source],
   );
 
   const { data, isPending, isError, error, isFetching } = useQuery({
@@ -139,7 +150,8 @@ export default function VisitorsPage() {
   });
 
   const visitors = data ?? [];
-  const filtered = Boolean(debouncedSearch) || category !== "all";
+  const filtered =
+    Boolean(debouncedSearch) || category !== "all" || source !== "all";
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -202,6 +214,28 @@ export default function VisitorsPage() {
               onClick={() => setCategory(tab.value)}
               className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
                 category === tab.value
+                  ? "bg-card font-medium text-ink shadow-sm"
+                  : "text-ink-2 hover:text-ink"
+              }`}
+            >
+              {t(tab.labelKey)}
+            </button>
+          ))}
+        </div>
+
+        <div
+          role="group"
+          aria-label={t("visitors.filterSource")}
+          className="flex rounded-lg bg-card-2 p-1"
+        >
+          {SOURCE_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              aria-pressed={source === tab.value}
+              onClick={() => setSource(tab.value)}
+              className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                source === tab.value
                   ? "bg-card font-medium text-ink shadow-sm"
                   : "text-ink-2 hover:text-ink"
               }`}
@@ -484,6 +518,21 @@ function VisitorRow({
           {inactive ? (
             <span className="pill-status bg-revoked-soft text-revoked">
               {t("visitors.status.deactivated")}
+            </span>
+          ) : null}
+          {visitor.source === "self" ? (
+            <span className="pill-status bg-accent-soft text-accent">
+              {t("visitors.source.self")}
+            </span>
+          ) : null}
+          {/* A hint for the kiosk desk, worded as one: two people can share a
+              name and a country. */}
+          {visitor.possible_duplicate ? (
+            <span
+              className="pill-status bg-vip-soft text-vip"
+              title={t("visitors.possibleDuplicateTitle")}
+            >
+              {t("visitors.possibleDuplicate")}
             </span>
           ) : null}
         </div>
