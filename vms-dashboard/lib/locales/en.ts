@@ -349,6 +349,7 @@ export const en = {
   "publicRegister.closedBody": "Please go to the registration desk.",
   "publicRegister.unreachable":
     "The event server cannot be reached. Check that you are on the event Wi-Fi.",
+  "publicRegister.unavailableTitle": "Registration is not available right now",
   "publicRegister.failed":
     "Registration failed. Try again, or go to the registration desk.",
   "publicRegister.tooMany":
