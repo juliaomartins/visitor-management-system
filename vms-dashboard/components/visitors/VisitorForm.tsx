@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { BadgeCard } from "@/components/badge-card";
+import { CountryCombobox } from "@/components/country-combobox";
 import { PhotoUpload } from "@/components/visitors/PhotoUpload";
+import { COUNTRIES, COUNTRY_NAMES } from "@/lib/countries";
+import { findCountryByText } from "@/lib/country-search";
 import { useT } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/locales";
 import type {
@@ -60,7 +63,12 @@ export function VisitorForm({
   cancelHref: string;
 }) {
   const [fullName, setFullName] = useState(initial?.full_name ?? "");
-  const [country, setCountry] = useState(initial?.country ?? "");
+  // A record saved before the list existed may hold "East Timor" or "usa": it is
+  // mapped to the list's name, and anything unrecognised must be picked again.
+  const [country, setCountry] = useState(
+    () => findCountryByText(initial?.country ?? "", COUNTRIES)?.name ?? "",
+  );
+  const [countryChecked, setCountryChecked] = useState(false);
   const [organization, setOrganization] = useState(initial?.organization ?? "");
   const [category, setCategory] = useState<VisitorCategory>(
     initial?.category ?? "normal",
@@ -93,15 +101,16 @@ export function VisitorForm({
     event.preventDefault();
 
     // A badge without a photo is a badge nobody can check at the door.
-    if (mode === "create" && !photo) {
-      setMissingPhoto(true);
-      return;
-    }
+    const photoMissing = mode === "create" && !photo;
+    // A country off the list splits one delegation across the entrance report.
+    const countryOffList = !COUNTRY_NAMES.has(country);
+    setMissingPhoto(photoMissing);
+    if (countryOffList) setCountryChecked(true);
+    if (photoMissing || countryOffList) return;
 
-    setMissingPhoto(false);
     onSubmit({
       full_name: fullName.trim(),
-      country: country.trim(),
+      country,
       organization: organization.trim(),
       category,
       photo,
@@ -110,6 +119,10 @@ export function VisitorForm({
 
   const t = useT();
   const fieldError = (name: string) => fieldErrors?.[name]?.[0];
+  const countryError =
+    countryChecked && !COUNTRY_NAMES.has(country)
+      ? t("country.invalid")
+      : fieldError("country");
 
   return (
     /*
@@ -147,14 +160,30 @@ export function VisitorForm({
           hint={t("form.fullNameHint")}
         />
 
-        <Field
-          id="country"
-          label={t("form.country")}
-          value={country}
-          onChange={setCountry}
-          error={fieldError("country")}
-          required
-        />
+        <div>
+          <label htmlFor="country" className="block text-xs font-medium text-ink-2">
+            {t("form.country")}
+          </label>
+          <CountryCombobox
+            id="country"
+            name="country"
+            value={country}
+            onValueChange={setCountry}
+            onFocus={() => setCountryChecked(false)}
+            onBlur={() => setCountryChecked(true)}
+            required
+            aria-invalid={countryError ? true : undefined}
+            aria-describedby={countryError ? "country-error" : undefined}
+            className={`field mt-1.5 ${
+              countryError ? "bg-revoked-soft" : "bg-card-2 focus:bg-white"
+            }`}
+          />
+          {countryError ? (
+            <p id="country-error" role="alert" className="mt-1.5 text-xs text-revoked">
+              {countryError}
+            </p>
+          ) : null}
+        </div>
 
         <Field
           id="organization"
