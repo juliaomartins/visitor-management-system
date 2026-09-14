@@ -332,7 +332,9 @@ export const pt: Messages = {
   "publicRegister.fullName": "Nome completo",
   "publicRegister.country": "Pa\u00eds",
   "publicRegister.countryPlaceholder": "Comece a escrever o seu pa\u00eds",
-  "publicRegister.countryInvalid": "Escolha um pa\u00eds da lista.",
+  "country.listLabel": "Pa\u00edses",
+  "country.noMatch": "Nenhum pa\u00eds corresponde a \u201c{text}\u201d",
+  "country.invalid": "Selecione o seu pa\u00eds da lista.",
   "publicRegister.organization": "Organiza\u00e7\u00e3o (opcional)",
   "publicRegister.photo": "A sua fotografia",
   "publicRegister.photoHint":
@@ -344,6 +346,11 @@ export const pt: Messages = {
   "publicRegister.cameraFailed":
     "N\u00e3o foi poss\u00edvel abrir a c\u00e2mara.",
   "publicRegister.changePhoto": "Mudar fotografia",
+  "publicRegister.reviewPhoto": "Recorte a sua fotografia",
+  "publicRegister.usePhoto": "Usar esta fotografia",
+  "publicRegister.retakePhoto": "Tirar a fotografia novamente",
+  "publicRegister.cropTooSmall":
+    "Demasiado pequena para imprimir. Arraste os cantos para fora.",
   "publicRegister.checkingFace": "A verificar a fotografia\u2026",
   "publicRegister.faceNone":
     "Nenhum rosto encontrado. Olhe para a c\u00e2mara com boa luz e tente novamente.",
