@@ -311,6 +311,21 @@ window.show()
 pump(400)
 
 check("window constructed", window.isVisible())
+check(
+    "the title bar names the event: DRCC Control Panel",
+    window.windowTitle() == "DRCC Control Panel",
+    repr(window.windowTitle()),
+)
+check(
+    "the header names the event: DRCC Control Center",
+    window._heading.text() == "DRCC Control Center",
+    repr(window._heading.text()),
+)
+check(
+    "the subtitle is unchanged",
+    window._subtitle.text() == "Visitor Management System",
+    repr(window._subtitle.text()),
+)
 check("four service cards", len(window._cards) == 4, str(list(window._cards)))
 check("overall status starts OFFLINE", "OFFLINE" in window._overall.text())
 check("scanner is opt-in", not window._cards["scanner"].include_in_run_all)
