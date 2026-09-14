@@ -1540,6 +1540,36 @@ package root — the opposite of `vms-scanner`, where everything is under `src/`
 - Design for 3–5 metre viewing distance: name 72px minimum, photo 400px tall.
 - VIP category gets a distinct visual treatment.
 - `ConnectionDot` in a corner so staff can see the feed is alive.
+- **`/pair` scrolls, and the wall does not — the kiosk rules are lifted on that route
+  only.** `globals.css` gives `html, body` `overflow: hidden`, `cursor: none` and
+  `user-select: none`, all correct for a lobby display and all wrong for setup: on a
+  1920x1080 kiosk at 150% Windows scaling (a ~1280x600 CSS viewport) the Pair button
+  sat below the fold with no way to reach it, and the mouse pointer was invisible.
+  `app/pair/locale-shell.tsx` is now the route's scroll container and restores the
+  pointer and selection; `ServerSetup` does the same for itself, because it also
+  renders on the wall. On a landscape panel (`wall:`) the page splits into two
+  columns so nothing needs scrolling at all; vertical sizes are `clamp`ed against
+  `vh`. Content centres with `m-auto` in a `min-h-full` column, never
+  `justify-center` in a fixed-height box, which clips the top where no scroll can
+  reach. Measured over seven viewports from 667x375 to 1920x969: the button is
+  reachable in all, and fits without scrolling in all but the landscape phone.
+- **`/pair` asks for a display name again, pre-filled from the browser.** It was
+  removed on the grounds that one lobby screen has one right name; that stopped
+  holding once the device list and the server log were being monitored.
+  `lib/device-name.ts` suggests `Lobby screen (Chrome on Windows)` and the field
+  stays editable — the suggestion never overwrites anything already typed.
+  - **A browser cannot give you the machine's name or its location.** No web API
+    exposes the hostname. The UA string gives browser and OS family only —
+    Chrome's reduced UA reports every Windows as `Windows NT 10.0`.
+  - **The precise hints are secure-context-only, so the real kiosk never gets
+    them.** `navigator.userAgentData.getHighEntropyValues` can say Windows 11 or
+    an Android model, but only on `localhost`; over `http://<lan-ip>` (hard
+    constraint 9) it is absent and the UA-string suggestion is what is used.
+  - **A screen's name never reaches the entrance report.** `by_device` in
+    `apps/reports/analysis.py` groups *scans*, and `/scans` accepts scanner
+    devices only. The name appears in the dashboard's device list and the
+    backend's `device.paired` / `device.revoke` log lines. There is no rename
+    endpoint: a wrong name is fixed by revoking and pairing again.
 - Runs in kiosk mode over `http://`.
 - `EventSplash` shows the event mark and both organiser seals while the hall is quiet;
   `IdleScreen` takes over between arrival waves. GSAP drives them — `useGSAP`, SplitText
@@ -1620,7 +1650,7 @@ and the wall's dozen strings became plain constants in `lib/wall-copy.ts`.
 | App | Dictionaries | Engine | Persisted in |
 |---|---|---|---|
 | `vms-dashboard` | `lib/locales/{en,pt,tet}.ts` — 365 keys | `lib/i18n.tsx` | cookie `vms.locale` |
-| `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 15 keys, **`/pair` only** | `lib/i18n.tsx` | cookie `vms.screen.locale` |
+| `vms-screen` | `lib/locales/{en,pt,tet}.ts` — 17 keys, **`/pair` only** | `lib/i18n.tsx` | cookie `vms.screen.locale` |
 | `vms-scanner` | `src/locales/{en,pt,tet}.ts` — 74 keys | `src/i18n.tsx` | SecureStore `vms.locale` (native only — see below) |
 | `vms-desktop` | `locales/{en,pt,tet}.py` — 53 keys | `i18n.py` | `QSettings` (registry) |
 
@@ -1717,6 +1747,8 @@ translation.
 - **Device names and the conference title.** `SCREEN_NAME` is data the backend
   stores and the dashboard lists; translating it would give one wall three names
   depending on which language it happened to be in when somebody paired it. The
+  browser-derived suggestion on `/pair` follows the same rule — only the field's
+  label and hint are translated, never the name it fills in. The
   event's official title is not ours to translate either.
 
 **Where the switcher lives:** the dashboard topbar *and* its sign-in page (the
