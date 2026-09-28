@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { CountryCombobox } from "@/components/country-combobox";
 import { COUNTRY_NAMES } from "@/lib/countries";
@@ -31,8 +31,19 @@ const FAILURE_MESSAGE: Record<string, MessageKey> = {
  * Register stays disabled until the face check has passed -- or could not run
  * on this phone at all, in which case the photo is not blocked. The check is
  * guidance; the kiosk desk sees every photo on the list.
+ *
+ * `closed` means the admin switch went off while this form was open. The form
+ * stays exactly as the visitor left it and Register is refused here as well as
+ * by the server, which answers 403 whatever the client believes.
  */
-export function RegisterForm() {
+export function RegisterForm({
+  closed = false,
+  onStarted,
+}: {
+  closed?: boolean;
+  /** Fired once, the first time the visitor types anything or adds a photo. */
+  onStarted?: () => void;
+}) {
   const t = useT();
   const queryClient = useQueryClient();
 
@@ -50,6 +61,17 @@ export function RegisterForm() {
   const [countryChecked, setCountryChecked] = useState(false);
   const countryInvalid = countryChecked && !COUNTRY_NAMES.has(country);
 
+  /*
+    The page above keeps this form mounted once this fires. Reported through a
+    ref rather than state: it happens once, and nothing here re-renders on it.
+  */
+  const started = useRef(false);
+  function markStarted() {
+    if (started.current) return;
+    started.current = true;
+    onStarted?.();
+  }
+
   const faceOk =
     face !== null &&
     face !== "checking" &&
@@ -58,7 +80,7 @@ export function RegisterForm() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!photo || !faceOk) return;
+    if (!photo || !faceOk || closed) return;
 
     if (!COUNTRY_NAMES.has(country)) {
       setCountryChecked(true);
@@ -105,7 +127,10 @@ export function RegisterForm() {
         id="full_name"
         label={t("publicRegister.fullName")}
         value={fullName}
-        onChange={setFullName}
+        onChange={(value) => {
+          markStarted();
+          setFullName(value);
+        }}
         autoComplete="name"
         required
         errors={fields.full_name}
@@ -119,7 +144,10 @@ export function RegisterForm() {
           id="country"
           name="country"
           value={country}
-          onValueChange={setCountry}
+          onValueChange={(value) => {
+            markStarted();
+            setCountry(value);
+          }}
           onFocus={() => setCountryChecked(false)}
           onBlur={() => setCountryChecked(true)}
           placeholder={t("publicRegister.countryPlaceholder")}
@@ -141,13 +169,17 @@ export function RegisterForm() {
         id="organization"
         label={t("publicRegister.organization")}
         value={organization}
-        onChange={setOrganization}
+        onChange={(value) => {
+          markStarted();
+          setOrganization(value);
+        }}
         autoComplete="organization"
         errors={fields.organization}
       />
 
       <PhotoStep
         onPhoto={(file) => {
+          markStarted();
           setPhoto(file);
           setFace(file ? "checking" : null);
         }}
@@ -157,6 +189,15 @@ export function RegisterForm() {
       />
 
       <p className="text-xs leading-relaxed text-ink-3">{t("publicRegister.consent")}</p>
+
+      {closed ? (
+        <p
+          role="alert"
+          className="rounded-lg bg-vip-soft px-3.5 py-2.5 text-sm font-medium text-ink"
+        >
+          {t("publicRegister.closedNow")}
+        </p>
+      ) : null}
 
       {failure ? (
         <p
@@ -169,8 +210,8 @@ export function RegisterForm() {
 
       <button
         type="submit"
-        disabled={!ready || busy}
-        className="btn btn-primary w-full py-3 text-base disabled:opacity-50"
+        disabled={!ready || busy || closed}
+        className="btn btn-primary btn-lg w-full disabled:opacity-50"
       >
         {busy ? t("publicRegister.submitting") : t("publicRegister.submit")}
       </button>
