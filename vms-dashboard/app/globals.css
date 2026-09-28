@@ -336,6 +336,20 @@ body {
 }
 
 /*
+  A PHONE-SIZED BUTTON, AND IT HAS TO BE A COMPONENT CLASS.
+
+  `.btn` is unlayered CSS, so a Tailwind `py-3` on it is discarded whatever the
+  specificity -- the trap CLAUDE.md records. The public registration page had
+  `py-3 text-base` on Register and got 38.6px anyway: under the 44px a thumb
+  needs, on the one screen used by people standing in a queue on their own
+  phones. This class is unlayered too, and later in the file, so it wins.
+*/
+.btn-lg {
+  padding: 0.8rem 1.1rem;
+  font-size: 1rem;
+}
+
+/*
   The outline button for an action that destroys something.
 
   A class of its own, beside .btn-ghost and unlayered like it. Colouring a
