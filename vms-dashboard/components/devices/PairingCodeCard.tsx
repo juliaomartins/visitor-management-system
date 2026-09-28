@@ -12,6 +12,7 @@ import {
   type DeviceKind,
   type PairingCode,
 } from "@/lib/devices";
+import { copyText } from "@/lib/clipboard";
 import { useHealth } from "@/lib/health";
 
 /**
@@ -140,24 +141,29 @@ export function PairingCodeCard() {
   }, [deskLink]);
   const linkQr = drawn?.link === deskLink ? drawn.src : null;
 
-  // `navigator.clipboard` is secure-context only and absent on the event LAN, so
-  // the fallback selects the text and lets the admin copy it by hand.
+  /*
+    `copyText` copies on the event LAN, where `navigator.clipboard` does not
+    exist -- see lib/clipboard.ts. The label then says so for a moment rather
+    than leaving the admin to guess whether the press did anything, and the
+    "selected" outcome is the last resort, not the normal one.
+  */
   const linkRef = useRef<HTMLParagraphElement | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "selected">("idle");
+  const resetAt = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (resetAt.current) window.clearTimeout(resetAt.current);
+    },
+    [],
+  );
+
   async function copyLink() {
     if (!deskLink) return;
-    try {
-      await navigator.clipboard.writeText(deskLink);
-      setCopied(true);
-    } catch {
-      const node = linkRef.current;
-      if (!node) return;
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      const selection = window.getSelection();
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-    }
+    const outcome = await copyText(deskLink, linkRef.current);
+    setCopyState(outcome === "failed" ? "idle" : outcome);
+    if (resetAt.current) window.clearTimeout(resetAt.current);
+    resetAt.current = window.setTimeout(() => setCopyState("idle"), 2500);
   }
 
   return (
@@ -177,7 +183,7 @@ export function PairingCodeCard() {
               type="button"
               disabled={create.isPending}
               onClick={() => {
-                setCopied(false);
+                setCopyState("idle");
                 create.mutate(kind.value, { onSuccess: (code) => setIssued(code) });
               }}
               className="min-w-52 flex-1 rounded-2xl border border-line-strong px-4 py-3 text-left transition-colors hover:border-ink disabled:opacity-60"
@@ -271,8 +277,13 @@ export function PairingCodeCard() {
                     onClick={() => void copyLink()}
                     className="btn btn-ghost mt-3 h-8 px-3 text-xs"
                   >
-                    {copied ? t("pair.copied") : t("pair.copyLink")}
+                    {copyState === "copied" ? t("pair.copied") : t("pair.copyLink")}
                   </button>
+                  {copyState === "selected" ? (
+                    <p aria-live="polite" className="mt-2 text-xs text-ink-2">
+                      {t("pair.copyManual")}
+                    </p>
+                  ) : null}
                   <p className="mt-3 text-xs text-ink-3">{t("pair.deskLinkWarn")}</p>
                 </div>
                 {linkQr ? (
