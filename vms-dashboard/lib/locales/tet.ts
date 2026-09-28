@@ -462,6 +462,7 @@ export const tet: Messages = {
   "pair.deskLinkNoAddress": "Seidauk hatene enderesu rede servid\u00f3r nian.",
   "pair.copyLink": "Kopia link",
   "pair.copied": "Kopia ona",
+  "pair.copyManual": "Hili ona \u2014 hanehan Ctrl+C atu kopia.",
   "pair.codeLabel": "K\u00f3digu pareia {kind}",
   "pair.expired":
     "K\u00f3digu ne\u2019e liu ona tempu. Kria seluk \u2014 laiha buat ida pareia ho nia.",
@@ -493,6 +494,12 @@ export const tet: Messages = {
   "desk.showQr": "Husu vizitante atu foti foto k\u00f3digu ne\u2019e.",
   "desk.keepIt": "Sira hatudu iha entrada, ohin ka aban.",
   "desk.again": "Rejista vizitante seluk",
+  "desk.downloadQr": "Deskarega k\u00f3digu QR",
+  "desk.downloading": "Prepara hela\u2026",
+  "desk.downloadDone": "Rai ona. Fahe ba vizitante.",
+  "desk.downloadOpened": "Kaer kleur imajen, depois hili Rai imajen.",
+  "desk.downloadFailed":
+    "La bele rai. Husu vizitante atu foti foto k\u00f3digu.",
   "desk.qrAlt": "K\u00f3digu QR ba kartaun {serial}",
   "desk.qrFailed":
     "La bele deze\u00f1a k\u00f3digu. Rejista fali vizitante ne\u2019e.",
