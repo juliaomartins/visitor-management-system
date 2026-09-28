@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { copyText } from "@/lib/clipboard";
 import { useFormat, useT } from "@/lib/i18n";
 import { driftState, readDrift, type Health } from "@/lib/health";
 
@@ -184,11 +185,12 @@ function Row({
  *
  * The label changes to "Copied" for a moment rather than raising a toast: the
  * confirmation belongs where the click happened, and this app has no toast
- * system to borrow. `navigator.clipboard` needs a secure context, and the LAN
- * runs on plain http by HARD CONSTRAINT 9 -- so on a phone browser reaching
- * this dashboard by IP the write will reject. The button then leaves the text
- * selectable (`select-all` on the address above) rather than pretending it
- * worked.
+ * system to borrow.
+ *
+ * It used to call `navigator.clipboard` directly, which needs a secure context
+ * the event LAN does not have (HARD CONSTRAINT 9) -- so on every machine but
+ * the server's own localhost the press did nothing and said nothing. `copyText`
+ * copies over plain http; the address stays `select-all` for the last resort.
  */
 function CopyButton({ value }: { value: string }) {
   const t = useT();
@@ -198,14 +200,9 @@ function CopyButton({ value }: { value: string }) {
     <button
       type="button"
       onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(value);
-          setDone(true);
-          setTimeout(() => setDone(false), 1600);
-        } catch {
-          // No secure context, or permission refused. The address is
-          // select-all, so there is still a way to take it.
-        }
+        if ((await copyText(value)) !== "copied") return;
+        setDone(true);
+        setTimeout(() => setDone(false), 1600);
       }}
       className="btn btn-ghost h-7 px-2.5 text-[11px]"
     >
