@@ -190,6 +190,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/desk/qr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Draw the QR code for a badge
+         * @description Desk devices only. Send the badge token from the registration response in the `X-Badge-Token` header -- never in the query string, which the server writes to its access log. Returns a PNG for the visitor to photograph.
+         */
+        get: operations["desk_qr_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desk/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a walk-in visitor
+         * @description Desk devices only. Creates a visitor with `source=desk` and the chosen category, and issues their badge. The response is the one and only sight of the badge token. 413 above the upload limit; 429 when rate-limited.
+         */
+        post: operations["desk_registrations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices": {
         parameters: {
             query?: never;
@@ -655,6 +695,42 @@ export interface components {
             readonly country: string;
             readonly total: number;
         };
+        /** @description `POST /desk/registrations`, multipart. Exactly these five fields. */
+        DeskRegistrationRequest: {
+            full_name: string;
+            country: string;
+            /** @default  */
+            organization: string;
+            /**
+             * @description `normal` or `vip`.
+             *
+             *     * `normal` - Normal
+             *     * `vip` - VIP
+             * @default normal
+             */
+            category: components["schemas"]["CategoryEnum"];
+            /**
+             * Format: binary
+             * @description JPEG, PNG or WebP, at most 5 MB. Re-encoded by the server.
+             */
+            photo: string;
+        };
+        /**
+         * @description Only what the desk screen needs to show the visitor.
+         *
+         *     `badge_token` is the QR payload, and it is also the key the desk hands back
+         *     to `GET /desk/qr` to have the code drawn. No id, no photo URL, no token
+         *     hash: nothing here lets the desk reach any other visitor's badge.
+         */
+        DeskRegistrationResult: {
+            full_name: string;
+            /** @description Printed on the card; quoted at the kiosk desk if a scan fails. */
+            badge_serial: string;
+            /** @description Raw badge token for the QR code. Returned once, never again. */
+            badge_token: string;
+            /** @description `normal` or `vip`, as registered. */
+            category: string;
+        };
         /** @description `token_hash` is deliberately absent — the raw token is shown once, at pairing. */
         Device: {
             /** Format: uuid */
@@ -766,9 +842,10 @@ export interface components {
         /**
          * @description * `scanner` - Scanner
          *     * `screen` - Screen
+         *     * `desk` - Desk
          * @enum {string}
          */
-        KindEnum: "scanner" | "screen";
+        KindEnum: "scanner" | "screen" | "desk";
         PairingCode: {
             /** Format: uuid */
             readonly id: string;
@@ -1021,9 +1098,10 @@ export interface components {
         /**
          * @description * `admin` - Registered at the desk
          *     * `self` - Self-registered
+         *     * `desk` - Registered at the walk-in desk
          * @enum {string}
          */
-        SourceEnum: "admin" | "self";
+        SourceEnum: "admin" | "self" | "desk";
         /** @description Admin account, as the dashboard sees it. Never exposes the password hash. */
         User: {
             readonly id: number;
@@ -1399,6 +1477,101 @@ export interface operations {
                 content: {
                     "application/json": string;
                 };
+            };
+        };
+    };
+    desk_qr_retrieve: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The badge token returned by POST /desk/registrations. */
+                "X-Badge-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The QR code, with the event mark in the middle. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description No badge token was sent. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A paired desk device is required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No badge matches that token. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    desk_registrations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DeskRegistrationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeskRegistrationResult"];
+                };
+            };
+            /** @description A field failed validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A paired desk device is required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The upload is too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many registrations. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1809,8 +1982,8 @@ export interface operations {
                 ordering?: string;
                 /** @description A search term. */
                 search?: string;
-                /** @description Who created the registration: `admin` at the desk, or `self` through the public form. */
-                source?: "admin" | "self";
+                /** @description Who created the registration: `admin` signed in at the desk, `desk` at a paired walk-in desk with no login, or `self` through the public form. */
+                source?: "admin" | "desk" | "self";
                 /** @description Include `badge_token` on every row. Off by default. Each token is a working credential, so this turns one request into a set of usable badges -- ask for it only where the codes are the point, such as a print queue that draws the real QR. The same codes are already in the .xlsx export. */
                 with_tokens?: boolean;
             };
