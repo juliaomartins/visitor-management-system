@@ -371,6 +371,20 @@ export const en = {
     "If the scan fails, go to the kiosk desk and quote {serial}.",
   "publicRegister.keepPage": "Keep this page open until you are inside.",
   "publicRegister.qrAlt": "QR code for badge {serial}",
+  "publicRegister.saveTitle": "Save it to your phone",
+  "publicRegister.saveBody":
+    "Save the code so you still have it if this page closes.",
+  "publicRegister.saveQr": "Save QR code",
+  "publicRegister.savingQr": "Preparing\u2026",
+  "publicRegister.saveDone": "Saved to your phone.",
+  "publicRegister.saveOpened":
+    "Press and hold the image, then choose Save image.",
+  "publicRegister.saveFailed":
+    "It could not be saved. Take a screenshot of this page instead.",
+  "publicRegister.closedNow":
+    "Registration has just closed. Go to the registration desk to finish.",
+  "publicRegister.takePhoto": "Take a photo",
+  "publicRegister.chooseFromGallery": "Choose from gallery",
 
   // ------------------------------------------------------- export dialog --
   "export.titleOne": "Export badge codes for {count} visitor?",
