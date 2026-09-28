@@ -19,6 +19,17 @@ export type RegistrationSettings = components["schemas"]["RegistrationSettings"]
 export const PUBLIC_STATUS_KEY = ["public-registration-status"] as const;
 export const REGISTRATION_SETTINGS_KEY = ["registration-settings"] as const;
 
+/**
+ * How often the public page re-reads the switch.
+ *
+ * The admin toggles it on a laptop in the same room, and nothing pushes that
+ * to a phone: there is no socket on this route and the backend has no event
+ * for it. Fifteen seconds is short enough that a door decision is followed
+ * before anybody walks over to ask, and long enough that 250 phones idling on
+ * the form are 17 requests a second below the 60/min public-status throttle.
+ */
+export const STATUS_POLL_MS = 15_000;
+
 /** Why a submission failed, in terms the form can say something useful about. */
 export type RegistrationFailure =
   | "closed"
@@ -53,7 +64,12 @@ export async function fetchPublicRegistrationStatus(
 ): Promise<boolean> {
   let outcome;
   try {
-    outcome = await api.GET("/api/v1/public/registrations/status", { signal });
+    // `no-store`: the switch is the point of this call, and a phone that
+    // answered it from its own cache would show a closed door as open.
+    outcome = await api.GET("/api/v1/public/registrations/status", {
+      signal,
+      cache: "no-store",
+    });
   } catch {
     throw new RegistrationError("network");
   }
