@@ -455,6 +455,7 @@ export const en = {
   "pair.deskLinkNoAddress": "The server network address is not known yet.",
   "pair.copyLink": "Copy link",
   "pair.copied": "Copied",
+  "pair.copyManual": "Selected \u2014 press Ctrl+C to copy it.",
   "pair.codeLabel": "{kind} pairing code",
   "pair.expired":
     "This code has expired. Generate another \u2014 nothing was paired with it.",
@@ -486,6 +487,12 @@ export const en = {
   "desk.showQr": "Ask the visitor to photograph this code.",
   "desk.keepIt": "They show it at the entrance, today or tomorrow.",
   "desk.again": "Register another visitor",
+  "desk.downloadQr": "Download QR code",
+  "desk.downloading": "Preparing\u2026",
+  "desk.downloadDone": "Saved. Share it with the visitor.",
+  "desk.downloadOpened": "Press and hold the image, then choose Save image.",
+  "desk.downloadFailed":
+    "It could not be saved. Ask the visitor to photograph the code.",
   "desk.qrAlt": "QR code for badge {serial}",
   "desk.qrFailed": "The code could not be drawn. Register this visitor again.",
   "desk.unpaired":
