@@ -377,6 +377,19 @@ export const tet: Messages = {
   "publicRegister.keepPage":
     "Husik p\u00e1jina ne\u2019e loke to\u2019o ita tama.",
   "publicRegister.qrAlt": "K\u00f3digu QR ba kartaun {serial}",
+  "publicRegister.saveTitle": "Rai iha ita-nia telem\u00f3vel",
+  "publicRegister.saveBody":
+    "Rai k\u00f3digu atu ita sei iha, maski p\u00e1jina ne\u2019e taka.",
+  "publicRegister.saveQr": "Rai k\u00f3digu QR",
+  "publicRegister.savingQr": "Prepara hela\u2026",
+  "publicRegister.saveDone": "Rai ona iha ita-nia telem\u00f3vel.",
+  "publicRegister.saveOpened": "Kaer kleur imajen, depois hili Rai imajen.",
+  "publicRegister.saveFailed":
+    "La bele rai. Foti kaptura ekr\u00e1n husi p\u00e1jina ne\u2019e.",
+  "publicRegister.closedNow":
+    "Rejistu foin taka. B\u00e1 meza rejistu atu remata.",
+  "publicRegister.takePhoto": "Foti foto",
+  "publicRegister.chooseFromGallery": "Hili husi galeria",
 
   // ------------------------------------------------------- export dialog --
   "export.titleOne": "Esporta k\u00f3digu kartaun ba vizitante {count}?",
