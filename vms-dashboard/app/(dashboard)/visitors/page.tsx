@@ -49,6 +49,7 @@ const SOURCE_TABS: { value: SourceFilter; labelKey: MessageKey }[] = [
   { value: "all", labelKey: "visitors.source.all" },
   { value: "admin", labelKey: "visitors.source.admin" },
   { value: "self", labelKey: "visitors.source.self" },
+  { value: "desk", labelKey: "visitors.source.desk" },
 ];
 
 /** Long enough to finish typing a surname, short enough to feel immediate. */
@@ -523,6 +524,13 @@ function VisitorRow({
           {visitor.source === "self" ? (
             <span className="pill-status bg-accent-soft text-accent">
               {t("visitors.source.self")}
+            </span>
+          ) : null}
+          {/* Nobody signed in to create this row -- a paired desk did. Worth
+              seeing on the roster for the same reason self-registrations are. */}
+          {visitor.source === "desk" ? (
+            <span className="pill-status bg-card-2 text-ink-2">
+              {t("visitors.source.desk")}
             </span>
           ) : null}
           {/* A hint for the kiosk desk, worded as one: two people can share a
