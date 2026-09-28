@@ -383,6 +383,20 @@ export const pt: Messages = {
   "publicRegister.keepPage":
     "Mantenha esta p\u00e1gina aberta at\u00e9 entrar.",
   "publicRegister.qrAlt": "C\u00f3digo QR do crach\u00e1 {serial}",
+  "publicRegister.saveTitle": "Guarde no seu telem\u00f3vel",
+  "publicRegister.saveBody":
+    "Guarde o c\u00f3digo para o ter mesmo que esta p\u00e1gina feche.",
+  "publicRegister.saveQr": "Guardar c\u00f3digo QR",
+  "publicRegister.savingQr": "A preparar\u2026",
+  "publicRegister.saveDone": "Guardado no seu telem\u00f3vel.",
+  "publicRegister.saveOpened":
+    "Toque sem soltar na imagem e escolha Guardar imagem.",
+  "publicRegister.saveFailed":
+    "N\u00e3o foi poss\u00edvel guardar. Fa\u00e7a uma captura de ecr\u00e3 desta p\u00e1gina.",
+  "publicRegister.closedNow":
+    "O registo acabou de fechar. V\u00e1 ao balc\u00e3o de registo para terminar.",
+  "publicRegister.takePhoto": "Tirar fotografia",
+  "publicRegister.chooseFromGallery": "Escolher da galeria",
 
   // ------------------------------------------------------- export dialog --
   "export.titleOne":
