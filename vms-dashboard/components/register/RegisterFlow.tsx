@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { EVENT, Organisers } from "@/components/brand";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -9,6 +9,7 @@ import { useT } from "@/lib/i18n";
 import {
   PUBLIC_STATUS_KEY,
   RegistrationError,
+  STATUS_POLL_MS,
   fetchPublicRegistrationStatus,
   parsePass,
   readPass,
@@ -24,6 +25,17 @@ import { RegistrationPass } from "./RegistrationPass";
  * A pass already in this tab's session wins over everything, including the switch
  * being closed since -- a visitor who registered must keep their QR even if an
  * admin shuts registration five minutes later.
+ *
+ * THE SWITCH IS FOLLOWED WHILE THE PAGE IS OPEN. Nothing pushes it: this route
+ * has no socket and the backend has no event for it, so the status is polled and
+ * re-read whenever the phone returns to the tab or the network comes back. A
+ * page opened in a queue before the doors opened therefore becomes usable on its
+ * own, and one left open after the desk closes stops taking registrations.
+ *
+ * ONCE THE VISITOR HAS STARTED, THE FORM STAYS PUT. Replacing a half-filled form
+ * and a photo that took three tries with a "closed" notice throws away work
+ * nobody can hand back; the form keeps its contents, wearing a banner, with
+ * Register refused here and by the server alike.
  */
 export function RegisterFlow() {
   const t = useT();
@@ -32,16 +44,23 @@ export function RegisterFlow() {
   // during render would make the server and client markup disagree.
   const rawPass = useSyncExternalStore(subscribePass, readPass, () => null);
   const pass = useMemo(() => parsePass(rawPass), [rawPass]);
+  const [started, setStarted] = useState(false);
 
   const status = useQuery({
     queryKey: PUBLIC_STATUS_KEY,
     queryFn: ({ signal }) => fetchPublicRegistrationStatus(signal),
     enabled: !pass,
     retry: 1,
+    staleTime: 0,
+    refetchInterval: STATUS_POLL_MS,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
+  const open = status.data === true;
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 py-6">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 py-6">
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -69,6 +88,9 @@ export function RegisterFlow() {
       <main className="mt-6 flex-1">
         {pass ? (
           <RegistrationPass pass={pass} />
+        ) : open || started ? (
+          // `started` outranks a closed or failed status on purpose: see above.
+          <RegisterForm closed={status.data === false} onStarted={() => setStarted(true)} />
         ) : status.isPending ? (
           <p className="mono py-16 text-center text-xs text-ink-3">
             {t("publicRegister.loading")}
@@ -83,8 +105,6 @@ export function RegisterFlow() {
               body={t("publicRegister.closedBody")}
             />
           )
-        ) : status.data ? (
-          <RegisterForm />
         ) : (
           <Notice title={t("publicRegister.closedTitle")} body={t("publicRegister.closedBody")} />
         )}
