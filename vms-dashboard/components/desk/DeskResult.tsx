@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-import { useT } from "@/lib/i18n";
+import { EVENT } from "@/components/brand";
 import { fetchDeskQr, type DeskRegistration } from "@/lib/desk";
+import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
+import { buildPassPng, savePassImage } from "@/lib/pass-image";
+import { passFileName } from "@/lib/pass-name";
 
 /**
  * The QR, big, for the visitor to photograph -- then straight back to the form.
@@ -12,9 +16,23 @@ import { fetchDeskQr, type DeskRegistration } from "@/lib/desk";
  * token is what entitles this page to it: the image request carries the token in
  * a header, which an `<img src>` cannot do, so it is fetched and shown as a blob.
  *
- * `Register another visitor` is the only other control. A desk in a queue is a
- * loop, and the fastest possible loop is one button the same size as a thumb in
- * the same place every time.
+ * `Register another visitor` stays the primary control and stays last, under the
+ * thumb: a desk in a queue is a loop, and the fastest loop is one button in the
+ * same place every time.
+ *
+ * DOWNLOADING SAVES THE SAME IMAGE A SELF-REGISTERING VISITOR SAVES -- the QR
+ * with the event mark, the name and the serial under it (`lib/pass-image.ts`),
+ * not the bare code on screen. Staff can then send it to the visitor, who may
+ * have no phone to hand or a camera that will not focus, and it identifies
+ * itself in a gallery full of screenshots.
+ *
+ * The image is drawn here from the badge token rather than fetched again: the
+ * token is the QR's payload, so the file carries exactly the code the server
+ * drew, and the desk path keeps the two routes it has.
+ *
+ * NOT `navigator.share`, which would offer a share sheet directly: it is
+ * secure-context only and does not exist on the event LAN over http. A saved
+ * file is shareable by every app on the device anyway.
  */
 export function DeskResult({
   registration,
@@ -26,6 +44,11 @@ export function DeskResult({
   const t = useT();
   const [src, setSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{
+    key: MessageKey;
+    failed: boolean;
+  } | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -46,6 +69,35 @@ export function DeskResult({
       if (url) URL.revokeObjectURL(url);
     };
   }, [registration.badge_token]);
+
+  async function download() {
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const png = await buildPassPng(
+        {
+          full_name: registration.full_name,
+          badge_serial: registration.badge_serial,
+          badge_token: registration.badge_token,
+        },
+        {
+          event: EVENT.name,
+          dates: t("brand.dates"),
+          foot: t("publicRegister.successShow"),
+        },
+      );
+      const outcome = savePassImage(png, passFileName(registration.badge_serial));
+      setSaveMessage({
+        key: outcome === "saved" ? "desk.downloadDone" : "desk.downloadOpened",
+        failed: false,
+      });
+    } catch {
+      // Photographing the screen still works, and needs nothing from us.
+      setSaveMessage({ key: "desk.downloadFailed", failed: true });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -92,14 +144,33 @@ export function DeskResult({
         ) : null}
       </div>
 
-      <button
-        type="button"
-        onClick={onAgain}
-        autoFocus
-        className="btn btn-primary btn-lg w-full"
-      >
-        {t("desk.again")}
-      </button>
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => void download()}
+          disabled={saving || !src}
+          className="btn btn-ghost btn-lg w-full disabled:opacity-60"
+        >
+          {saving ? t("desk.downloading") : t("desk.downloadQr")}
+        </button>
+        {saveMessage ? (
+          <p
+            aria-live="polite"
+            className={`text-center text-sm ${saveMessage.failed ? "text-revoked" : "text-valid"}`}
+          >
+            {t(saveMessage.key)}
+          </p>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onAgain}
+          autoFocus
+          className="btn btn-primary btn-lg w-full"
+        >
+          {t("desk.again")}
+        </button>
+      </div>
     </div>
   );
 }
