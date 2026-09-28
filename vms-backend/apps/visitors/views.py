@@ -60,7 +60,8 @@ FALSE_VALUES = {"0", "false", "no", "off"}
                 "source",
                 OpenApiTypes.STR,
                 description=(
-                    "Who created the registration: `admin` at the desk, or `self` "
+                    "Who created the registration: `admin` signed in at the desk, "
+                    "`desk` at a paired walk-in desk with no login, or `self` "
                     "through the public form."
                 ),
                 enum=[s.value for s in VisitorSource],
