@@ -15,6 +15,9 @@ class VisitorSource(models.TextChoices):
 
     ADMIN = "admin", "Registered at the desk"
     SELF = "self", "Self-registered"
+    # The walk-in desk: staffed, but signed in to by nobody. Kept apart from
+    # `admin` so the roster can always say which rows no account stands behind.
+    DESK = "desk", "Registered at the walk-in desk"
 
 
 class Visitor(BaseModel):
