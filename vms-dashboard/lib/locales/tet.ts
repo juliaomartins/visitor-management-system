@@ -300,6 +300,7 @@ export const tet: Messages = {
   "visitors.source.all": "Hotu",
   "visitors.source.admin": "Balkaun",
   "visitors.source.self": "Rejistu rasik",
+  "visitors.source.desk": "Meza rejistu",
   "visitors.possibleDuplicate": "Bele duplikadu",
   "visitors.possibleDuplicateTitle":
     "Rejistu seluk iha naran no nasaun hanesan.",
@@ -414,8 +415,10 @@ export const tet: Messages = {
   "time.justNow": "foin daudaun",
   "device.kind.scanner": "Leit\u00f3r",
   "device.kind.screen": "Ekr\u00e1n",
+  "device.kind.desk": "Meza",
   "device.kindInline.scanner": "leit\u00f3r",
   "device.kindInline.screen": "ekr\u00e1n",
+  "device.kindInline.desk": "meza",
   "devices.subtitleQuiet":
     "Seguransa sira-nia telem\u00f3vel no ekr\u00e1n resepsaun",
   "devices.silentOne": "Aparellu {count} seidauk komunika",
@@ -449,10 +452,57 @@ export const tet: Messages = {
   "pair.codeButton": "K\u00f3digu {kind}",
   "pair.blurb.scanner": "Seguransa nia telem\u00f3vel, iha odamatan",
   "pair.blurb.screen": "Ekr\u00e1n resepsaun",
+  "pair.blurb.desk":
+    "Laptop ka tablet ne\u2019eb\u00e9 rejista vizitante iha odamatan",
+  "pair.deskLink": "Link meza nian",
+  "pair.deskLinkBody":
+    "Loke ne\u2019e iha dispozitivu meza nian, depois hakerek k\u00f3digu iha leten. Hatudu de\u2019it dala ida.",
+  "pair.deskLinkWarn":
+    "Rai link ne\u2019e privadu. Ema ne\u2019eb\u00e9 iha link no k\u00f3digu bele rejista vizitante.",
+  "pair.deskLinkNoAddress": "Seidauk hatene enderesu rede servid\u00f3r nian.",
+  "pair.copyLink": "Kopia link",
+  "pair.copied": "Kopia ona",
   "pair.codeLabel": "K\u00f3digu pareia {kind}",
   "pair.expired":
     "K\u00f3digu ne\u2019e liu ona tempu. Kria seluk \u2014 laiha buat ida pareia ho nia.",
   "pair.expiresIn": "Liu tempu iha",
+  "desk.title": "Meza rejistu",
+  "desk.pairTitle": "Pareia meza ne\u2019e",
+  "desk.pairBody":
+    "Hakerek k\u00f3digu husi painel. Halo ida ne\u2019e dala ida de\u2019it iha dispozitivu ne\u2019e.",
+  "desk.codeLabel": "K\u00f3digu pareia",
+  "desk.nameLabel": "Naran meza",
+  "desk.namePlaceholder": "Entrada prinsip\u00e1l",
+  "desk.nameHint":
+    "Fatin meza ne\u2019e. Administrad\u00f3r haree iha lista dispozitivu.",
+  "desk.pair": "Pareia",
+  "desk.pairing": "Pareia hela\u2026",
+  "desk.pairFailed": "K\u00f3digu ne\u2019e la simu.",
+  "desk.formTitle": "Rejista vizitante ida",
+  "desk.fullName": "Naran kompletu",
+  "desk.country": "Nasaun",
+  "desk.organization": "Organizasaun (opsion\u00e1l)",
+  "desk.category": "Tipu kartaun",
+  "desk.normal": "Norm\u00e1l",
+  "desk.vip": "VIP",
+  "desk.photo": "Foto vizitante nian",
+  "desk.photoHint": "Foti foto, ka hili ida husi dispozitivu ne\u2019e.",
+  "desk.register": "Rejista vizitante",
+  "desk.registering": "Rejista hela\u2026",
+  "desk.doneTitle": "Rejista ona",
+  "desk.showQr": "Husu vizitante atu foti foto k\u00f3digu ne\u2019e.",
+  "desk.keepIt": "Sira hatudu iha entrada, ohin ka aban.",
+  "desk.again": "Rejista vizitante seluk",
+  "desk.qrAlt": "K\u00f3digu QR ba kartaun {serial}",
+  "desk.qrFailed":
+    "La bele deze\u00f1a k\u00f3digu. Rejista fali vizitante ne\u2019e.",
+  "desk.unpaired":
+    "Meza ne\u2019e la pareia ona. Husu k\u00f3digu foun ba administrad\u00f3r.",
+  "desk.wrongDevice": "K\u00f3digu ne\u2019e ba dispozitivu tipu seluk.",
+  "desk.tooMany": "Rejistu barak liu husi meza ne\u2019e. Hein minutu balu.",
+  "desk.tooLarge": "Foto boot liu. Hili seluk.",
+  "desk.failed": "La bele rejista vizitante. Koko fali.",
+  "desk.unreachable": "La bele kontaktu servid\u00f3r eventu nian.",
   "pair.alphabetNote":
     "K\u00f3digu nunka iha 0, O, 1 ka I \u2014 haat ne\u2019e la tau tanba sira mak ema rona sala no hakerek sala. Aparellu mosu iha lista okos bainhira pareia.",
 
