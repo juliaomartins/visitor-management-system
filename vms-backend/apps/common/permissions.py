@@ -41,6 +41,18 @@ class IsScannerDevice(IsDevice):
     kind = "scanner"
 
 
+class IsDeskDevice(IsDevice):
+    """A paired walk-in desk: a laptop in the venue with no login.
+
+    Its token reaches two routes and nothing else -- create a visitor, draw the
+    QR for a badge token it already holds. Assume the token gets extracted; the
+    desk stands in public and the LAN is plain http.
+    """
+
+    message = "A paired desk device is required."
+    kind = "desk"
+
+
 class IsScreenDevice(IsDevice):
     """The lobby display. Its token is read-only and scoped to the feed.
 
