@@ -25,8 +25,12 @@ const SIGN_IN = "/login";
  * `/register` is the public self-registration form. It is not merely excluded
  * for signed-out visitors: a signed-in admin opening it on the desk laptop must
  * see the same form, not be bounced to the dashboard.
+ *
+ * `/desk` is the walk-in desk, at an unguessable path under it. Its own boundary
+ * is the paired desk token, checked by the backend on both of the two routes it
+ * can reach -- this guard only keeps the sign-in redirect out of the way.
  */
-const PUBLIC_PAGES = ["/register"];
+const PUBLIC_PAGES = ["/register", "/desk"];
 
 export default function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
