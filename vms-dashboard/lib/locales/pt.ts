@@ -301,6 +301,7 @@ export const pt: Messages = {
   "visitors.source.all": "Todos",
   "visitors.source.admin": "Balc\u00e3o",
   "visitors.source.self": "Autorregisto",
+  "visitors.source.desk": "Balc\u00e3o de registo",
   "visitors.possibleDuplicate": "Poss\u00edvel duplicado",
   "visitors.possibleDuplicateTitle":
     "Outro registo tem o mesmo nome e pa\u00eds.",
@@ -423,8 +424,10 @@ export const pt: Messages = {
   "time.justNow": "agora mesmo",
   "device.kind.scanner": "Leitor",
   "device.kind.screen": "Ecr\u00e3",
+  "device.kind.desk": "Balc\u00e3o",
   "device.kindInline.scanner": "leitor",
   "device.kindInline.screen": "ecr\u00e3",
+  "device.kindInline.desk": "balc\u00e3o",
   "devices.subtitleQuiet":
     "Telem\u00f3veis dos seguran\u00e7as e o ecr\u00e3 do \u00e1trio",
   "devices.silentOne":
@@ -460,10 +463,61 @@ export const pt: Messages = {
   "pair.codeButton": "C\u00f3digo de {kind}",
   "pair.blurb.scanner": "O telem\u00f3vel de um seguran\u00e7a, a uma porta",
   "pair.blurb.screen": "O ecr\u00e3 do \u00e1trio",
+  "pair.blurb.desk":
+    "Um port\u00e1til ou tablet que regista visitantes \u00e0 porta",
+  "pair.deskLink": "Liga\u00e7\u00e3o do balc\u00e3o",
+  "pair.deskLinkBody":
+    "Abra isto no dispositivo do balc\u00e3o e escreva o c\u00f3digo acima. S\u00f3 \u00e9 mostrado aqui uma vez.",
+  "pair.deskLinkWarn":
+    "Mantenha a liga\u00e7\u00e3o privada. Quem tiver a liga\u00e7\u00e3o e um c\u00f3digo pode registar visitantes.",
+  "pair.deskLinkNoAddress":
+    "O endere\u00e7o de rede do servidor ainda n\u00e3o \u00e9 conhecido.",
+  "pair.copyLink": "Copiar liga\u00e7\u00e3o",
+  "pair.copied": "Copiado",
   "pair.codeLabel": "C\u00f3digo de emparelhamento de {kind}",
   "pair.expired":
     "Este c\u00f3digo expirou. Gere outro \u2014 n\u00e3o foi emparelhado nada com ele.",
   "pair.expiresIn": "Expira em",
+  "desk.title": "Balc\u00e3o de registo",
+  "desk.pairTitle": "Emparelhar este balc\u00e3o",
+  "desk.pairBody":
+    "Escreva o c\u00f3digo do painel. S\u00f3 faz isto uma vez neste dispositivo.",
+  "desk.codeLabel": "C\u00f3digo de emparelhamento",
+  "desk.nameLabel": "Nome do balc\u00e3o",
+  "desk.namePlaceholder": "Entrada principal",
+  "desk.nameHint":
+    "Onde est\u00e1 este balc\u00e3o. Um administrador v\u00ea-o na lista de dispositivos.",
+  "desk.pair": "Emparelhar",
+  "desk.pairing": "A emparelhar\u2026",
+  "desk.pairFailed": "Esse c\u00f3digo n\u00e3o foi aceite.",
+  "desk.formTitle": "Registar um visitante",
+  "desk.fullName": "Nome completo",
+  "desk.country": "Pa\u00eds",
+  "desk.organization": "Organiza\u00e7\u00e3o (opcional)",
+  "desk.category": "Tipo de crach\u00e1",
+  "desk.normal": "Normal",
+  "desk.vip": "VIP",
+  "desk.photo": "Fotografia do visitante",
+  "desk.photoHint": "Tire a fotografia ou escolha uma deste dispositivo.",
+  "desk.register": "Registar visitante",
+  "desk.registering": "A registar\u2026",
+  "desk.doneTitle": "Registado",
+  "desk.showQr": "Pe\u00e7a ao visitante para fotografar este c\u00f3digo.",
+  "desk.keepIt": "Mostram-no \u00e0 entrada, hoje ou amanh\u00e3.",
+  "desk.again": "Registar outro visitante",
+  "desk.qrAlt": "C\u00f3digo QR do crach\u00e1 {serial}",
+  "desk.qrFailed":
+    "N\u00e3o foi poss\u00edvel desenhar o c\u00f3digo. Registe novamente este visitante.",
+  "desk.unpaired":
+    "Este balc\u00e3o j\u00e1 n\u00e3o est\u00e1 emparelhado. Pe\u00e7a um c\u00f3digo novo a um administrador.",
+  "desk.wrongDevice": "Esse c\u00f3digo \u00e9 para outro tipo de dispositivo.",
+  "desk.tooMany":
+    "Demasiados registos deste balc\u00e3o. Espere alguns minutos.",
+  "desk.tooLarge": "A fotografia \u00e9 demasiado grande. Escolha outra.",
+  "desk.failed":
+    "N\u00e3o foi poss\u00edvel registar o visitante. Tente novamente.",
+  "desk.unreachable":
+    "N\u00e3o \u00e9 poss\u00edvel contactar o servidor do evento.",
   "pair.alphabetNote":
     "Os c\u00f3digos nunca cont\u00eam 0, O, 1 nem I \u2014 esses quatro ficam de fora porque s\u00e3o os que as pessoas ouvem e escrevem mal. O dispositivo aparece na lista abaixo assim que emparelha.",
 
