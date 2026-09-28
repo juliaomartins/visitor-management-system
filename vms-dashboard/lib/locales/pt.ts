@@ -474,6 +474,7 @@ export const pt: Messages = {
     "O endere\u00e7o de rede do servidor ainda n\u00e3o \u00e9 conhecido.",
   "pair.copyLink": "Copiar liga\u00e7\u00e3o",
   "pair.copied": "Copiado",
+  "pair.copyManual": "Selecionado \u2014 prima Ctrl+C para copiar.",
   "pair.codeLabel": "C\u00f3digo de emparelhamento de {kind}",
   "pair.expired":
     "Este c\u00f3digo expirou. Gere outro \u2014 n\u00e3o foi emparelhado nada com ele.",
@@ -505,6 +506,12 @@ export const pt: Messages = {
   "desk.showQr": "Pe\u00e7a ao visitante para fotografar este c\u00f3digo.",
   "desk.keepIt": "Mostram-no \u00e0 entrada, hoje ou amanh\u00e3.",
   "desk.again": "Registar outro visitante",
+  "desk.downloadQr": "Descarregar c\u00f3digo QR",
+  "desk.downloading": "A preparar\u2026",
+  "desk.downloadDone": "Guardado. Partilhe com o visitante.",
+  "desk.downloadOpened": "Toque sem soltar na imagem e escolha Guardar imagem.",
+  "desk.downloadFailed":
+    "N\u00e3o foi poss\u00edvel guardar. Pe\u00e7a ao visitante para fotografar o c\u00f3digo.",
   "desk.qrAlt": "C\u00f3digo QR do crach\u00e1 {serial}",
   "desk.qrFailed":
     "N\u00e3o foi poss\u00edvel desenhar o c\u00f3digo. Registe novamente este visitante.",
