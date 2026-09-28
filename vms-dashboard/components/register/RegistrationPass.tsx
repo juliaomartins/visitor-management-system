@@ -3,6 +3,7 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 
+import { EVENT } from "@/components/brand";
 import {
   QR_ERROR_CORRECTION,
   QR_LOGO_PAD,
@@ -10,6 +11,9 @@ import {
   QR_LOGO_SRC,
 } from "@/lib/badge-geometry";
 import { useT } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/locales";
+import { buildPassPng, savePassImage } from "@/lib/pass-image";
+import { passFileName } from "@/lib/pass-name";
 import type { StoredPass } from "@/lib/registration";
 
 /**
@@ -21,12 +25,22 @@ import type { StoredPass } from "@/lib/registration";
  * does on the printed card, at the same error-correction level -- the argument
  * for M is at `QR_ERROR_CORRECTION`.
  *
- * The name and the visitor's own photo are shown so the guard can match the face
- * to the phone. No redirect and no timer: the page stays until the tab closes.
+ * The name and the visitor photo are shown so the guard can match the face to
+ * the phone. No redirect and no timer: the page stays until the tab closes.
+ *
+ * AND THE VISITOR IS TOLD TO SAVE IT, because the pass lives in
+ * `sessionStorage` and dies with the tab -- a closed tab, a flat battery, a
+ * browser reclaiming memory in a queue. The saved PNG needs no session, no
+ * network and no server; it is the copy that survives to the door.
  */
 export function RegistrationPass({ pass }: { pass: StoredPass }) {
   const t = useT();
   const [drawn, setDrawn] = useState<{ token: string; src: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{
+    key: MessageKey;
+    failed: boolean;
+  } | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -51,6 +65,38 @@ export function RegistrationPass({ pass }: { pass: StoredPass }) {
   }, [pass.badge_token]);
 
   const src = drawn?.token === pass.badge_token ? drawn.src : null;
+
+  async function save() {
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const png = await buildPassPng(
+        {
+          full_name: pass.full_name,
+          badge_serial: pass.badge_serial,
+          badge_token: pass.badge_token,
+        },
+        {
+          event: EVENT.name,
+          dates: t("brand.dates"),
+          foot: t("publicRegister.successShow"),
+        },
+      );
+      const outcome = savePassImage(png, passFileName(pass.badge_serial));
+      setSaveMessage({
+        key:
+          outcome === "saved"
+            ? "publicRegister.saveDone"
+            : "publicRegister.saveOpened",
+        failed: false,
+      });
+    } catch {
+      // A screenshot is the fallback that needs nothing from us at all.
+      setSaveMessage({ key: "publicRegister.saveFailed", failed: true });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -97,6 +143,30 @@ export function RegistrationPass({ pass }: { pass: StoredPass }) {
           )}
         </div>
       </div>
+
+      {/* The one instruction on this page that is not about the next ten seconds. */}
+      <section className="rounded-2xl border border-line-strong bg-card p-4">
+        <p className="display text-base text-ink">{t("publicRegister.saveTitle")}</p>
+        <p className="mt-1 text-sm text-ink-2">{t("publicRegister.saveBody")}</p>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving || !src}
+          // btn-lg, not py-3: see the class in globals.css for why a utility
+          // cannot resize a .btn. This is the one control the visitor must hit.
+          className="btn btn-primary btn-lg mt-3 w-full disabled:opacity-60"
+        >
+          {saving ? t("publicRegister.savingQr") : t("publicRegister.saveQr")}
+        </button>
+        {saveMessage ? (
+          <p
+            aria-live="polite"
+            className={`mt-2 text-sm ${saveMessage.failed ? "text-revoked" : "text-valid"}`}
+          >
+            {t(saveMessage.key)}
+          </p>
+        ) : null}
+      </section>
 
       <p className="rounded-lg bg-vip-soft px-4 py-2.5 text-center text-sm font-medium text-ink">
         {t("publicRegister.brightness")}
