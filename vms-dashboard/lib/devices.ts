@@ -44,11 +44,13 @@ const DEVICE_POLL_MS = 15_000;
 const DEVICE_KIND_KEY: Record<DeviceKind, MessageKey> = {
   scanner: "device.kind.scanner",
   screen: "device.kind.screen",
+  desk: "device.kind.desk",
 };
 
 const DEVICE_KIND_INLINE_KEY: Record<DeviceKind, MessageKey> = {
   scanner: "device.kindInline.scanner",
   screen: "device.kindInline.screen",
+  desk: "device.kindInline.desk",
 };
 
 export function kindLabelKey(kind: DeviceKind): MessageKey {
