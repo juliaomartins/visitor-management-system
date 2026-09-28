@@ -393,7 +393,7 @@ class Visitor(BaseModel):
     badge_serial  = CharField(max_length=20, unique=True)   # human-readable, printed
     token_hash    = CharField(max_length=64, unique=True, db_index=True)
     token_version = PositiveIntegerField(default=1)         # only rotation bumps it
-    source        = CharField(choices=[("admin","Admin"), ("self","Self")])  # who created it
+    source        = CharField(choices=[("admin","Admin"), ("desk","Desk"), ("self","Self")])
     is_active     = BooleanField(default=True)              # deactivate / activate
     deleted_at    = DateTimeField(null=True, db_index=True) # soft delete
 
@@ -475,6 +475,9 @@ POST   /api/v1/devices/pairing-code          generate setup code   [admin]
 GET    /api/v1/devices                       list paired devices   [admin]
 POST   /api/v1/devices/{id}/revoke           kill a lost phone     [admin]
 POST   /api/v1/devices/pair                  redeem setup code     [public, throttled]
+
+POST   /api/v1/desk/registrations            walk-in registration  [desk device, throttled]
+GET    /api/v1/desk/qr                       that badge's QR, PNG  [desk device, throttled]
 
 POST   /api/v1/public/registrations          register yourself     [public, throttled, switch]
 GET    /api/v1/public/registrations/status   is the form open?     [public, throttled]
@@ -653,7 +656,9 @@ tokens became derived. All four now agree, and the tab keeps the warning that IS
 true — anyone holding the file can produce a badge that scans.
 
 Only `/devices/pair` and the two `/public/registrations` routes are reachable without a
-token — see **PUBLIC SELF-REGISTRATION**.
+token — see **PUBLIC SELF-REGISTRATION**. The two `/desk/*` routes take no login
+either, but they are not open: each requires a paired **desk** device token, the same
+kind of credential a scanner or a screen carries — see **THE WALK-IN DESK**.
 
 ---
 
@@ -692,6 +697,7 @@ vms-backend/
     ├── badges/     ReportLab PDF. NO MODELS, no templates — it draws.
     ├── devices/    Device, PairingCode, authentication.py (HTTP), middleware.py (WS)
     ├── scans/      ScanEvent, consumers.py, routing.py, services.py, views.py
+    ├── desk/       The walk-in desk. TWO routes, no login, paired device token.
     └── reports/    Aggregation + CSV export. NO MODELS.
 ```
 
@@ -799,6 +805,7 @@ app/(dashboard)/devices            pairing codes + paired device list
 app/(dashboard)/reports            entrance log + CSV/XLSX/PDF export
 app/(dashboard)/settings           server address + clock check, registration switch, theme, language
 app/(public)/register              public self-registration form — no session, always light
+app/(public)/desk/[key]            walk-in desk — no login, paired device token, unguessable path
 ```
 
 **`/settings` is deliberately three panels and no more** — the third, the public
@@ -1199,6 +1206,39 @@ goes wrong at the door is handled at the kiosk desk. VIP is set by an admin afte
 - **Two file inputs, not one.** `capture="user"` opens the camera straight away
   and offers no way to reach a photo already on the phone, so "Take a photo"
   carries it and "Choose from gallery" deliberately does not.
+
+**THE WALK-IN DESK.** A staffed laptop or tablet at the door registers people who
+turn up without having registered, shows them a QR to photograph, and starts again.
+Nobody signs in: the desk pairs once, like a guard's phone.
+
+- **Two routes, and there will not be a third.** `POST /api/v1/desk/registrations`
+  creates a visitor (`source=desk`, category chosen by staff, photo required and put
+  through the public form's own sanitiser) and returns name, serial, token and
+  category. `GET /api/v1/desk/qr` draws that badge's code as a PNG. No list, no
+  retrieve, no update, no delete — and `apps/desk` registers no router, because a
+  viewset's base class is one edit away from generating all four on the one part of
+  this API that nobody signs in to.
+- **The QR route is keyed on the badge token, sent in the `X-Badge-Token` HEADER.**
+  Not a query string, which uvicorn writes into its access log, and not a serial or
+  an id, which could be walked: a caller can only draw a code it already holds.
+- **It pairs like a device.** `DeviceKind.DESK` is the third kind, so a desk is
+  minted, listed, watched and revoked on `/devices` with the same code, the same list
+  and the same one-click revoke as a phone. `IsDeskDevice` narrows the token to these
+  two routes.
+- **401 means pair again, 403 means wrong kind.** No token, an unknown token or a
+  revoked one is 401, and the page drops its token and shows the pairing screen. A
+  scanner's or a screen's token is 403, which pairing again would not fix.
+- **The path is unguessable, and that is obscurity, not the lock.** The dashboard
+  mints a 24-character key beside the pairing code (`/devices` shows the link and a
+  QR of it), and `/desk/<key>` 404s anything under 16 characters. The LAN is plain
+  http, so a key, a code and a token all cross the air in clear text — what limits
+  the damage is that the token reaches two create-only routes, that walk-ins are
+  marked `desk` on the roster, and that revoking is instant.
+- **The desk token lives in `localStorage`, deliberately.** It has to outlive the tab
+  so the desk opens tomorrow morning without an admin walking over with a code. Same
+  trade as the scanner-on-web token, and the rule still stands for the admin session.
+- **Ceilings are per device** — 120 registrations and 600 QR draws an hour: far above
+  a real desk's pace, low enough that a stolen token cannot fill the roster quietly.
 
 **The dashboard proxies `/api` and `/media` to the backend** via rewrites in
 `next.config.ts`, so every browser request is same-origin: no preflight on the
