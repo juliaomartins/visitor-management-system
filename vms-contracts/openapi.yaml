@@ -243,6 +243,70 @@ paths:
                 type: string
                 format: binary
           description: An .xlsx workbook.
+  /api/v1/desk/qr:
+    get:
+      operationId: desk_qr_retrieve
+      description: Desk devices only. Send the badge token from the registration response
+        in the `X-Badge-Token` header -- never in the query string, which the server
+        writes to its access log. Returns a PNG for the visitor to photograph.
+      summary: Draw the QR code for a badge
+      parameters:
+      - in: header
+        name: X-Badge-Token
+        schema:
+          type: string
+        description: The badge token returned by POST /desk/registrations.
+        required: true
+      tags:
+      - desk
+      security:
+      - deviceAuth: []
+      responses:
+        '200':
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: The QR code, with the event mark in the middle.
+        '400':
+          description: No badge token was sent.
+        '403':
+          description: A paired desk device is required.
+        '404':
+          description: No badge matches that token.
+  /api/v1/desk/registrations:
+    post:
+      operationId: desk_registrations_create
+      description: Desk devices only. Creates a visitor with `source=desk` and the
+        chosen category, and issues their badge. The response is the one and only
+        sight of the badge token. 413 above the upload limit; 429 when rate-limited.
+      summary: Register a walk-in visitor
+      tags:
+      - desk
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeskRegistrationRequest'
+        required: true
+      security:
+      - deviceAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeskRegistrationResult'
+          description: ''
+        '400':
+          description: A field failed validation.
+        '403':
+          description: A paired desk device is required.
+        '413':
+          description: The upload is too large.
+        '429':
+          description: Too many registrations.
   /api/v1/devices:
     get:
       operationId: devices_list
@@ -771,9 +835,11 @@ paths:
           type: string
           enum:
           - admin
+          - desk
           - self
-        description: 'Who created the registration: `admin` at the desk, or `self`
-          through the public form.'
+        description: 'Who created the registration: `admin` signed in at the desk,
+          `desk` at a paired walk-in desk with no login, or `self` through the public
+          form.'
       - in: query
         name: with_tokens
         schema:
@@ -1125,6 +1191,64 @@ components:
       required:
       - country
       - total
+    DeskRegistrationRequest:
+      type: object
+      description: '`POST /desk/registrations`, multipart. Exactly these five fields.'
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        country:
+          type: string
+          minLength: 1
+          maxLength: 100
+        organization:
+          type: string
+          default: ''
+          maxLength: 200
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          default: normal
+          description: |-
+            `normal` or `vip`.
+
+            * `normal` - Normal
+            * `vip` - VIP
+        photo:
+          type: string
+          format: binary
+          description: JPEG, PNG or WebP, at most 5 MB. Re-encoded by the server.
+      required:
+      - country
+      - full_name
+      - photo
+    DeskRegistrationResult:
+      type: object
+      description: |-
+        Only what the desk screen needs to show the visitor.
+
+        `badge_token` is the QR payload, and it is also the key the desk hands back
+        to `GET /desk/qr` to have the code drawn. No id, no photo URL, no token
+        hash: nothing here lets the desk reach any other visitor's badge.
+      properties:
+        full_name:
+          type: string
+        badge_serial:
+          type: string
+          description: Printed on the card; quoted at the kiosk desk if a scan fails.
+        badge_token:
+          type: string
+          description: Raw badge token for the QR code. Returned once, never again.
+        category:
+          type: string
+          description: '`normal` or `vip`, as registered.'
+      required:
+      - badge_serial
+      - badge_token
+      - category
+      - full_name
     Device:
       type: object
       description: '`token_hash` is deliberately absent — the raw token is shown once,
@@ -1424,10 +1548,12 @@ components:
       enum:
       - scanner
       - screen
+      - desk
       type: string
       description: |-
         * `scanner` - Scanner
         * `screen` - Screen
+        * `desk` - Desk
     PairingCode:
       type: object
       properties:
@@ -1962,10 +2088,12 @@ components:
       enum:
       - admin
       - self
+      - desk
       type: string
       description: |-
         * `admin` - Registered at the desk
         * `self` - Self-registered
+        * `desk` - Registered at the walk-in desk
     User:
       type: object
       description: Admin account, as the dashboard sees it. Never exposes the password
