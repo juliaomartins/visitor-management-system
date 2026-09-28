@@ -986,6 +986,19 @@ written that way**: the public registration page asked for `py-3 text-base` on
 Register, got `.btn`'s 38.6px anyway, and shipped a sub-44px tap target on the
 one screen used by people standing in a queue on their own phones.
 
+**EVERY COPY BUTTON GOES THROUGH `lib/clipboard.ts`, AND `navigator.clipboard`
+IS NOT IT.** That API is secure-context only, so on every machine at the event
+except the server's own `localhost` it does not exist — and three buttons (the
+desk link on `/devices`, the server address in `/settings`, the badge token on
+the receipt) each called it directly, caught the failure, and quietly did
+nothing: no copy, no label change, no explanation. `copyText` falls back to
+`document.execCommand("copy")`, which is deprecated and is the path that
+actually runs at the event, and it restores the previous selection so nothing is
+left highlighted. **The order is gesture-critical**: when the context is not
+secure the synchronous path runs BEFORE any `await`, because awaiting ends the
+user gesture `execCommand` requires. Verified in headless Chrome with
+`isSecureContext` forced false, reading the system clipboard back.
+
 **Right-click a card on `/badges` for Print / Export to Excel**, through the same
 `RowContextMenu`. Who it acts on follows the file-manager rule, and it has a wrong
 answer that looks fine:
@@ -1239,6 +1252,12 @@ Nobody signs in: the desk pairs once, like a guard's phone.
   trade as the scanner-on-web token, and the rule still stands for the admin session.
 - **Ceilings are per device** — 120 registrations and 600 QR draws an hour: far above
   a real desk's pace, low enough that a stolen token cannot fill the roster quietly.
+- **The desk can DOWNLOAD the code as well as show it**, and it saves the same image
+  a self-registering visitor saves — `lib/pass-image.ts`, the QR with the event mark,
+  the name and the serial under it — so staff can send it on to a visitor with no
+  phone to hand. Drawn locally from the badge token rather than fetched again, which
+  keeps that path at two routes; `navigator.share` is secure-context only and does not
+  exist on the LAN, so a saved file is the share.
 
 **The dashboard proxies `/api` and `/media` to the backend** via rewrites in
 `next.config.ts`, so every browser request is same-origin: no preflight on the
