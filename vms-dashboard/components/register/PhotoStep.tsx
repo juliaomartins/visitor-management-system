@@ -10,21 +10,28 @@ import { PhotoReview } from "./PhotoReview";
 
 const subscribeNever = () => () => {};
 
-type Origin = "file" | "camera";
+/** Which way this photo arrived, so the retake button can go back the same way. */
+type Origin = "capture" | "gallery" | "camera";
 
 /**
  * Photo in, reviewed with a free crop, face-checked.
  *
- * THE FILE INPUT IS THE REAL PATH. `capture="user"` opens the front camera on a
- * phone and works over plain http. The live camera preview is offered only
- * where `navigator.mediaDevices` exists -- a secure context -- which on the
- * event's `http://<lan-ip>` means localhost and nowhere else (CLAUDE.md, the
- * scanner-on-web section, measured it undefined on phones).
+ * TWO FILE INPUTS, AND THAT IS THE POINT. `capture="user"` opens the front
+ * camera straight away on Android and iOS -- which is what most visitors want,
+ * and a dead end for everyone else: with a single `capture` input there is no
+ * way to reach a photo already on the phone, so a visitor who would rather send
+ * a picture they already have cannot get past it. "Take a photo" therefore
+ * carries `capture` and "Choose from gallery" deliberately does not.
+ *
+ * The live preview (`CameraCapture`) is offered only where
+ * `navigator.mediaDevices` exists -- a secure context -- which on the event LAN
+ * over plain http means localhost and nowhere else (CLAUDE.md, the
+ * scanner-on-web section, measured it undefined on phones). The two file inputs
+ * are the path that works on every device.
  *
  * Whichever way the photo arrived, `PhotoReview` shows it full screen with two
- * choices. ✕ goes back the same way it came -- the camera again, or the picker
- * again -- because "not this one" means "another one", not "no photo". Its
- * output fits 600 x 800 and is never upscaled: nothing larger leaves the phone.
+ * choices, and the retake button reopens the same source. Its output fits
+ * 600 x 800 and is never upscaled: nothing larger leaves the phone.
  *
  * The face check runs on the CROPPED photo, because that is what prints.
  */
@@ -40,7 +47,8 @@ export function PhotoStep({
   errors?: string[];
 }) {
   const t = useT();
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const captureRef = useRef<HTMLInputElement | null>(null);
+  const galleryRef = useRef<HTMLInputElement | null>(null);
   const [source, setSource] = useState<{ url: string; origin: Origin } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [camera, setCamera] = useState(false);
@@ -86,9 +94,10 @@ export function PhotoStep({
   function retake() {
     const origin = source?.origin;
     closeReview();
-    // Still inside the ✕ click, so the browser allows the picker to open.
+    // Still inside the retake click, so the browser allows the picker to open.
     if (origin === "camera") setCamera(true);
-    else inputRef.current?.click();
+    else if (origin === "gallery") galleryRef.current?.click();
+    else captureRef.current?.click();
   }
 
   const applied = useCallback(
@@ -119,30 +128,39 @@ export function PhotoStep({
       <p className="mt-0.5 text-xs text-ink-3">{t("publicRegister.photoHint")}</p>
 
       {preview ? (
-        <div className="mt-2.5 flex items-center gap-4">
-          {/* The photo as it will be sent: the crop's own shape, not boxed to 3:4. */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-4">
+          {/* The photo as it will be sent: the shape it was cropped to, not a 3:4 box. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={preview}
             alt=""
             className="max-h-32 w-auto max-w-28 shrink-0 rounded-xl ring-1 ring-line"
           />
-          <div className="min-w-0 space-y-2">
+          <div className="min-w-0 flex-1 space-y-2">
             <FaceMessage face={face} />
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className="btn btn-ghost px-3 py-1.5 text-sm"
-            >
-              {t("publicRegister.changePhoto")}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => captureRef.current?.click()}
+                className="btn btn-ghost px-3 py-1.5 text-sm"
+              >
+                {t("publicRegister.takePhoto")}
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryRef.current?.click()}
+                className="btn btn-ghost px-3 py-1.5 text-sm"
+              >
+                {t("publicRegister.chooseFromGallery")}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
         <div className="mt-2.5 space-y-2">
           <button
             type="button"
-            onClick={() => inputRef.current?.click()}
+            onClick={() => captureRef.current?.click()}
             className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line-strong px-6 py-8 text-ink transition-colors hover:border-accent"
           >
             <svg
@@ -158,7 +176,14 @@ export function PhotoStep({
               <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.4-2h5l1.4 2h1.6A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z" />
               <circle cx="12" cy="12.5" r="3.5" />
             </svg>
-            <span className="mt-2 text-sm font-medium">{t("publicRegister.choosePhoto")}</span>
+            <span className="mt-2 text-sm font-medium">{t("publicRegister.takePhoto")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => galleryRef.current?.click()}
+            className="btn btn-ghost w-full text-sm"
+          >
+            {t("publicRegister.chooseFromGallery")}
           </button>
           {canUseCamera ? (
             <button
@@ -172,8 +197,9 @@ export function PhotoStep({
         </div>
       )}
 
+      {/* Two inputs, differing only in `capture`. One input cannot be both. */}
       <input
-        ref={inputRef}
+        ref={captureRef}
         type="file"
         accept="image/*"
         capture="user"
@@ -181,7 +207,19 @@ export function PhotoStep({
         tabIndex={-1}
         aria-hidden
         onChange={(event) => {
-          open(event.target.files?.[0], "file");
+          open(event.target.files?.[0], "capture");
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(event) => {
+          open(event.target.files?.[0], "gallery");
           event.target.value = "";
         }}
       />
@@ -204,7 +242,7 @@ export function PhotoStep({
 
       {source ? (
         <PhotoReview
-          // A new photo starts a fresh review, not the last photo's crop.
+          // A new photo starts a fresh review, not the previous crop.
           key={source.url}
           source={source.url}
           onUse={(file) => void applied(file)}
