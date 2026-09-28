@@ -20,6 +20,8 @@ urlpatterns = [
     path("api/v1/", include("apps.badges.urls")),
     path("api/v1/", include("apps.reports.urls")),
     path("api/v1/", include("apps.registrations.urls")),
+    # The walk-in desk: paired like a device, no login. Two routes only.
+    path("api/v1/desk/", include("apps.desk.urls")),
     # Everything reachable without a token, on a router of its own.
     path("api/v1/public/", include("apps.registrations.public_urls")),
 ]
