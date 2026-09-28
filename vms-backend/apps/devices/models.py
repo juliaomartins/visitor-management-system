@@ -12,6 +12,9 @@ from apps.common.models import BaseModel
 class DeviceKind(models.TextChoices):
     SCANNER = "scanner", "Scanner"
     SCREEN = "screen", "Screen"
+    # A staffed laptop registering walk-ins with no login. It pairs, is listed
+    # and is revoked exactly like the other two -- see apps/desk for its reach.
+    DESK = "desk", "Desk"
 
 
 class Device(BaseModel):
