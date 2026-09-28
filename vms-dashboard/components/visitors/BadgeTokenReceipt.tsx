@@ -11,6 +11,7 @@ import {
   QR_LOGO_SRC,
 } from "@/lib/badge-geometry";
 import { downloadBadgeCard, openBadgeCard } from "@/lib/badges";
+import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { ApiError, type VisitorIssued } from "@/lib/visitors";
 
@@ -188,14 +189,14 @@ export function BadgeTokenReceipt({
   }
 
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(visitor.badge_token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard access can be refused; the token is selectable either way.
+    // `copyText` works without a secure context, which the event LAN is not;
+    // the token is selectable either way if even that is refused.
+    if ((await copyText(visitor.badge_token)) !== "copied") {
       setCopied(false);
+      return;
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   const vip = visitor.category === "vip";
