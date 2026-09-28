@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "apps.scans",
     "apps.reports",
     "apps.registrations",
+    "apps.desk",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -197,6 +198,10 @@ REST_FRAMEWORK = {
         "public_registration": "10/hour",
         "public_registration_global": "200/hour",
         "public_status": "60/min",
+        # The walk-in desk, per paired device. Far above a real desk's pace and
+        # low enough that a stolen token cannot fill the roster unnoticed.
+        "desk_registration": "120/hour",
+        "desk_qr": "600/hour",
     },
 }
 
