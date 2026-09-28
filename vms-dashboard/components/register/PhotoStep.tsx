@@ -40,11 +40,16 @@ export function PhotoStep({
   onFaceCheck,
   face,
   errors,
+  label,
+  hint,
 }: {
   onPhoto: (file: File | null) => void;
   onFaceCheck: (result: FaceCheck) => void;
   face: FaceCheck | "checking" | null;
   errors?: string[];
+  /** The public form says "Your photo"; the desk is photographing somebody else. */
+  label?: string;
+  hint?: string;
 }) {
   const t = useT();
   const captureRef = useRef<HTMLInputElement | null>(null);
@@ -124,8 +129,10 @@ export function PhotoStep({
 
   return (
     <div>
-      <span className="block text-sm font-medium text-ink-2">{t("publicRegister.photo")}</span>
-      <p className="mt-0.5 text-xs text-ink-3">{t("publicRegister.photoHint")}</p>
+      <span className="block text-sm font-medium text-ink-2">
+        {label ?? t("publicRegister.photo")}
+      </span>
+      <p className="mt-0.5 text-xs text-ink-3">{hint ?? t("publicRegister.photoHint")}</p>
 
       {preview ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-4">
