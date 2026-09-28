@@ -974,7 +974,10 @@ cancels** `text-revoked` on Deactivate and `text-valid` on Activate on that page
 (both render grey), and any `px-*` / `text-xs` meant to resize a `.btn`. Give a
 variant its own component class, or move these classes into `@layer components`
 — the second is the cleaner fix but changes every button that relied on an
-override being ignored, so check them all first.
+override being ignored, so check them all first. **`.btn-lg` is the first variant
+written that way**: the public registration page asked for `py-3 text-base` on
+Register, got `.btn`'s 38.6px anyway, and shipped a sub-44px tap target on the
+one screen used by people standing in a queue on their own phones.
 
 **Right-click a card on `/badges` for Print / Export to Excel**, through the same
 `RowContextMenu`. Who it acts on follows the file-manager rule, and it has a wrong
@@ -1177,6 +1180,25 @@ goes wrong at the door is handled at the kiosk desk. VIP is set by an admin afte
   for this tab, so a reload does not cost the QR; it is the visitor's own credential
   on their own phone and dies with the tab. Countries are an English list
   (`lib/countries.ts`) so the reports do not split one delegation three ways.
+- **The pass can be SAVED to the phone, and the page says so.** `sessionStorage`
+  dies with the tab -- a flat battery, a browser reclaiming memory in a queue, a
+  visitor who closed it -- and the QR with it. `lib/pass-image.ts` draws a
+  1080-wide PNG (the same code, the same event mark, the name and serial under
+  it) and hands it over with `<a download>`; a browser without that attribute
+  gets the image opened instead and is told to press and hold it. **Not
+  `navigator.share`**, which would offer "Save Image" directly: it is
+  secure-context only, so it does not exist on the LAN over http.
+- **The switch is FOLLOWED while the page is open.** Nothing pushes it, so the
+  status is polled every `STATUS_POLL_MS` (15s, inside the 60/min public-status
+  throttle for 250 phones), re-read when the phone comes back to the tab or the
+  network returns, and fetched `cache: "no-store"` so no phone answers it from
+  its own cache. **Once the visitor has typed anything the form stays put**, with
+  a banner and Register refused, rather than being replaced by the closed
+  notice -- a half-filled form and a photo that took three tries are not ours to
+  throw away. The server still answers 403 whatever the page believes.
+- **Two file inputs, not one.** `capture="user"` opens the camera straight away
+  and offers no way to reach a photo already on the phone, so "Take a photo"
+  carries it and "Choose from gallery" deliberately does not.
 
 **The dashboard proxies `/api` and `/media` to the backend** via rewrites in
 `next.config.ts`, so every browser request is same-origin: no preflight on the
