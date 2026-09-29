@@ -541,7 +541,16 @@ body {
 }
 
 .cr80 {
-  aspect-ratio: 54 / 85.6;
+  /*
+    THE ARTWORK'S OWN RATIO, not CR80's 54 x 85.6.
+
+    `ID CARD OFFICIAL.jpg` is 748 x 1024, and the design depends on it: the
+    header curve, the two bands and the tais strip only land where they do at
+    0.73. So this preview is a different shape from the CR80 PDF that
+    `apps/badges/services.py` still renders -- see the note at the top of
+    components/badge-card.tsx.
+  */
+  aspect-ratio: 748 / 1024;
   container-type: inline-size;
 
   /*
@@ -569,31 +578,6 @@ body {
   --color-graphite-950: #0b1016;
   --color-vip: #8a6200;
   color-scheme: light;
-}
-
-/* 19 mm photo inside a 21.2 mm ring. */
-/* 11 pt ≈ 3.9 mm. */
-.cr80-name {
-  font-size: 7.2cqw;
-  line-height: 1.1;
-}
-
-.cr80-role {
-  font-size: 5cqw;
-}
-
-.cr80-field {
-  font-size: 4.4cqw;
-  line-height: 1.6;
-}
-
-.cr80-serial {
-  font-size: 5.6cqw;
-}
-
-/* 14 mm QR. */
-.cr80-qr {
-  width: 26cqw;
 }
 
 @media (prefers-reduced-motion: reduce) {
