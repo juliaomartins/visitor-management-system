@@ -783,8 +783,39 @@ other eight slots and is useless to a card printer, and the registration desk
 prints one badge far more often than nine.
 
 `apps/badges/services.py` holds the geometry as millimetre constants, and
-`components/badge-card.tsx` in the dashboard mirrors it in `cqw` so the on-screen
-preview and the PDF cannot drift apart.
+`components/badge-card.tsx` in the dashboard **used to mirror it in `cqw` so the
+on-screen preview and the PDF could not drift apart. THEY HAVE NOW DRIFTED, on
+purpose, and this is the thing to fix next.**
+
+The dashboard card was rebuilt to match `ID CARD OFFICIAL.jpg`, the artwork the
+organisers issue: navy header with a curved hem, the mark and the conference name
+across the top, a rounded rectangular photograph beside an underlined name and
+country, the QR beneath them, then a red role band, a navy address band and a
+photographed tais strip at the foot. Every dimension in that component is a
+percentage measured off the artwork, and the card's ratio is the artwork's
+748 : 1024 rather than CR80's 54 x 85.6 — the bands and the curve only land
+correctly at that ratio.
+
+`services.py` was explicitly out of scope for that change, so **what `POST
+/badges/card` prints is still the old CR80 design**: different shape, different
+layout, no tais. Until the PDF is redrawn, the dashboard shows the card the event
+issues and the printer produces the card it used to. The preview at
+`/visitors/[id]` says so in as many words rather than claiming "as it prints".
+
+Two details of the rebuild worth keeping, both measured rather than guessed:
+
+- **The header hem is a parabola, and the control point is at half its span.**
+  The measured points — 21.4% of the height at the left edge, 25.9% at 10% of the
+  width, 28.7% at 20%, flat at 29.7% from 30.6% on — fit
+  `M0 0 H100 V29.7 H30.6 Q15.3 29.7 0 21.4 Z` in a `preserveAspectRatio="none"`
+  box. That non-uniform stretch is the opposite of the rule the charts follow, and
+  it is right here: there is no stroke or radius to distort, and the curve is
+  defined in percentages of the card, so stretching the box IS the reproduction.
+- **The artwork mixes two type widths, and which line gets which is measurable.**
+  Long lines are condensed and short ones are not: the name is 24 characters in
+  421px (0.43em each, which is Arial Narrow) while the role band is 18 in 478px
+  (0.60em, which is Arial). The exact faces are not identified — Arial Narrow
+  matches the metrics to within 3px of every measured line, and that is the claim.
 
 ---
 
