@@ -24,6 +24,8 @@ export const EVENT = {
   shortName: "DRCC 2026",
   dates: "Díli, 2–3 October 2026",
   theme: "Empowering communities, connecting nations",
+  /** Printed in the navy band of the ID card. */
+  website: "www.cooptl.com",
   organisers: [
     {
       src: "/brand/rdtl.png",
