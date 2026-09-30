@@ -68,6 +68,15 @@ build/
 # Screenshots and scratch output from verification runs
 /scratch/
 
+# THE ORGANISERS' PRINTED CARD FILES. `ID CARD PVC SECOOP.pdf` is the 80-page
+# production file the event's PVC cards were made from, and the badge geometry in
+# `apps/badges/services.py` was measured out of it. It is NOT tracked, for two
+# reasons: it is 55MB, and every page carries a real visitor's name, country and
+# photograph -- exactly the passport-adjacent data this system is careful with
+# everywhere else. Committing it would put 80 people into the history forever.
+# Keep the file beside the repo; ask the organisers if you need it again.
+ID CARD*.pdf
+
 # draw.io writes a .$<name>.bkp autosave beside the file it is editing. It is a
 # transient copy of the diagram, not a second diagram, and it changes on every
 # keystroke -- committing it means a 55KB churn on every save.
