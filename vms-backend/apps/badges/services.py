@@ -1,7 +1,7 @@
 """Badge PDF rendering. No models — this app reads from `visitors`.
 
-    render_card_pdf(visitor, raw_token)          one CR80 card
-    render_a4_sheet_pdf([(visitor, raw_token)])  ten to an A4 sheet, with cut marks
+    render_card_pdf(visitor, raw_token)          one 95 x 130 mm card
+    render_card_set_pdf([(visitor, raw_token)])  the same card, one per page
 
 Both need the RAW token, because the QR carries it and the database keeps only its
 SHA-256 digest (CLAUDE.md constraint #3). Neither stores it, logs it, or returns
@@ -18,14 +18,37 @@ ReportLab is pure Python. It draws rather than lays out, so the geometry below i
 explicit millimetres instead of CSS, and it works identically on every machine
 this system will ever run on with no system-level install.
 
-Fonts are ReportLab's built-in Type 1 faces: Helvetica for names, Courier for the
-serial. They are vector, embedded-by-reference, and always present — no font file
-to ship and nothing to go missing on a different OS. The dashboard's screen badge
-uses Archivo and IBM Plex Mono; the printed card is close but not identical, which
-is the price of never depending on a font file being installed.
+THE CARD IS THE ORGANISERS' OWN ARTWORK, MEASURED OFF THEIR PRODUCTION FILE
+--------------------------------------------------------------------------
+`ID CARD PVC SECOOP.pdf` in the repository root is the file the organisers had
+80 PVC cards made from: 80 pages, one card per page, 95 x 130 mm, no sheet and
+no cut marks. Every number in the geometry block below was read out of that
+file's content stream rather than guessed off a screenshot — the header hem is
+its cubic bezier, the bands are its rectangles, the colours are its own CMYK and
+RGB — so this renderer produces the card the event already issues.
 
-Geometry matches the dashboard's browser-printed badge exactly, so a card cut from
-this PDF and one printed from the receipt sit on the same lanyard looking the same.
+WHAT IS NOT IDENTICAL, AND WHY
+------------------------------
+**The typefaces.** The artwork is set in Araboto (Medium, Normal, Bold) and Open
+Sans. Neither ships with ReportLab, neither is installable with pip, and shipping
+a font file for a card is exactly the dependency that cost this app WeasyPrint.
+So the card is set in Helvetica, which is built in, vector, and present on every
+machine this will ever run on.
+
+Helvetica is not Araboto, so the sizes here are NOT the artwork's point sizes —
+they are the sizes at which Helvetica sets each fixed string to the artwork's
+measured WIDTH. Matching width rather than height is deliberate: this layout is
+width-constrained everywhere that matters (the title nearly fills the column
+beside the mark, the role nearly fills the red band), and a block that is 6%
+wider than the artwork's overflows where one that is 6% shorter merely looks a
+shade lighter. The ratios came out between 0.92 and 1.05 of the artwork's sizes,
+consistently, which is what a font substitution looks like when it is honest.
+
+**The event mark.** The artwork's copy of the logo is squashed about 6%
+horizontally — 53.79 x 56.18 pt around an emblem whose real proportion is 1.025
+wide to tall. This draws `assets/drcc-event.png` undistorted, fitted inside that
+same box and centred in it. Reproducing a client's logo at the wrong proportion
+is not fidelity.
 """
 
 import base64
@@ -37,13 +60,11 @@ from pathlib import Path
 import qrcode
 from PIL import Image
 from qrcode.constants import ERROR_CORRECT_M
-from reportlab.lib.colors import HexColor
+from reportlab.lib.colors import CMYKColor, HexColor
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas as pdf_canvas
-
-from django.utils import timezone
 
 from apps.visitors.models import Visitor, VisitorCategory
 from apps.visitors.services import (
@@ -65,125 +86,166 @@ class BadgeRenderingUnavailable(RuntimeError):
 
 
 # --------------------------------------------------------------------------
-# Card geometry. CR80 PORTRAIT — 54 x 85.6 mm, a bank card stood on its end.
+# Card geometry. 95 x 130 mm PORTRAIT — the organisers' PVC card.
 #
-# Portrait because that is how a badge hangs. A lanyard holds a card by a slot in
-# its short edge, so a landscape card either swings sideways all day or needs a
-# second punch; every conference badge in the world is portrait for this reason.
-# The size is unchanged — this is the same CR80 blank, rotated — so it still fits
-# a standard holder and a standard card printer.
+# THIS USED TO BE CR80, 54 x 85.6 mm, AND THE CHANGE IS NOT A PREFERENCE. The
+# event's cards are already made, at 95 x 130, from the production file named in
+# the module docstring. A CR80 card is a bank card; this one is the larger badge
+# blank a lanyard holder takes, and every proportion of the artwork — the hem,
+# the photograph, the two bands, the woven strip — is measured against it.
 #
 # Millimetres throughout, with the origin at the card's bottom-left. ReportLab
 # counts upward from the bottom of the page, and every constant below is written
 # in that direction so the code reads the same way it draws.
+#
+# Each constant carries the percentage of the card it came from, because that is
+# how it was measured and how it should be re-checked. Divide by 0.95 for a
+# percentage of the width, by 1.30 for a percentage of the height.
 # --------------------------------------------------------------------------
 
-CARD_W, CARD_H = 54.0, 85.6
+CARD_W, CARD_H = 95.0, 130.0
 
-# The lanyard slot. Drawn as a hairline outline: this is a punch guide, not ink,
-# and a printer or a hand punch needs to see where it goes.
-SLOT_W, SLOT_H = 12.0, 2.4
-SLOT_X = (CARD_W - SLOT_W) / 2
-SLOT_Y = 80.2
+# Shapes that run off the edge are drawn past it. The artwork's own white body
+# stops 0.09 mm short on three sides — a Corel artefact that leaves a navy
+# hairline down the trim — and reproducing that would be reproducing a fault.
+BLEED = 1.0
 
-# Decoration bands, top and bottom, left and right of the middle.
-DECO_TOP_Y = 72.4
-DECO_BOTTOM_Y = 4.5
-DECO_LEFT_X = 3.0
-DECO_RIGHT_X = 40.0
+# The artwork's own colours. Navy is CMYK because that is how the production
+# file defines it, and a card house prints from the separation rather than from
+# somebody's screen; the red and the black are RGB in the source too.
+NAVY = CMYKColor(1.0, 0.8667, 0.1333, 0.549)
+RED = HexColor("#ac1117")
+INK = HexColor("#000000")
+PAPER = HexColor("#ffffff")
+PHOTO_EMPTY = HexColor("#e4e7ec")
 
-# The portrait photo, cropped to a circle — the reference's strongest move, and
-# it survives a bad crop better than a rectangle does.
-PHOTO_CX, PHOTO_CY, PHOTO_R = CARD_W / 2, 60.6, 9.5
-PHOTO_RING = 1.1
-
-# Text block, bottom-anchored so a two-line name grows upward into the gap under
-# the photo instead of pushing the fields off the card.
-TEXT_LEFT, TEXT_RIGHT = 4.0, CARD_W - 4.0
-NAME_BASELINE = 42.0
-NAME_LEADING = 4.4
-ROLE_BASELINE = 37.2
-RULE_Y = 33.4
-FIELD_1_BASELINE = 29.6
-FIELD_2_BASELINE = 25.8
-SERIAL_BASELINE = 20.8
-
-# QR, centred at the foot between the two bottom motif clusters. 14 mm still
-# scans across a doorway at error-correction M, with or without the centre mark.
+# THE HEADER HEM IS A CUBIC, NOT A PARABOLA, and it is the artwork's own curve.
 #
-# 14 mm is also not free to change: SERIAL_BASELINE sits at 20.8 and this code's
-# top edge is at 18.5, so growing it costs the serial line its clearance. That is
-# what fixes the module size at whatever the error-correction level decides --
-# which is why the level is argued out at QR_ERROR_CORRECTION rather than
-# assumed, and why it did not move when the logo went in.
-QR_SIZE = 14.0
-QR_X = (CARD_W - QR_SIZE) / 2
-QR_Y = 4.5
+# `components/badge-card.tsx` fits it with a quadratic because SVG in a
+# percentage box is what it had; this is the real thing, lifted from the
+# production file's path operators and converted to millimetres. It leaves the
+# left edge at 102.212 mm (21.4% down the card), swings through two control
+# points and lands flat at 37.995 mm across (40.0% of the width) — not the
+# 30.6% the preview assumes.
+HEM_START_X = -0.093
+HEM_START_Y = 102.212
+HEM_C1 = (9.790, 96.045)
+HEM_C2 = (16.075, 90.069)
+HEM_END = (37.995, 91.244)
+HEM_RIGHT_Y = 91.344
+BODY_BOTTOM_Y = 20.274
 
-# Label column for the two data rows, so the values line up in a column.
-LABEL_X = 7.0
-VALUE_X = 22.0
+# The event mark, top-left on the navy.
+#
+# THIS IS THE BOX OF THE ARTWORK'S INK, not of the image it placed there: the
+# artwork's own copy has about 0.8 mm of transparent padding along its bottom,
+# so measuring the placement rather than the emblem draws ours 4% small. The
+# mark is fitted inside this box at its own proportion and centred — see the
+# module docstring for why it is not stretched to fill it.
+MARK_X, MARK_W = 5.415, 18.800
+MARK_TOP, MARK_H = 8.125, 19.058
 
-INK = HexColor("#101828")
-MUTED = HexColor("#5a6472")
-RULE = HexColor("#d7dce3")
-NAVY = HexColor("#16276b")
-ROLE_PINK = HexColor("#ec1e79")
-BAND_VIP = HexColor("#b8860b")
-PHOTO_EMPTY = HexColor("#dfe3ea")
+# Alpha below which `drcc-event.png` is treated as empty when trimming.
+#
+# NOT ZERO, AND THAT IS WORTH 8% OF THE MARK'S WIDTH. The file carries 32 px of
+# all-but-invisible fringe down its right-hand edge — alpha above 0 but below 9
+# — so `getbbox()` on the raw channel returns 411 x 401 where the visible emblem
+# is 377 x 396. Trimming to the raw box therefore scales the mark to fit a
+# third of an inch of nothing, and it renders visibly smaller than the artwork's
+# with no clue why.
+MARK_ALPHA_FLOOR = 8
 
-# The motif palette, lifted from the reference: flat, saturated, no gradients.
-M_BLUE = HexColor("#2743c4")
-M_SKY = HexColor("#4d8ff5")
-M_YELLOW = HexColor("#ffc531")
-M_ORANGE = HexColor("#f5821f")
-M_MAGENTA = HexColor("#ec1e79")
-M_PURPLE = HexColor("#7b4dd8")
-M_RED = HexColor("#e8442c")
+# Conference name and theme, centred on 62.12% of the width — the axis of the
+# column beside the mark, shared by all four lines.
+HEADER_AXIS = 59.014
+TITLE_BASELINE = 116.350
+TITLE_LEADING = 4.485
+THEME_BASELINE = 104.832
+THEME_LEADING = 3.484
+HEADER_MAX_W = 67.0
 
-SIZE_NAME = 11.0
-SIZE_ROLE = 7.6
-SIZE_LABEL = 6.4
-SIZE_VALUE = 6.8
-SIZE_SERIAL = 8.6
+# The photograph: a 30 x 40 mm rounded rectangle with a heavy black keyline.
+# Exactly 3:4, which is the ratio `lib/badge-geometry.ts` already crops to —
+# but the stored file may be any shape, so it is covered, not stretched.
+PHOTO_X, PHOTO_Y = 4.750, 39.533
+PHOTO_W, PHOTO_H = 30.001, 40.014
+PHOTO_RADIUS = 1.8
+PHOTO_FRAME_W = 0.847
+
+# Name and country, centred on the right-hand column. The name sits ON its
+# baseline and wraps UPWARD into the white space above, so a long name moves
+# toward the header rather than pushing the country down into the code.
+COLUMN_AXIS = 66.310
+COLUMN_MAX_W = 52.440
+NAME_BASELINE = 75.712
+NAME_LEADING_FACTOR = 1.1
+NAME_RULE_Y = 75.010
+NAME_RULE_H = 0.234
+COUNTRY_BASELINE = 69.745
+
+# The code. 27.5 mm against the old card's 14, which is the one part of this
+# change that makes the badge easier to scan rather than merely correct: the
+# grid is unchanged at 39 modules, so the module itself goes from 0.359 mm to
+# 0.705 mm.
+QR_X, QR_Y = 52.677, 39.208
+QR_SIZE = 27.502
+
+# The red role band and the navy address band under it. The navy is the card's
+# own ground showing through, so only the red is painted.
+ROLE_BAND_Y, ROLE_BAND_H = 19.383, 8.164
+ROLE_BASELINE = 21.450
+ROLE_MAX_W = 87.4
+SITE_BASELINE = 15.145
+
+# The woven tais at the foot. It stops 4.574 mm above the trim with navy below
+# it — the artwork does not run it to the edge, and a strip stretched to the
+# bottom is the single most visible way to get this card wrong.
+TAIS_Y, TAIS_H = 4.574, 8.043
 
 FONT_BOLD = "Helvetica-Bold"
 FONT_BODY = "Helvetica"
-FONT_ITALIC = "Helvetica-Oblique"
-FONT_MONO = "Courier-Bold"
 
-# 3 x 3 portrait cards to an A4 sheet: 3*54 = 162 wide, 3*85.6 = 256.8 tall, both
-# inside 210 x 297 with room for the cut marks in the margin.
-CARDS_PER_SHEET = 9
-SHEET_COLS, SHEET_ROWS = 3, 3
+# Sizes at which Helvetica sets the artwork's fixed strings to the artwork's
+# measured widths — not the artwork's own point sizes. See the module docstring.
+SIZE_TITLE = 9.86
+SIZE_THEME = 10.91
+SIZE_NAME = 13.8
+SIZE_COUNTRY = 13.8
+SIZE_ROLE = 15.13
+SIZE_SITE = 12.56
 
-A4_W, A4_H = 210.0, 297.0
-SHEET_MARGIN_X = (A4_W - SHEET_COLS * CARD_W) / 2
-SHEET_MARGIN_Y = (A4_H - SHEET_ROWS * CARD_H) / 2
-
-CUT_MARK_LEN = 3.0
-CUT_MARK_GAP = 1.0
-CUT_MARK_WEIGHT = 0.2
+# The lines that are the same on all 250 cards. They are the conference's, not
+# ours, and they are not translated — see CLAUDE.md, "What is deliberately NOT
+# translated": the preview exists to show what the printer produces, and a Tetun
+# preview over an English card would make it lie.
+TITLE_LINES = (
+    "Díli Regional Cooperative Conference",
+    "and Ministerial Dialogue 2026",
+)
+THEME_LINES = (
+    "“Empowering Communities,",
+    "Connecting Nations”",
+)
+WEBSITE = "www.cooptl.com"
 
 # M RECOVERS ABOUT 15%, AND ADDING THE CENTRE LOGO DID NOT CHANGE THIS LINE.
 #
 # A badge picks up scuffs and lanyard creases, and this keeps the modules large
-# enough to read across a doorway at 14mm.
+# enough to read across a doorway.
 #
 # THE LOGO DOES NOT NEED A STRONGER LEVEL, and believing it does makes the badge
 # worse rather than safer. The folklore is that a centre mark wants Q or H. It
 # does not want it here, because the level decides the GRID: the token is a
 # fixed 64 lowercase hex characters, taken in byte mode, so
 #
-#     level   version   grid    module at 14mm
-#     M         5        39       0.359 mm   <- unchanged
-#     Q         6        43       0.326 mm
-#     H         7        47       0.298 mm
+#     level   version   grid    module at 27.5mm
+#     M         5        39       0.705 mm   <- unchanged
+#     Q         6        43       0.640 mm
+#     H         7        47       0.585 mm
 #
-# and the card fixes the code at 14mm (see QR_SIZE), so a bigger grid buys
-# redundancy with module size. Module size is what a phone at a door is short
-# of. Measured over 250 distinct tokens rendered at 300dpi and degraded, at the
-# capture size where a scan starts to fail:
+# and a bigger grid buys redundancy with module size. Module size is what a
+# phone at a door is short of. Measured over 250 distinct tokens rendered at
+# 300dpi and degraded, at the capture size where a scan starts to fail:
 #
 #     M, no logo                  250/250    <- the card before this change
 #     M, this logo                250/250    <- the card now
@@ -194,6 +256,10 @@ CUT_MARK_WEIGHT = 0.2
 # reason is arithmetic: at 0.18 with the pad below, the plate covers about 4.5%
 # of the code's area, comfortably inside what M already rebuilds. Do not "harden"
 # this to Q or H without re-running that measurement.
+#
+# That measurement was made at 14mm, on the CR80 card. The code is 27.5mm now,
+# so every margin in it got wider rather than narrower — the conclusion is
+# unchanged and the arithmetic is the same, because the GRID did not move.
 QR_ERROR_CORRECTION = ERROR_CORRECT_M
 
 # The event mark, sunk into the middle of the code.
@@ -204,7 +270,7 @@ QR_ERROR_CORRECTION = ERROR_CORRECT_M
 # not check out.
 #
 # The fraction is of the QR's full width, quiet zone included. 0.18 puts the mark
-# at about 3.0mm on the printed card. Measured against M with no logo at all,
+# at about 5.0mm on the printed card. Measured against M with no logo at all,
 # 0.16, 0.18 and 0.20 are indistinguishable -- all three decode 250/250 at every
 # capture size where the bare code does, and dim light alone (contrast down to
 # 0.40) and soft focus alone both cost nothing at any of those sizes.
@@ -219,10 +285,6 @@ QR_ERROR_CORRECTION = ERROR_CORRECT_M
 # 0.18 is the middle of the flat shelf rather than its edge, because the
 # simulation cannot model your dye-sub printer or the particular decoder in a
 # guard's phone, and the conservative end of a flat region costs nothing.
-#
-# AT 14mm THE WORDMARK RING IS NOT LEGIBLE and is not meant to be. What survives
-# at this size is the silhouette: the plumes, the flag and the gold ring. Nobody
-# reads "Ministerial Dialogue 2026" off the QR; they read it off the card.
 QR_LOGO_PATH = Path(__file__).resolve().parent / "assets" / "drcc-event.png"
 QR_LOGO_FRACTION = 0.18
 
@@ -233,17 +295,50 @@ QR_LOGO_FRACTION = 0.18
 # see is cheaper to repair than speckle it has to guess at.
 QR_LOGO_PAD = 1.18
 
+# The woven band at the foot, cut from the production file at 600 dpi.
+#
+# IT IS A PHOTOGRAPH BECAUSE THE ARTWORK'S IS. The band is built in the source
+# from a hundred and nine placed raster tiles, and a drawn approximation of a
+# real textile reads as a pattern rather than as cloth. 2244 x 190 px is the
+# band at exactly 95 x 8.043 mm, so it is drawn at 1:1 and never resampled.
+TAIS_PATH = Path(__file__).resolve().parent / "assets" / "tais-strip.png"
+
 
 @lru_cache(maxsize=1)
 def _qr_logo() -> Image.Image:
     """The event mark, loaded once for the life of the process.
 
-    An A4 sheet draws nine of these and a full credential export draws 250.
-    Re-decoding the PNG per card is pure waste, and the cached image is never
-    mutated -- every caller copies it before resizing.
+    A print run draws one of these per card and a full credential export draws
+    250. Re-decoding the PNG per card is pure waste, and the cached image is
+    never mutated -- every caller copies it before resizing.
     """
     with QR_LOGO_PATH.open("rb") as handle:
         return Image.open(io.BytesIO(handle.read())).convert("RGBA")
+
+
+@lru_cache(maxsize=1)
+def _card_mark() -> ImageReader:
+    """The same mark, TRIMMED, for the card's header.
+
+    `drcc-event.png` is 628 x 419 with the emblem occupying only x 134..511 —
+    more than a third of the file is transparent padding. The QR wants the file
+    as it is (its fraction is measured against the padded image and the plate
+    behind it is what the decoder sees), but the card wants the emblem, so this
+    is the one place that crops to the alpha channel — and it crops at
+    `MARK_ALPHA_FLOOR` rather than at zero, for the reason recorded there.
+    """
+    image = _qr_logo()
+    solid = image.getchannel("A").point(
+        lambda value: 255 if value > MARK_ALPHA_FLOOR else 0
+    )
+    box = solid.getbbox()
+    return ImageReader(image.crop(box) if box else image)
+
+
+@lru_cache(maxsize=1)
+def _tais() -> ImageReader:
+    with TAIS_PATH.open("rb") as handle:
+        return ImageReader(io.BytesIO(handle.read()))
 
 
 def qr_image(raw_token: str):
@@ -292,7 +387,7 @@ def photo_reader(visitor: Visitor):
     """The visitor's photo as something ReportLab can draw, or None.
 
     A missing file is not a reason to fail a print run — the card still carries the
-    name, the serial and a working QR, and a badge with a grey box beats no badge
+    name, the country and a working QR, and a badge with a grey box beats no badge
     at the registration desk.
     """
     try:
@@ -302,43 +397,52 @@ def photo_reader(visitor: Visitor):
         return None
 
 
-def cover_box(image_width: float, image_height: float, diameter: float):
-    """The smallest box of the image's OWN aspect that covers a `diameter` circle.
+def cover_box(image_width: float, image_height: float, box_w: float, box_h: float):
+    """The smallest box of the image's OWN aspect that covers `box_w` x `box_h`.
 
-    This is `object-fit: cover` in millimetres, and it is the whole reason the
-    printed photo now matches the one on screen. `components/badge-card.tsx`
-    draws the photo with `aspect-square object-cover rounded-full`, so the
-    browser scales the file until it covers a square and crops the overflow. The
-    PDF used to hardcode `draw_h = draw_w * 4 / 3` with
-    `preserveAspectRatio=False`, i.e. it asserted every stored file was 3:4 and
-    stretched whatever it got to fit that claim.
+    This is `object-fit: cover` in millimetres, and it is the reason the printed
+    photo matches the one on screen. `components/badge-card.tsx` draws the photo
+    with `object-cover` in a fixed rectangle, so the browser scales the file
+    until it covers that rectangle and crops the overflow. The PDF used to
+    hardcode `draw_h = draw_w * 4 / 3` with `preserveAspectRatio=False`, i.e. it
+    asserted every stored file was 3:4 and stretched whatever it got to fit that
+    claim.
 
     **THAT ASSERTION WAS FALSE FOR MOST OF THE ROSTER.** `PhotoCropper.tsx`
     offers badge, square and free crops, and exports at the selection's own
     ratio — so square and free crops land on disk as square-ish files. Measured
     over the 15 photos actually stored in `media/visitors`, only 3 were 3:4;
     the other 12 printed squeezed horizontally, the worst (600x479) at 60% of
-    true width. A face narrowed by a third is not obviously a bug on a 19 mm circle,
-    which is why it reached a print queue: it just makes people look thinner
-    than they are.
+    true width.
 
     Reading the real size removes the assumption instead of restating it, so
     every crop mode prints faithfully with nothing re-cropped and no migration.
 
-    A non-positive or unreadable size falls back to a square box. That crops a
+    A non-positive or unreadable size falls back to the box itself. That crops a
     portrait a little tighter than cover would, and is the one outcome here that
     cannot distort a face.
     """
     if not image_width or not image_height or image_width <= 0 or image_height <= 0:
-        return diameter, diameter
+        return box_w, box_h
 
-    # Cover means the SHORTER side of the image maps to the diameter and the
-    # longer side overflows, which is the opposite of fit. Getting this branch
-    # backwards produces a box that fits inside the circle, leaving the ring
-    # showing through in two arcs.
-    if image_width >= image_height:
-        return diameter * image_width / image_height, diameter
-    return diameter, diameter * image_height / image_width
+    # Cover means the scale that satisfies BOTH edges, so one side overflows and
+    # the clip takes it. Getting this to `min` produces a box that fits inside
+    # the frame, leaving the ground showing through in two bands.
+    scale = max(box_w / image_width, box_h / image_height)
+    return image_width * scale, image_height * scale
+
+
+def _fit_size(text: str, font: str, size: float, max_width_mm: float) -> float:
+    """The largest size at or below `size` at which `text` fits on one line.
+
+    Truncating somebody's country on their own badge is worse than setting it a
+    quarter-point smaller, and an ellipsis on a printed card looks like a fault.
+    """
+    limit = max_width_mm * mm
+    width = stringWidth(text, font, size)
+    if width <= limit or width <= 0:
+        return size
+    return max(6.0, size * limit / width)
 
 
 def _fit_lines(text: str, font: str, size: float, max_width_mm: float, max_lines: int):
@@ -367,280 +471,234 @@ def _fit_lines(text: str, font: str, size: float, max_width_mm: float, max_lines
         ):
             return lines, size
 
-        size -= 0.5
+        size -= 0.25
 
     return [text], size
 
 
-# --------------------------------------------------------------------------
-# The geometric motifs.
-#
-# A fixed arrangement, not a random one. Every card in a run should look like it
-# came from the same press — a per-visitor shuffle would read as a printing fault
-# rather than as design, and it would make two prints of the same badge differ.
-# --------------------------------------------------------------------------
-
-
-def _square(canvas, x, y, w, h, color):
-    canvas.setFillColor(color)
-    canvas.rect(x * mm, y * mm, w * mm, h * mm, stroke=0, fill=1)
-
-
-def _checker(canvas, x, y, size, color, n=4):
-    """n x n alternating squares."""
-    step = size / n
-    canvas.setFillColor(color)
-    for row in range(n):
-        for col in range(n):
-            if (row + col) % 2 == 0:
-                canvas.rect(
-                    (x + col * step) * mm,
-                    (y + row * step) * mm,
-                    step * mm,
-                    step * mm,
-                    stroke=0,
-                    fill=1,
-                )
-
-
-def _dots(canvas, x, y, size, color, n=4):
-    """A grid of dots — the halftone block in the reference."""
-    step = size / n
-    radius = step * 0.3
-    canvas.setFillColor(color)
-    for row in range(n):
-        for col in range(n):
-            canvas.circle(
-                (x + col * step + step / 2) * mm,
-                (y + row * step + step / 2) * mm,
-                radius * mm,
-                stroke=0,
-                fill=1,
-            )
-
-
-def _quarters(canvas, x, y, size, color):
-    """Two opposing quarter discs — the pinwheel motif."""
-    canvas.setFillColor(color)
-    # wedge() takes the bounding box of the full circle, then an angle sweep.
-    canvas.wedge(
-        x * mm, y * mm, (x + 2 * size) * mm, (y + 2 * size) * mm, 90, 90, stroke=0, fill=1
-    )
-    canvas.wedge(
-        (x - size) * mm,
-        (y - size) * mm,
-        (x + size) * mm,
-        (y + size) * mm,
-        270,
-        90,
+def _draw_body(canvas, x: float, y: float) -> None:
+    """The navy field, and the white body under its curved hem."""
+    canvas.setFillColor(NAVY)
+    canvas.rect(
+        (x - BLEED) * mm,
+        (y - BLEED) * mm,
+        (CARD_W + 2 * BLEED) * mm,
+        (CARD_H + 2 * BLEED) * mm,
         stroke=0,
         fill=1,
     )
 
-
-def _triangle(canvas, x, y, size, color):
-    canvas.setFillColor(color)
+    # The curve starts at its own measured point, NOT at the bleed. Sliding the
+    # start 1 mm left and redrawing the same cubic from there drops the hem half
+    # a millimetre at the card's left edge, because the first control point is
+    # unchanged and the segment has to reach further to get to it.
     path = canvas.beginPath()
-    path.moveTo(x * mm, y * mm)
-    path.lineTo((x + size) * mm, y * mm)
-    path.lineTo(x * mm, (y + size) * mm)
+    path.moveTo((x + HEM_START_X) * mm, (y + HEM_START_Y) * mm)
+    path.curveTo(
+        (x + HEM_C1[0]) * mm,
+        (y + HEM_C1[1]) * mm,
+        (x + HEM_C2[0]) * mm,
+        (y + HEM_C2[1]) * mm,
+        (x + HEM_END[0]) * mm,
+        (y + HEM_END[1]) * mm,
+    )
+    path.lineTo((x + CARD_W + BLEED) * mm, (y + HEM_RIGHT_Y) * mm)
+    path.lineTo((x + CARD_W + BLEED) * mm, (y + BODY_BOTTOM_Y) * mm)
+    path.lineTo((x - BLEED) * mm, (y + BODY_BOTTOM_Y) * mm)
+    # Back up the bled left edge to the curve's own start. The 0.09 mm step
+    # across the top of that segment is off the trim, where nothing sees it.
+    path.lineTo((x - BLEED) * mm, (y + HEM_START_Y) * mm)
     path.close()
+
+    canvas.setFillColor(PAPER)
     canvas.drawPath(path, stroke=0, fill=1)
 
 
-def _rings(canvas, x, y, size, color):
-    """Concentric circles — the target motif."""
-    canvas.setStrokeColor(color)
-    canvas.setLineWidth(0.45)
-    for step in (0.5, 0.32, 0.14):
-        canvas.circle(
-            (x + size / 2) * mm, (y + size / 2) * mm, size * step * mm, stroke=1, fill=0
+def _draw_header(canvas, x: float, y: float) -> None:
+    """The mark, the conference name and the theme, on the navy."""
+    reader = _card_mark()
+    image_w, image_h = reader.getSize()
+    # Fit inside the artwork's box at the emblem's own proportion, centred. The
+    # artwork squashes it; we do not.
+    scale = min(MARK_W / image_w, MARK_H / image_h)
+    draw_w, draw_h = image_w * scale, image_h * scale
+    canvas.drawImage(
+        reader,
+        (x + MARK_X + (MARK_W - draw_w) / 2) * mm,
+        (y + CARD_H - MARK_TOP - MARK_H + (MARK_H - draw_h) / 2) * mm,
+        draw_w * mm,
+        draw_h * mm,
+        preserveAspectRatio=True,
+        mask="auto",
+    )
+
+    canvas.setFillColor(PAPER)
+    axis = (x + HEADER_AXIS) * mm
+
+    size = min(
+        _fit_size(line, FONT_BOLD, SIZE_TITLE, HEADER_MAX_W) for line in TITLE_LINES
+    )
+    canvas.setFont(FONT_BOLD, size)
+    for index, line in enumerate(TITLE_LINES):
+        canvas.drawCentredString(
+            axis, (y + TITLE_BASELINE - index * TITLE_LEADING) * mm, line
+        )
+
+    size = min(
+        _fit_size(line, FONT_BODY, SIZE_THEME, HEADER_MAX_W) for line in THEME_LINES
+    )
+    canvas.setFont(FONT_BODY, size)
+    for index, line in enumerate(THEME_LINES):
+        canvas.drawCentredString(
+            axis, (y + THEME_BASELINE - index * THEME_LEADING) * mm, line
         )
 
 
-def _stripes(canvas, x, y, size, color):
-    canvas.setFillColor(color)
-    bar = size / 7
-    for index in range(4):
+def _draw_photo(canvas, visitor: Visitor, x: float, y: float) -> None:
+    """The photograph in its rounded frame, cover-cropped to the artwork's box."""
+    left, bottom = x + PHOTO_X, y + PHOTO_Y
+    reader = photo_reader(visitor)
+
+    canvas.saveState()
+    clip = canvas.beginPath()
+    clip.roundRect(
+        left * mm, bottom * mm, PHOTO_W * mm, PHOTO_H * mm, PHOTO_RADIUS * mm
+    )
+    canvas.clipPath(clip, stroke=0, fill=0)
+
+    if reader is not None:
+        # Cover the frame at the image's own aspect and let the clip take the
+        # overflow — `object-fit: cover`, which is what the preview does. See
+        # `cover_box`: the ratio is READ from the file, never assumed.
+        draw_w, draw_h = cover_box(*reader.getSize(), PHOTO_W, PHOTO_H)
+        canvas.drawImage(
+            reader,
+            (left + (PHOTO_W - draw_w) / 2) * mm,
+            (bottom + (PHOTO_H - draw_h) / 2) * mm,
+            draw_w * mm,
+            draw_h * mm,
+            # The box already carries the image's ratio, so this preserves
+            # rather than changes anything today. It is `True` deliberately:
+            # if `cover_box` is ever wrong, letterboxing shows up inside the
+            # frame where somebody will see it, and `False` would go on
+            # silently stretching faces instead.
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+    else:
+        canvas.setFillColor(PHOTO_EMPTY)
+        canvas.rect(left * mm, bottom * mm, PHOTO_W * mm, PHOTO_H * mm, stroke=0, fill=1)
+
+    canvas.restoreState()
+
+    canvas.setStrokeColor(INK)
+    canvas.setLineWidth(PHOTO_FRAME_W * mm)
+    canvas.roundRect(
+        left * mm,
+        bottom * mm,
+        PHOTO_W * mm,
+        PHOTO_H * mm,
+        PHOTO_RADIUS * mm,
+        stroke=1,
+        fill=0,
+    )
+
+
+def _draw_identity(canvas, visitor: Visitor, x: float, y: float) -> None:
+    """Name over country, centred on the right-hand column.
+
+    The name is set AS ENTERED. The artwork sets it that way — "Abencia da Cruz",
+    not "ABENCIA DA CRUZ" — and a card is the one place a person's own spelling
+    of their own name should survive. The country is uppercase, as the artwork
+    has it, and because it is a label rather than a name.
+    """
+    axis = x + COLUMN_AXIS
+    canvas.setFillColor(INK)
+
+    lines, size = _fit_lines(
+        visitor.full_name, FONT_BOLD, SIZE_NAME, COLUMN_MAX_W, max_lines=2
+    )
+    leading = size * NAME_LEADING_FACTOR / mm
+
+    canvas.setFont(FONT_BOLD, size)
+    for index, line in enumerate(reversed(lines)):
+        step = index * leading
+        canvas.drawCentredString(axis * mm, (y + NAME_BASELINE + step) * mm, line)
+        # The rule is a drawn rectangle rather than the font's own underline,
+        # because the artwork's is one: a fixed 0.70 mm below the baseline,
+        # 0.23 mm thick, the width of that line and no wider.
+        width = stringWidth(line, FONT_BOLD, size) / mm
         canvas.rect(
-            x * mm, (y + index * 2 * bar) * mm, size * mm, bar * mm, stroke=0, fill=1
+            (axis - width / 2) * mm,
+            (y + NAME_RULE_Y + step) * mm,
+            width * mm,
+            NAME_RULE_H * mm,
+            stroke=0,
+            fill=1,
         )
 
-
-_MOTIF = {
-    "checker": _checker,
-    "dots": _dots,
-    "quarters": _quarters,
-    "triangle": _triangle,
-    "rings": _rings,
-    "stripes": _stripes,
-    "square": lambda c, x, y, size, color: _square(c, x, y, size, size, color),
-}
-
-# (column, row, motif, colour) inside each cluster, on a 3.5 mm cell.
-CELL = 3.5
-
-CLUSTER_TOP_LEFT = [
-    (0, 1, "quarters", M_PURPLE),
-    (1, 1, "triangle", M_ORANGE),
-    (2, 1, "rings", M_SKY),
-    (0, 0, "checker", M_MAGENTA),
-    (1, 0, "dots", M_ORANGE),
-    (2, 0, "square", M_YELLOW),
-]
-
-CLUSTER_TOP_RIGHT = [
-    (0, 1, "dots", M_SKY),
-    (1, 1, "checker", M_RED),
-    (2, 1, "quarters", M_YELLOW),
-    (1, 0, "triangle", M_BLUE),
-    (2, 0, "square", M_MAGENTA),
-]
-
-CLUSTER_BOTTOM_LEFT = [
-    (0, 2, "stripes", M_MAGENTA),
-    (1, 2, "square", M_BLUE),
-    (0, 1, "checker", M_YELLOW),
-    (1, 1, "triangle", M_SKY),
-    (0, 0, "quarters", M_ORANGE),
-    (1, 0, "dots", M_PURPLE),
-]
-
-CLUSTER_BOTTOM_RIGHT = [
-    (1, 2, "rings", M_RED),
-    (0, 1, "dots", M_BLUE),
-    (1, 1, "checker", M_YELLOW),
-    (0, 0, "triangle", M_PURPLE),
-    (1, 0, "quarters", M_MAGENTA),
-]
-
-
-def _draw_cluster(canvas, plan, origin_x, origin_y):
-    for column, row, kind, color in plan:
-        _MOTIF[kind](
-            canvas,
-            origin_x + column * CELL,
-            origin_y + row * CELL,
-            CELL * 0.82,
-            color,
+    country = (visitor.country or "").upper()
+    if country:
+        canvas.setFont(
+            FONT_BOLD, _fit_size(country, FONT_BOLD, SIZE_COUNTRY, COLUMN_MAX_W)
         )
+        canvas.drawCentredString(axis * mm, (y + COUNTRY_BASELINE) * mm, country)
+
+
+def _draw_foot(canvas, visitor: Visitor, x: float, y: float) -> None:
+    """The red role band, the address on the navy, and the tais."""
+    vip = visitor.category == VisitorCategory.VIP
+    # The artwork's band carries the bearer's role. Ours is the one the rest of
+    # the app already uses, so a VIP still reads as a VIP -- there is no second
+    # colour for it, because the artwork has none and inventing one would make
+    # the printed card stop matching the cards already in circulation.
+    role = "VIP GUEST" if vip else (visitor.organization or "VISITOR")
+
+    canvas.setFillColor(RED)
+    canvas.rect(
+        (x - BLEED) * mm,
+        (y + ROLE_BAND_Y) * mm,
+        (CARD_W + 2 * BLEED) * mm,
+        ROLE_BAND_H * mm,
+        stroke=0,
+        fill=1,
+    )
+
+    canvas.setFillColor(PAPER)
+    role = role.upper()
+    canvas.setFont(FONT_BOLD, _fit_size(role, FONT_BOLD, SIZE_ROLE, ROLE_MAX_W))
+    canvas.drawCentredString(
+        (x + CARD_W / 2) * mm, (y + ROLE_BASELINE) * mm, role
+    )
+
+    canvas.setFont(FONT_BODY, SIZE_SITE)
+    canvas.drawCentredString((x + CARD_W / 2) * mm, (y + SITE_BASELINE) * mm, WEBSITE)
+
+    canvas.drawImage(
+        _tais(),
+        x * mm,
+        (y + TAIS_Y) * mm,
+        CARD_W * mm,
+        TAIS_H * mm,
+        # The strip is cut at exactly this size, so nothing is being stretched;
+        # `False` is here because the band must span the full trim whatever the
+        # asset is replaced with, and a letterboxed tais leaves navy at the side.
+        preserveAspectRatio=False,
+    )
 
 
 def draw_card(canvas, visitor: Visitor, raw_token: str, x: float, y: float) -> None:
     """Draw one badge with its bottom-left corner at (x, y), in millimetres.
 
-    Every field on the card is real: the name, the organisation, the day they were
-    registered, the country, the printed serial, and a QR carrying the raw token.
-    Nothing here is a placeholder, because a badge with a placeholder on it is a
-    badge that gets handed to somebody.
+    Every field on the card is real: the name, the country, the organisation in
+    the red band, and a QR carrying the raw token. Nothing here is a placeholder,
+    because a badge with a placeholder on it is a badge that gets handed to
+    somebody.
     """
-    vip = visitor.category == VisitorCategory.VIP
-
-    # Card face. On a sheet the cards butt together, so each one paints its own
-    # white ground rather than relying on the paper.
-    canvas.setFillColor(HexColor("#ffffff"))
-    canvas.rect(x * mm, y * mm, CARD_W * mm, CARD_H * mm, stroke=0, fill=1)
-
-    # Lanyard slot, as a punch guide.
-    canvas.setStrokeColor(RULE)
-    canvas.setLineWidth(0.4)
-    canvas.roundRect(
-        (x + SLOT_X) * mm,
-        (y + SLOT_Y) * mm,
-        SLOT_W * mm,
-        SLOT_H * mm,
-        SLOT_H / 2 * mm,
-        stroke=1,
-        fill=0,
-    )
-
-    _draw_cluster(canvas, CLUSTER_TOP_LEFT, x + DECO_LEFT_X, y + DECO_TOP_Y)
-    _draw_cluster(canvas, CLUSTER_TOP_RIGHT, x + DECO_RIGHT_X, y + DECO_TOP_Y)
-    _draw_cluster(canvas, CLUSTER_BOTTOM_LEFT, x + DECO_LEFT_X, y + DECO_BOTTOM_Y)
-    _draw_cluster(canvas, CLUSTER_BOTTOM_RIGHT, x + DECO_RIGHT_X + 3.0, y + DECO_BOTTOM_Y)
-
-    # The photo, clipped to a circle. Amber ring for a VIP: the one signal that has
-    # to survive being read across a lobby.
-    cx, cy = x + PHOTO_CX, y + PHOTO_CY
-    canvas.setFillColor(BAND_VIP if vip else NAVY)
-    canvas.circle(cx * mm, cy * mm, (PHOTO_R + PHOTO_RING) * mm, stroke=0, fill=1)
-
-    reader = photo_reader(visitor)
-    if reader is not None:
-        canvas.saveState()
-        clip = canvas.beginPath()
-        clip.circle(cx * mm, cy * mm, PHOTO_R * mm)
-        canvas.clipPath(clip, stroke=0, fill=0)
-        # Cover the circle at the image's own aspect and let the clip take the
-        # overflow — `object-fit: cover`, which is what the preview does. See
-        # `cover_box`: the ratio is READ from the file, never assumed.
-        image_width, image_height = reader.getSize()
-        draw_w, draw_h = cover_box(image_width, image_height, PHOTO_R * 2)
-        canvas.drawImage(
-            reader,
-            (cx - draw_w / 2) * mm,
-            (cy - draw_h / 2) * mm,
-            draw_w * mm,
-            draw_h * mm,
-            # The box already carries the image's ratio, so this preserves
-            # rather than changes anything today. It is `True` deliberately:
-            # if `cover_box` is ever wrong, letterboxing shows up in the circle
-            # where somebody will see it, and `False` would go on silently
-            # stretching faces instead. A visible failure beats an invisible
-            # one in a file nobody opens until the morning they print from it.
-            preserveAspectRatio=True,
-            mask="auto",
-        )
-        canvas.restoreState()
-    else:
-        canvas.setFillColor(PHOTO_EMPTY)
-        canvas.circle(cx * mm, cy * mm, PHOTO_R * mm, stroke=0, fill=1)
-
-    text_width = TEXT_RIGHT - TEXT_LEFT
-
-    # Name, centred, growing upward into the gap under the photo.
-    name_lines, name_size = _fit_lines(
-        visitor.full_name.upper(), FONT_BOLD, SIZE_NAME, text_width, max_lines=2
-    )
-    canvas.setFillColor(INK)
-    canvas.setFont(FONT_BOLD, name_size)
-    baseline = y + NAME_BASELINE
-    for line in reversed(name_lines):
-        canvas.drawCentredString((x + CARD_W / 2) * mm, baseline * mm, line)
-        baseline += NAME_LEADING
-
-    # The role line. A VIP says so here in amber; everyone else gets their
-    # organisation, and a visitor with neither gets the word that is still true.
-    role = "VIP GUEST" if vip else (visitor.organization or "VISITOR")
-    role_lines, role_size = _fit_lines(role, FONT_ITALIC, SIZE_ROLE, text_width, max_lines=1)
-    canvas.setFillColor(BAND_VIP if vip else ROLE_PINK)
-    canvas.setFont(FONT_ITALIC, role_size)
-    canvas.drawCentredString(
-        (x + CARD_W / 2) * mm, (y + ROLE_BASELINE) * mm, role_lines[0]
-    )
-
-    canvas.setStrokeColor(RULE)
-    canvas.setLineWidth(0.4)
-    canvas.line(
-        (x + TEXT_LEFT + 3) * mm,
-        (y + RULE_Y) * mm,
-        (x + TEXT_RIGHT - 3) * mm,
-        (y + RULE_Y) * mm,
-    )
-
-    _field(canvas, x, y + FIELD_1_BASELINE, "Registered", _joined(visitor))
-    _field(canvas, x, y + FIELD_2_BASELINE, "Country", visitor.country)
-
-    # Serial, mono, centred — the human-readable half of the badge, and the thing
-    # somebody reads out over a radio when the QR will not scan.
-    serial_lines, serial_size = _fit_lines(
-        visitor.badge_serial, FONT_MONO, SIZE_SERIAL, text_width, max_lines=1
-    )
-    canvas.setFillColor(INK)
-    canvas.setFont(FONT_MONO, serial_size)
-    canvas.drawCentredString(
-        (x + CARD_W / 2) * mm, (y + SERIAL_BASELINE) * mm, serial_lines[0]
-    )
+    _draw_body(canvas, x, y)
+    _draw_header(canvas, x, y)
+    _draw_photo(canvas, visitor, x, y)
+    _draw_identity(canvas, visitor, x, y)
 
     canvas.drawImage(
         ImageReader(qr_image(raw_token)),
@@ -651,30 +709,11 @@ def draw_card(canvas, visitor: Visitor, raw_token: str, x: float, y: float) -> N
         preserveAspectRatio=True,
     )
 
-
-def _joined(visitor: Visitor) -> str:
-    """The day this visitor was registered, in the event's own timezone."""
-    stamp = timezone.localtime(visitor.created_at)
-    return stamp.strftime("%d %b %Y")
-
-
-def _field(canvas, x: float, baseline: float, label: str, value: str) -> None:
-    """One `Label : value` row, with the values in a shared column."""
-    canvas.setFillColor(MUTED)
-    canvas.setFont(FONT_BODY, SIZE_LABEL)
-    canvas.drawString((x + LABEL_X) * mm, baseline * mm, label)
-    canvas.drawString((x + VALUE_X - 2.0) * mm, baseline * mm, ":")
-
-    lines, size = _fit_lines(
-        value or "-", FONT_BOLD, SIZE_VALUE, TEXT_RIGHT - VALUE_X, max_lines=1
-    )
-    canvas.setFillColor(INK)
-    canvas.setFont(FONT_BOLD, size)
-    canvas.drawString((x + VALUE_X) * mm, baseline * mm, lines[0])
+    _draw_foot(canvas, visitor, x, y)
 
 
 def render_card_pdf(visitor: Visitor, raw_token: str) -> bytes:
-    """One badge, one CR80 portrait page — 54 x 85.6 mm."""
+    """One badge, one 95 x 130 mm page — the size the PVC cards are cut to."""
     buffer = io.BytesIO()
     canvas = pdf_canvas.Canvas(buffer, pagesize=(CARD_W * mm, CARD_H * mm))
     canvas.setTitle(f"Badge {visitor.badge_serial}")
@@ -686,80 +725,32 @@ def render_card_pdf(visitor: Visitor, raw_token: str) -> bytes:
     return buffer.getvalue()
 
 
-def _draw_cut_marks(canvas) -> None:
-    """Hairlines in the page margin at every grid line.
+def render_card_set_pdf(issued: list[tuple[Visitor, str]]) -> bytes:
+    """Every badge in the run, ONE CARD PER PAGE, at 95 x 130 mm.
 
-    The cards butt against each other with no gutter, so a shared edge is one cut
-    and a guillotine takes a straight pass across the whole sheet. The marks sit
-    outside the grid and are trimmed away with the waste.
-    """
-    canvas.setStrokeColor(INK)
-    canvas.setLineWidth(CUT_MARK_WEIGHT)
+    THIS USED TO BE AN A4 SHEET OF NINE, WITH CUT MARKS. It is not one any more,
+    because the cards are not cut out of paper: `ID CARD PVC SECOOP.pdf`, the
+    file the organisers had their 80 cards made from, is 80 pages of one card
+    each at exactly this size, which is what a card printer takes and what a
+    print shop quotes against. A sheet of nine also stopped fitting — three
+    across at 95 mm is 285 mm on a 210 mm page.
 
-    columns = [SHEET_MARGIN_X + index * CARD_W for index in range(SHEET_COLS + 1)]
-    rows = [SHEET_MARGIN_Y + index * CARD_H for index in range(SHEET_ROWS + 1)]
-
-    top, bottom = rows[-1], rows[0]
-    for x in columns:
-        canvas.line(
-            x * mm, (top + CUT_MARK_GAP) * mm, x * mm, (top + CUT_MARK_GAP + CUT_MARK_LEN) * mm
-        )
-        canvas.line(
-            x * mm,
-            (bottom - CUT_MARK_GAP) * mm,
-            x * mm,
-            (bottom - CUT_MARK_GAP - CUT_MARK_LEN) * mm,
-        )
-
-    left, right = columns[0], columns[-1]
-    for y in rows:
-        canvas.line(
-            (left - CUT_MARK_GAP) * mm, y * mm, (left - CUT_MARK_GAP - CUT_MARK_LEN) * mm, y * mm
-        )
-        canvas.line(
-            (right + CUT_MARK_GAP) * mm,
-            y * mm,
-            (right + CUT_MARK_GAP + CUT_MARK_LEN) * mm,
-            y * mm,
-        )
-
-
-def render_a4_sheet_pdf(issued: list[tuple[Visitor, str]]) -> bytes:
-    """Nine badges to an A4 sheet, in the order given, paginating past nine.
-
-    A run of exactly ONE is not a sheet. Printing a single visitor onto A4 puts
-    one card in the corner of a page and wastes the other eight slots, and a card
-    printer fed A4 cannot use it at all — so a run of one comes back as a single
-    54 x 85.6 mm page, the size of the card itself. The registration desk prints
-    one badge far more often than it prints nine.
+    A run of one is therefore not a special case any more; it is the same
+    document with one page. `render_card_pdf` stays because a single badge has
+    its own endpoint and its own title.
     """
     if len(issued) == 1:
         visitor, raw_token = issued[0]
         return render_card_pdf(visitor, raw_token)
 
     buffer = io.BytesIO()
-    canvas = pdf_canvas.Canvas(buffer, pagesize=(A4_W * mm, A4_H * mm))
-    canvas.setTitle(f"Badge sheet ({len(issued)})")
+    canvas = pdf_canvas.Canvas(buffer, pagesize=(CARD_W * mm, CARD_H * mm))
+    canvas.setTitle(f"Badges ({len(issued)})")
 
-    for index, (visitor, raw_token) in enumerate(issued):
-        position = index % CARDS_PER_SHEET
-        if position == 0 and index > 0:
-            canvas.showPage()
+    for visitor, raw_token in issued:
+        draw_card(canvas, visitor, raw_token, 0, 0)
+        canvas.showPage()
 
-        if position == 0:
-            _draw_cut_marks(canvas)
-
-        column = position % SHEET_COLS
-        row = position // SHEET_COLS
-
-        x = SHEET_MARGIN_X + column * CARD_W
-        # Reading order: row 0 is the TOP of the page, but ReportLab counts from
-        # the bottom, so the row index is subtracted rather than added.
-        y = SHEET_MARGIN_Y + (SHEET_ROWS - 1 - row) * CARD_H
-
-        draw_card(canvas, visitor, raw_token, x, y)
-
-    canvas.showPage()
     canvas.save()
     return buffer.getvalue()
 
@@ -774,7 +765,7 @@ def collect_badge_tokens(visitors, *, actor=None) -> list[tuple[Visitor, str]]:
     quiet revocation of the first.
 
     Tokens are derived now, so this recomputes what is already on the card. Print
-    the same visitor ten times and every sheet carries the same working QR.
+    the same visitor ten times and every page carries the same working QR.
 
     Rotating a badge is `rotate_badge_tokens` below, and it has to be asked for.
     """
