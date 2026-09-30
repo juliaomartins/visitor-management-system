@@ -482,17 +482,20 @@ body {
 /* ------------------------------------------------------------ signature -- */
 
 /*
- * THE CR80 CARD — PORTRAIT, 54 × 85.6 mm.
+ * THE ID CARD — PORTRAIT, 95 × 130 mm.
  *
  * Everything this system does produces or checks this rectangle, so it is a
  * primary object in the interface rather than a motif sprinkled on top. Portrait
  * because that is how a badge hangs: a lanyard holds a card by a slot in its
- * short edge. Same blank as before, stood on its end.
+ * short edge.
  *
  * True aspect, always — a card drawn at the wrong proportion lies about what will
  * come out of the printer. Internals are sized in cqw, a percentage of the card's
  * own width, so one component serves a small tile and a large hero from one set
- * of rules. These figures are the PDF's millimetres over 54 mm.
+ * of rules.
+ *
+ * The class is still called `.cr80` because that is what the card used to be and
+ * renaming it touches every surface that shows a badge. It is a name, not a size.
  */
 /*
   THE PUBLIC REGISTRATION PAGE IS ALWAYS LIGHT.
@@ -546,9 +549,10 @@ body {
 
     `ID CARD OFFICIAL.jpg` is 748 x 1024, and the design depends on it: the
     header curve, the two bands and the tais strip only land where they do at
-    0.73. So this preview is a different shape from the CR80 PDF that
-    `apps/badges/services.py` still renders -- see the note at the top of
-    components/badge-card.tsx.
+    0.73. The printed card is 95 x 130 mm, which is 0.7308 against this 0.7305 --
+    the same shape to three figures, from two different measurements of one
+    design. See the note at the top of components/badge-card.tsx for the three
+    numbers where the two sources still disagree.
   */
   aspect-ratio: 748 / 1024;
   container-type: inline-size;
