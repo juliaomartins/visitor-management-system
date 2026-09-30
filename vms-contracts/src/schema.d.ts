@@ -152,12 +152,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reissue badges and render a printable PDF
-         * @description DESTRUCTIVE. Every listed visitor is given a NEW badge token, which invalidates the QR on any card already printed for them, including one they are currently wearing.
+         * Render the listed visitors' badges as a printable PDF
+         * @description NOT destructive, despite the route's name. Badge tokens are derived from the visitor and their token version, so this recomputes the QR already on each card rather than minting a new one. Printing a run twice produces the same cards and invalidates nothing.
          *
-         *     This is not a choice the endpoint makes: the raw token exists only at the moment it is created, so reprinting is impossible and reissuing is the only thing the server can do.
-         *
-         *     Nine cards per A4 sheet with cut marks; more than nine paginates. A run of exactly one comes back as a single 54x85.6mm card page instead, since one card on A4 wastes the sheet.
+         *     One card per page, 95x130mm — the size the event's PVC cards are cut to, and the size of the organisers' own production file. There is no A4 sheet and no cut marks: these cards are printed on a card printer, and three 95mm cards do not fit across a 210mm page.
          */
         post: operations["badges_reissue_sheet_create"];
         delete?: never;
@@ -671,14 +669,13 @@ export interface components {
             visitor_ids?: string[];
         };
         /**
-         * @description Which visitors to put on the sheet.
+         * @description Which visitors to print, and in what order.
          *
-         *     Every one of them gets a NEW token — see the endpoint description. There is no
-         *     way to reprint an existing card, because the raw token it carries was never
-         *     stored.
+         *     Nobody's token changes — tokens are derived, so the run redraws the QR each
+         *     of these visitors is already carrying. See the endpoint description.
          */
         BadgeReissueSheetRequestRequest: {
-            /** @description Visitors to reissue and print, in the order they appear on the sheet. */
+            /** @description Visitors to print, in the order the pages should come out. */
             visitor_ids: string[];
         };
         CategoryCount: {
@@ -1449,7 +1446,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description An A4 sheet of badges as a PDF, or a single CR80 card page when exactly one visitor was requested. */
+            /** @description A PDF of 95x130mm badge pages, one per visitor. */
             200: {
                 headers: {
                     [name: string]: unknown;
