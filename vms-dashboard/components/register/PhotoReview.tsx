@@ -28,8 +28,9 @@ const WHOLE_IMAGE: Crop = { unit: "%", x: 0, y: 0, width: 100, height: 100 };
  * fold. A visitor needs two things: is this the photo, yes or no.
  *
  * The crop starts as the whole image, because most selfies need nothing, and is
- * free in shape. Whatever shape is chosen, the badge and the lobby screen
- * cover-crop it to a circle (`cover_box` in apps/badges/services.py).
+ * free in shape. Whatever shape is chosen, both surfaces cover-crop it
+ * (`cover_box` in apps/badges/services.py): the printed card to a 30 x 40 mm
+ * rounded rectangle, the lobby screen to a circle.
  *
  * THE BUTTONS ARE SIBLINGS OF THE CROP, NOT CHILDREN. ReactCrop starts a new
  * selection on any pointerdown inside itself, so a button rendered inside it
