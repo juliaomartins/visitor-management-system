@@ -131,9 +131,9 @@ export async function downloadBadgeCard(
  * This is the `/badges` route to the printer, minus the trip to the downloads
  * folder: `/badges` hands over the PDF, the registrar opens it in the viewer and
  * presses its printer icon, and that is the path confirmed to come out at card
- * size on the CR80 printer. The PDF is the same page, too -- `/badges` for one
- * visitor calls `render_a4_sheet_pdf`, whose single-visitor branch IS
- * `render_card_pdf`, measured at 1 page, 54.0 x 85.6 mm, pixel difference 0.0.
+ * size on the card printer. The PDF is the same page, too -- `/badges` for one
+ * visitor calls `render_card_set_pdf`, whose single-visitor branch IS
+ * `render_card_pdf`, measured at 1 page, 95.0 x 130.0 mm, pixel difference 0.0.
  *
  * IT REPLACED PRINTING FROM AN INVISIBLE IFRAME, and the reason is the printer,
  * not the code. `print()` on a hidden frame hands the page straight to the print
