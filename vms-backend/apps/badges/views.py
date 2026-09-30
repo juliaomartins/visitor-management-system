@@ -1,7 +1,7 @@
 """Badge PDFs.
 
     POST /api/v1/badges/card           [admin]  one card, from a raw token
-    POST /api/v1/badges/reissue-sheet  [admin]  an A4 sheet, reissuing as it goes
+    POST /api/v1/badges/reissue-sheet  [admin]  a run of cards, one per page
     POST /api/v1/badges/export         [admin]  an .xlsx with QR, reissuing as it goes
     POST /api/v1/badges/reissue        [admin]  raw tokens as JSON, reissuing as it goes
     GET  /api/v1/badges/roster.xlsx    [admin]  photo + QR, reissuing NOTHING
@@ -148,38 +148,39 @@ class BadgeCardView(APIView):
 
 
 class BadgeReissueSheetView(APIView):
-    """Print a sheet, and reissue every badge on it.
+    """Print a run of cards, one 95 x 130 mm page each.
 
-    Named for what it does rather than what it produces. There is no way to
-    reprint an existing card — the raw token was never stored — so putting a
-    visitor on this sheet mints them a new token and kills the old one. Any card
-    already in someone's hand stops scanning the moment this runs.
+    **THE ROUTE NAME AND THIS DOCSTRING BOTH LIED, AND IN THE SAME WAY THE
+    CREDENTIAL EXPORT DID.** They were written when tokens were random and
+    unrecoverable, so drawing a QR meant minting a new one and killing the card
+    already in somebody's hand. Tokens are derived now: this calls
+    `collect_badge_tokens`, which recomputes what is already printed, so a run
+    can be repeated as often as a printer jams without invalidating anything.
+
+    The route keeps its name because renaming it is a schema change for a word,
+    and every client is pinned to it. The behaviour is the docstring's.
     """
 
     permission_classes = [IsAdmin]
 
     @extend_schema(
         operation_id="badges_reissue_sheet_create",
-        summary="Reissue badges and render a printable PDF",
+        summary="Render the listed visitors' badges as a printable PDF",
         description=(
-            "DESTRUCTIVE. Every listed visitor is given a NEW badge token, which "
-            "invalidates the QR on any card already printed for them, including "
-            "one they are currently wearing.\n\n"
-            "This is not a choice the endpoint makes: the raw token exists only at "
-            "the moment it is created, so reprinting is impossible and reissuing "
-            "is the only thing the server can do.\n\n"
-            "Nine cards per A4 sheet with cut marks; more than nine paginates. "
-            "A run of exactly one comes back as a single 54x85.6mm card page "
-            "instead, since one card on A4 wastes the sheet."
+            "NOT destructive, despite the route's name. Badge tokens are derived "
+            "from the visitor and their token version, so this recomputes the QR "
+            "already on each card rather than minting a new one. Printing a run "
+            "twice produces the same cards and invalidates nothing.\n\n"
+            "One card per page, 95x130mm — the size the event's PVC cards are cut "
+            "to, and the size of the organisers' own production file. There is no "
+            "A4 sheet and no cut marks: these cards are printed on a card printer, "
+            "and three 95mm cards do not fit across a 210mm page."
         ),
         request=BadgeReissueSheetRequestSerializer,
         responses={
             200: OpenApiResponse(
                 OpenApiTypes.BINARY,
-                description=(
-                    "An A4 sheet of badges as a PDF, or a single CR80 card "
-                    "page when exactly one visitor was requested."
-                ),
+                description="A PDF of 95x130mm badge pages, one per visitor.",
             )
         },
         tags=["badges"],
@@ -204,8 +205,8 @@ class BadgeReissueSheetView(APIView):
                 {"visitor_ids": [f"Unknown or deleted visitors: {', '.join(missing)}"]}
             )
 
-        # Preserve the caller's order: the sheet is cut in reading order and the
-        # registrar hands cards out from the top.
+        # Preserve the caller's order: the pages come off the printer in it and
+        # the registrar hands cards out from the top of the stack.
         ordered = [found[str(pk)] for pk in requested]
 
         # Reissue and render together, or not at all.
@@ -217,13 +218,13 @@ class BadgeReissueSheetView(APIView):
         # transaction puts the old digests back.
         with transaction.atomic():
             issued = services.collect_badge_tokens(ordered, actor=request.user)
-            pdf = _render(lambda: services.render_a4_sheet_pdf(issued))
+            pdf = _render(lambda: services.render_card_set_pdf(issued))
 
-        # One visitor comes back as a single card page, so name the file for what
-        # is actually in it rather than for the endpoint that produced it.
+        # One visitor comes back as a single page, so name the file for what is
+        # actually in it rather than for the endpoint that produced it.
         if len(issued) == 1:
             return _pdf(pdf, f"badge-{issued[0][0].badge_serial}.pdf")
-        return _pdf(pdf, f"badge-sheet-{len(issued)}.pdf")
+        return _pdf(pdf, f"badge-cards-{len(issued)}.pdf")
 
 
 class BadgeRosterExportView(APIView):
