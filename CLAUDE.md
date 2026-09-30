@@ -466,7 +466,7 @@ POST   /api/v1/visitors/{id}/activate        badge scans again     [admin]
 DELETE /api/v1/visitors/{id}/permanent       erase for good        [admin]
 
 POST   /api/v1/badges/card                   one card PDF, from a raw token
-POST   /api/v1/badges/reissue-sheet          A4 sheet PDF. Non-destructive.
+POST   /api/v1/badges/reissue-sheet          a run of cards, one per page. Non-destructive.
 GET    /api/v1/badges/roster.xlsx            badge printing worklist
 POST   /api/v1/badges/export                 worklist + photo + QR + payload
 POST   /api/v1/badges/reissue                ROTATES TOKENS. No client calls it.
@@ -619,7 +619,7 @@ title belongs to the caller:
 | `GET /reports/entries.pdf`, every page | ENTRANCE REPORT |
 
 **CSV and the badge PDFs have no header, on purpose.** A CSV is read by other
-programs and banner rows break them; the card and the A4 sheet are the badges.
+programs and banner rows break them; the card pages ARE the badges.
 
 Four things about it that are not obvious:
 
@@ -716,29 +716,75 @@ renders identically everywhere, so `apps/badges/services.py` holds explicit
 millimetre geometry instead of CSS. Do not reintroduce an HTML renderer without
 first checking it runs on the server, not just on a developer's machine.
 
-Fonts are ReportLab's built-in Helvetica and Courier — vector, always present, no
-font file to ship. The dashboard's on-screen badge uses Archivo and IBM Plex Mono,
-so the printed card is close but not identical. That is the price of never
-depending on a font being installed.
+Fonts are ReportLab's built-in Helvetica — vector, always present, no font file
+to ship. See **THE PRINTED CARD IS THE ORGANISERS' PRODUCTION FILE** below for
+what that costs and how the sizes were chosen.
 
-Card geometry is CR80 **portrait**, 54 × 85.6 mm — the same blank stood on its
-end, because a lanyard holds a card by a slot in its short edge. Top to bottom: a
-12 mm punch guide for the slot, geometric corner motifs, a 19 mm circular photo
-(amber ring for VIP), the name in caps, a role line, `Registered` and `Country`
-rows, the serial in mono, and a 14 mm QR at the foot.
+**THE PRINTED CARD IS THE ORGANISERS' PRODUCTION FILE, MEASURED OFF IT.**
+
+`ID CARD PVC SECOOP.pdf` is the file the organisers had 80 PVC cards made from:
+**80 pages, one card per page, 95 × 130 mm**, no A4 sheet and no cut marks. Every
+number in `apps/badges/services.py` was read out of that file's *content stream*
+— the hem is its cubic bezier, the bands are its rectangles, the navy is its
+CMYK — rather than eyeballed off a screenshot.
+
+**IT IS NOT IN THIS REPOSITORY, AND `ID CARD*.pdf` IS GITIGNORED SO IT CANNOT
+WANDER IN.** It is 55MB, and every page carries a real visitor's name, country
+and photograph — the passport-adjacent data this system is careful with
+everywhere else. Committing it would put 80 people into the history permanently.
+Ask the organisers for it if you need to re-measure; the numbers it yielded are
+all recorded here and in `services.py`.
+Rendered against it at 300 dpi, every measured element (hem at eight columns,
+mark, both title lines, both theme lines, photo, name, country, QR, role band,
+address line) is **within 0.5 percentage points of the card**, which is 0.48 mm
+across and 0.65 mm down. The hem matches exactly at all eight columns.
+
+Top to bottom: the navy field with its curved hem, the event mark top-left, the
+conference name and theme beside it, a 30 × 40 mm rounded photograph with a
+black keyline, the name underlined over the country in the right-hand column, a
+27.5 mm QR under them, a red role band, the address on navy, and the woven tais.
+
+**Two things are deliberately NOT identical to that file:**
+
+- **The typefaces.** The artwork is Araboto and Open Sans; neither ships with
+  ReportLab nor installs with pip, and shipping a font file is the exact
+  dependency that cost this app WeasyPrint. So it is Helvetica — and the point
+  sizes in `services.py` are **not** the artwork's. They are the sizes at which
+  Helvetica sets each fixed string to the artwork's measured **width**. Matching
+  width rather than height is the choice: this layout is width-constrained
+  where it matters, so a block 6% wider overflows while one 6% shorter merely
+  looks a shade lighter. The ratios came out 0.92–1.05 of the artwork's sizes.
+- **The event mark.** The artwork's copy is stretched about 3.5% wide of the
+  emblem's true proportion. Ours is fitted into the same box undistorted and
+  centred. Reproducing a client's logo at the wrong proportion is not fidelity.
+
+**`MARK_ALPHA_FLOOR` is 8 and not 0, and that is worth 8% of the mark's width.**
+`drcc-event.png` carries 32 px of all-but-invisible fringe down its right edge —
+alpha above 0 but below 9 — so `getbbox()` on the raw channel returns 411 × 401
+where the visible emblem is 377 × 396. Trim to the raw box and the mark is
+scaled to fit a third of an inch of nothing, rendering visibly small with no
+clue why.
+
+**`assets/tais-strip.png` is cut from that same PDF at 600 dpi**, 2244 × 190 px
+= exactly 95 × 8.043 mm, so it is drawn 1:1 and never resampled. It is a
+photograph because the artwork's is: the band is built in the source from 109
+placed raster tiles, and a drawn approximation of a real textile reads as a
+pattern rather than as cloth. **The tais stops 4.574 mm above the trim with navy
+below it** — running it to the bottom edge is the single most visible way to get
+this card wrong, and `components/badge-card.tsx` still does exactly that.
 
 **The QR carries the event mark in its middle, and the error-correction level did
-NOT change to make room for it.** The level is still `ERROR_CORRECT_M`, the grid
-is still 39 modules, and the module is still 0.359 mm — the card is, module for
-module, the card it was before the logo. That is deliberate and it is the
-opposite of the obvious move.
+NOT change to make room for it.** The level is still `ERROR_CORRECT_M` and the
+grid is still 39 modules. **The module is now 0.705 mm, up from 0.359**, because
+the artwork's code is 27.5 mm where the CR80 card's was 14 — the one part of the
+card change that makes the badge easier to scan rather than merely correct.
 
 The folklore is that a centre logo needs Q or H. On this payload it needs
 neither, because the level alone decides the grid: the badge token is a fixed 64
 lowercase hex characters, taken in byte mode, so M gives 39 modules, Q gives 43
-and H gives 47 — and `QR_SIZE` is pinned at 14 mm by `SERIAL_BASELINE` above it.
-A bigger grid therefore buys redundancy *with module size*, and module size is
-what a phone at a doorway is short of. Measured over 250 distinct tokens
+and H gives 47 — and the artwork fixes the code's size, so the grid is the only
+free variable. A bigger grid therefore buys redundancy *with module size*, and
+module size is what a phone at a doorway is short of. Measured over 250 distinct tokens
 rasterised at 300 dpi and degraded, at the capture size where scanning begins to
 fail:
 
@@ -755,9 +801,14 @@ the code's area, well inside what M already rebuilds. **Do not "harden" this to
 Q or H** — that makes the badge worse, and the comment beside
 `QR_ERROR_CORRECTION` in `services.py` is the authority.
 
+That measurement was made at 14 mm, on the CR80 card. Every margin in it got
+wider when the code grew to 27.5 mm; the arithmetic is unchanged because the
+grid did not move. Decoded off the 300 dpi render of the new card, the QR reads
+back byte-identical down to a **71 px** crop.
+
 What the mark does cost is one step at the very bottom of the range: rasterised
-from the real card PDF, the bare code decoded down to a 57 px QR and the marked
-one down to 62 px, so the card has to fill about 240 px of the camera frame
+from the old card PDF, the bare code decoded down to a 57 px QR and the marked
+one down to 62 px, so the card had to fill about 240 px of the camera frame
 instead of 220. Above that they are identical. There is also one stacked
 condition — heavy blur *and* low contrast *and* a steep angle together — where
 50/250 became 1/250; that regime already fails 80% of the time with no logo, and
@@ -768,49 +819,51 @@ finished code, never encoded into it, so the string a scanner reads is
 byte-identical. No printed badge was invalidated, `token_version` was not
 touched, and **nothing had to be migrated**: no QR is stored anywhere in this
 system, so all 250 visitors picked the mark up the next time their card was
-drawn. At 14 mm the wordmark ring is not legible and is not meant to be — what
-survives is the silhouette.
+drawn. At this size the wordmark ring is not legible and is not meant to be —
+what survives is the silhouette.
 
 The artwork is duplicated at `apps/badges/assets/drcc-event.png` rather than read
 from `vms-dashboard/public/brand/`, because a backend-only deploy does not check
 that folder out. `lib/badge-geometry.ts` mirrors the level and the fraction so
 the preview and the print cannot drift.
 
-Bulk print lays **9 cards on an A4 sheet**, 3 across by 3 down, with cut marks in
-the margins at every grid line. **A run of exactly one comes back as a single
-54 × 85.6 mm page instead of a sheet** — one card in the corner of A4 wastes the
-other eight slots and is useless to a card printer, and the registration desk
-prints one badge far more often than nine.
+**BULK PRINT IS ONE CARD PER PAGE NOW. THERE IS NO A4 SHEET AND NO CUT MARKS.**
+It used to be nine to an A4 sheet, 3 across by 3 down, with cut marks in the
+margins. That went when the card became 95 × 130: three of them across is 285 mm
+on a 210 mm page, and more to the point these cards are not cut out of paper —
+they come off a card printer, which is why the organisers' own file is 80
+separate pages. `render_a4_sheet_pdf` is therefore `render_card_set_pdf`, and a
+run of one is no longer a special case, just a one-page document.
 
-`apps/badges/services.py` holds the geometry as millimetre constants, and
-`components/badge-card.tsx` in the dashboard **used to mirror it in `cqw` so the
-on-screen preview and the PDF could not drift apart. THEY HAVE NOW DRIFTED, on
-purpose, and this is the thing to fix next.**
+`apps/badges/services.py` holds the geometry as millimetre constants and
+`components/badge-card.tsx` mirrors it as percentages. **They agree on the
+design now — both are the organisers' ID card — but they were measured from
+different sources and three numbers still differ.** The component was measured
+off `ID CARD OFFICIAL.jpg`, a flattened export; `services.py` was read out of
+the production PDF's vectors, which is the better source. The component's card
+ratio is 748 : 1024 = 0.7305 against the card's true 95 : 130 = 0.7308, which is
+nothing, but these three are visible:
 
-The dashboard card was rebuilt to match `ID CARD OFFICIAL.jpg`, the artwork the
-organisers issue: navy header with a curved hem, the mark and the conference name
-across the top, a rounded rectangular photograph beside an underlined name and
-country, the QR beneath them, then a red role band, a navy address band and a
-photographed tais strip at the foot. Every dimension in that component is a
-percentage measured off the artwork, and the card's ratio is the artwork's
-748 : 1024 rather than CR80's 54 x 85.6 — the bands and the curve only land
-correctly at that ratio.
+| | `badge-card.tsx` | the card, measured |
+|---|---|---|
+| hem goes flat at | 30.6% of the width | **40.0%** |
+| hem curve | quadratic, control point at half span | **cubic**, two control points |
+| tais band | runs to the bottom edge | **stops at 96.45%**, navy below |
 
-`services.py` was explicitly out of scope for that change, so **what `POST
-/badges/card` prints is still the old CR80 design**: different shape, different
-layout, no tais. Until the PDF is redrawn, the dashboard shows the card the event
-issues and the printer produces the card it used to. The preview at
-`/visitors/[id]` says so in as many words rather than claiming "as it prints".
+Fixing them is three constants and an SVG path — the cubic is
+`M0 0 H100 V29.73 H40.0 C16.9 30.72 10.3 26.12 0 21.38 Z` reversed into the
+preview's coordinate space — and it has not been done, so the preview's foot and
+hem are still a little wrong against what prints.
 
 Two details of the rebuild worth keeping, both measured rather than guessed:
 
-- **The header hem is a parabola, and the control point is at half its span.**
-  The measured points — 21.4% of the height at the left edge, 25.9% at 10% of the
-  width, 28.7% at 20%, flat at 29.7% from 30.6% on — fit
-  `M0 0 H100 V29.7 H30.6 Q15.3 29.7 0 21.4 Z` in a `preserveAspectRatio="none"`
-  box. That non-uniform stretch is the opposite of the rule the charts follow, and
-  it is right here: there is no stroke or radius to distort, and the curve is
-  defined in percentages of the card, so stretching the box IS the reproduction.
+- **The hem is drawn in a `preserveAspectRatio="none"` box, and that is right
+  here** even though it is the opposite of the rule the charts follow: there is
+  no stroke or radius to distort, and the curve is defined in percentages of the
+  card, so stretching the box IS the reproduction. (The curve the component
+  draws is a parabola fitted to points read off the flattened JPEG. The real one
+  is the cubic in the table above — **this bullet used to claim the parabola was
+  the curve**, which it never was; it was the best fit available from a raster.)
 - **The artwork mixes two type widths, and which line gets which is measurable.**
   Long lines are condensed and short ones are not: the name is 24 characters in
   421px (0.43em each, which is Arial Narrow) while the role band is 18 in 478px
@@ -831,7 +884,7 @@ app/(dashboard)/visitors           list — right-click a row for actions
 app/(dashboard)/visitors/new       register + badge receipt
 app/(dashboard)/visitors/[id]      detail: live QR, scan history, lifecycle buttons
 app/(dashboard)/visitors/[id]/edit
-app/(dashboard)/badges             print queue, nine to a sheet, real QR on every card
+app/(dashboard)/badges             print queue, one card per page, real QR on every card
 app/(dashboard)/devices            pairing codes + paired device list
 app/(dashboard)/reports            entrance log + CSV/XLSX/PDF export
 app/(dashboard)/settings           server address + clock check, registration switch, theme, language
@@ -1056,19 +1109,30 @@ is a navigation to the visitor and back for every small change. The Menu key and
 Shift+F10 open it too, since the row's link is focusable; those report no pointer
 position, so they anchor to the row's box instead of the window corner.
 
-**Visitor photos are cropped 3:4 by default, NOT always — and the printed photo is a CIRCLE.**
+**Visitor photos are cropped 3:4 by default, NOT always — and the printed photo
+is a rounded RECTANGLE, while the lobby wall's is a circle.**
 
 `lib/badge-geometry.ts` is the single source of truth and it derives everything from
 the same millimetres `apps/badges/services.py` prints with. `PHOTO_ASPECT` moved there
 from `PhotoUpload.tsx`; do not reintroduce a second copy.
 
-The trap is that these are three different shapes and they get confused constantly:
+The trap is that these are four different shapes and they get confused constantly:
 
 | Thing | Shape | Where |
 |---|---|---|
-| the CR80 card | 54 × 85.6 mm portrait | `CARD_W, CARD_H` |
+| the card | 95 × 130 mm portrait | `CARD_W, CARD_H` |
 | the stored photo | **any ratio** — 3:4 is only the cropper's default | `PHOTO_ASPECT`, `OUTPUT_WIDTH` |
-| the printed photo | a 19 mm **circle** | `clip.circle(...)` in services.py |
+| the printed photo | a 30 × 40 mm **rounded rectangle**, black keyline | `clip.roundRect(...)` in services.py |
+| the lobby wall's photo | a **circle** | `rounded-full object-cover` in `vms-screen` |
+
+**The printed photo stopped being a 19 mm circle when the card was redrawn to the
+organisers' production file.** The cropper still draws a circle over the crop,
+and that is still right: the circle is inscribed in the rectangle, so it is now
+the stricter of the two and a crop that satisfies it satisfies both. What did
+change is `MIN_OUTPUT_WIDTH`, from 225 px to **355** — 30 mm at 300 dpi rather
+than 19 — so a very small hand-drawn crop is flagged where it used to pass and
+print soft. `OUTPUT_WIDTH` is 600, so nothing the cropper produces by default is
+affected.
 
 **The stored photo is not reliably 3:4, and this table said it was.** `PhotoCropper.tsx`
 offers badge, square and free crops and exports at the selection's own ratio.
@@ -1082,18 +1146,23 @@ while the `/badges` preview, which uses `object-cover`, showed them correctly. O
 19 mm circle a face a third too narrow does not read as a bug; it reads as a thin
 person, which is how it reached a print queue.
 
-**Both circles now cover-crop whatever is stored, the same way.**
-`cover_box(*reader.getSize(), diameter)` in `apps/badges/services.py` is
-`object-fit: cover` in millimetres: the shorter side maps to the diameter, the longer
-side overflows into the clip. Nothing was re-cropped and nothing migrated. Verified
-four ways, all against the throwaway SQLite database:
+**Every surface now cover-crops whatever is stored, the same way.**
+`cover_box(*reader.getSize(), box_w, box_h)` in `apps/badges/services.py` is
+`object-fit: cover` in millimetres: it takes the larger of the two scale factors,
+so both edges are covered and the longer side overflows into the clip. Nothing
+was re-cropped and nothing migrated. Verified four ways, all against the
+throwaway SQLite database:
 
 | check | before | after |
 |---|---|---|
 | a round dot in a 600×479 source, printed | 0.600 wide:tall | 1.000 |
 | flat-colour source, gap pixels inside the clip, 18 sizes incl. 3:1 and 1:3 | — | 0 |
 | printed circle vs headless-Chrome `object-cover`, mean diff /255 | 20.7–42.2 | 1.4–2.5 |
-| single card and A4 sheet render | — | both, one shared `draw_card` |
+| single card and multi-card run | — | both, one shared `draw_card` |
+
+**`cover_box` took a DIAMETER and now takes a box.** It was written for the
+circle; the signature changed with the card. Nothing outside `services.py`
+calls it.
 
 Two traps if you touch it:
 
@@ -1118,10 +1187,11 @@ Two traps if you touch it:
 (42×56) and the registration receipt (24×32 mm) draw the stored file as a 3:4 box.
 Out of scope for the badge fix, and left as named follow-up.
 
-The card and the lobby screen both clip the stored image to a circle, so a crop
-that looks right as a rectangle can still lose a chin. `PhotoCropper.tsx` draws the
-circle over the crop for that reason, and warns below `MIN_OUTPUT_WIDTH` — 225px, which
-is 19 mm at 300dpi — rather than silently upscaling.
+The lobby screen clips the stored image to a circle, so a crop that looks right
+as a rectangle can still lose a chin. `PhotoCropper.tsx` draws the circle over the
+crop for that reason — it is the stricter of the two shapes now that the card
+prints a rectangle — and warns below `MIN_OUTPUT_WIDTH` — 355px, which is 30 mm
+at 300dpi — rather than silently upscaling.
 
 The crop happens in the browser so the server stores one canonical image. **Image data
 stays in memory and object URLs. Never localStorage** — a shared registration laptop
@@ -1153,9 +1223,9 @@ are gone.
 Download saves (`fetchFile` is shared, so the two buttons cannot fail
 differently) and shows it in the browser's PDF viewer **in a new tab** — the
 screen `/badges` users already print from, confirmed to come out at card size on
-the CR80 printer. It is the same page as `/badges` for one visitor:
-`render_a4_sheet_pdf` with one visitor returns `render_card_pdf`, measured at 1
-page, 54.0 × 85.6 mm, pixel difference 0.0.
+the card printer. It is the same page as `/badges` for one visitor:
+`render_card_set_pdf` with one visitor returns `render_card_pdf`, measured at 1
+page, 95.0 × 130.0 mm, pixel difference 0.0.
 
 It briefly printed from an invisible iframe instead. That was replaced because
 the hidden dialog is the one step that decides paper size and the one step
@@ -1170,8 +1240,8 @@ downloads the file as `/badges` does and the receipt says so; a tab the
 registrar closed first is left closed. The blob URL is not revoked, because the
 viewer may read it again to print.
 
-For the CR80 printer: leave **Scale** on *Default* in the print dialog. The page
-is already 54 × 85.6 mm, and *Fit to page* lets the driver resize it.
+For the card printer: leave **Scale** on *Default* in the print dialog. The page
+is already 95 × 130 mm, and *Fit to page* lets the driver resize it.
 
 **PUBLIC SELF-REGISTRATION.** A visitor opens `/register` on a phone on the event
 Wi-Fi, fills in name, country, organisation and a photo, and is registered at once —
@@ -2278,6 +2348,9 @@ Done since the table was first written, and not in it:
 - Reports: XLSX and PDF exports beside the CSV.
 - English / Portuguese / Tetun across all three frontends, and the desktop app.
 - `vms-desktop`, the PySide6 control centre, packaged as a Windows executable.
+- The badge redrawn as the organisers' own ID card, on screen and then in print:
+  95 × 130 mm measured off `ID CARD PVC SECOOP.pdf`, one card per page, no A4
+  sheet.
 
 **Update this table as phases complete.** It is how context carries between sessions.
 
@@ -2316,6 +2389,18 @@ is worse than no line at all.
 - The pairing rate limit was given as `5/hour per IP`. It is `20/hour`, and it
   counts **failed** attempts only — the code carries a comment explaining why,
   which the document had dropped.
+- **The card's header hem was called a parabola.** It is a cubic bezier with two
+  control points, and it goes flat at 40.0% of the width rather than 30.6%. The
+  parabola was the best fit obtainable from a flattened JPEG, and it was written
+  down as though it were the shape. The production PDF has the real path; see
+  the table in the badge section. `components/badge-card.tsx` still draws the
+  parabola.
+- **`POST /badges/reissue-sheet` was documented and coded as DESTRUCTIVE**, in
+  its route name, its class docstring, its `@extend_schema` description and
+  therefore `openapi.yaml` — the same stale claim, from the same era of random
+  tokens, that the credential export carried in four places. It calls
+  `collect_badge_tokens`, which recomputes. Only the route name still says it,
+  and that stays because renaming it is a schema change for a word.
 - **`counts_by_result` WAS a bug, and this list said twice that it was not.**
   The entry read: *"suspected of a missing `.order_by()` and flagged as a bug
   across two sessions. It is not one. `Meta.ordering` stopped being folded into
