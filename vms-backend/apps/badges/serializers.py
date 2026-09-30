@@ -23,20 +23,17 @@ class BadgeCardRequestSerializer(serializers.Serializer):
 
 
 class BadgeReissueSheetRequestSerializer(serializers.Serializer):
-    """Which visitors to put on the sheet.
+    """Which visitors to print, and in what order.
 
-    Every one of them gets a NEW token — see the endpoint description. There is no
-    way to reprint an existing card, because the raw token it carries was never
-    stored.
+    Nobody's token changes — tokens are derived, so the run redraws the QR each
+    of these visitors is already carrying. See the endpoint description.
     """
 
     visitor_ids = serializers.ListField(
         child=serializers.UUIDField(),
         allow_empty=False,
         max_length=250,
-        help_text=(
-            "Visitors to reissue and print, in the order they appear on the sheet."
-        ),
+        help_text="Visitors to print, in the order the pages should come out.",
     )
 
 
