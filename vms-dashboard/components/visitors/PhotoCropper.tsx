@@ -26,12 +26,12 @@ import type { MessageKey } from "@/lib/locales";
  * positioning only TRANSLATES it -- never shrinks it. A 354x472 ID photo comes in
  * at the full 354px width, cropping only the overflow on the long axis.
  *
- * THE CIRCLE IS DRAWN INSIDE THE BOX because the circle is what anyone sees. The
- * badge clips the photo round (`clip.circle`, services.py) and the lobby screen
- * renders it `rounded-full object-cover`. The crop box is 3:4 because that is
- * the storage format three other places depend on, but the part that survives is
- * the inscribed circle, so it is drawn rather than left to be discovered after
- * printing.
+ * THE CIRCLE IS DRAWN INSIDE THE BOX because the circle is the strictest shape
+ * the photo has to survive. The lobby screen renders it `rounded-full
+ * object-cover`, so the inscribed circle is all the wall shows. The PRINTED card
+ * no longer clips round — it is a 30 x 40 mm rounded rectangle since the PDF was
+ * redrawn to the organisers' artwork — but the circle sits inside that
+ * rectangle, so a crop that satisfies this guide satisfies both surfaces.
  */
 type Source = { url: string; name: string };
 
@@ -278,7 +278,7 @@ export function PhotoCropper({
           className="vms-crop max-h-[52dvh]"
           renderSelectionAddon={() => (
             <>
-              {/* The circle that actually gets printed and displayed. */}
+              {/* What the lobby wall shows, and the tighter of the two shapes. */}
               <span
                 aria-hidden
                 className="pointer-events-none absolute rounded-full"
