@@ -7,21 +7,25 @@
  * preview, the cropper and the PDF cannot drift apart the way they do when a
  * ratio gets typed into two components.
  *
- * THE PRINTED PHOTO IS A CIRCLE, WHICH IS THE THING PEOPLE GET WRONG.
+ * THE PRINTED PHOTO IS NO LONGER A CIRCLE, AND THE CARD IS NO LONGER CR80.
  *
- *     PHOTO_CX, PHOTO_CY, PHOTO_R = CARD_W / 2, 60.6, 9.5
- *     PHOTO_RING = 1.1
- *     clip.circle(cx * mm, cy * mm, PHOTO_R * mm)
+ * Both changed when the PDF was redrawn to the organisers' own production file
+ * (`ID CARD PVC SECOOP.pdf`): the card is 95 x 130 mm and the photo is a
+ * 30 x 40 mm rounded rectangle with a black keyline —
  *
- * So the badge photo box has no portrait ratio to inherit -- its bounding box is
- * square. The 3:4 below is NOT derived from it and does not pretend to be: it is
- * the cropper's DEFAULT, not a guarantee about what is on disk. The cropper also
- * offers square and free crops, and exports at the selection's own ratio.
+ *     CARD_W, CARD_H = 95.0, 130.0
+ *     PHOTO_W, PHOTO_H = 30.001, 40.014
+ *     clip.roundRect(...)
  *
- * BOTH CIRCLES COVER-CROP WHATEVER IS STORED, and must keep doing so:
+ * — which is exactly 3:4, the ratio the cropper has always defaulted to. That
+ * is a coincidence worth not leaning on: `PHOTO_ASPECT` is still the cropper's
+ * DEFAULT and not a guarantee about what is on disk, because the cropper offers
+ * square and free crops too and exports at the selection's own ratio.
  *
- *     badge-card.tsx    aspect-square rounded-full object-cover
- *     services.py       cover_box(*reader.getSize(), PHOTO_R * 2), clipped
+ * BOTH SURFACES COVER-CROP WHATEVER IS STORED, and must keep doing so:
+ *
+ *     badge-card.tsx    object-cover in a fixed rectangle
+ *     services.py       cover_box(*reader.getSize(), PHOTO_W, PHOTO_H), clipped
  *
  * The PDF used to hardcode `draw_h = draw_w * 4 / 3` with
  * `preserveAspectRatio=False`, which printed every non-3:4 file stretched --
@@ -34,26 +38,20 @@
  * and the registration receipt (24mm x 32mm). Known, and not yet fixed.
  */
 
-/** From `services.py`: CARD_W, CARD_H = 54.0, 85.6 */
-const CARD_W_MM = 54.0;
+/** From `services.py`: CARD_W, CARD_H = 95.0, 130.0 */
+const CARD_W_MM = 95.0;
 
-/** From `services.py`: PHOTO_R = 9.5, PHOTO_RING = 1.1 */
-const PHOTO_R_MM = 9.5;
-const PHOTO_RING_MM = 1.1;
-
-/** The visible photo on the printed card, as a diameter. */
-export const PHOTO_CIRCLE_MM = PHOTO_R_MM * 2;
-
-/** Photo plus its ring — the box the card lays out. */
-export const PHOTO_BOX_MM = (PHOTO_R_MM + PHOTO_RING_MM) * 2;
+/** From `services.py`: PHOTO_W, PHOTO_H = 30.001, 40.014 */
+export const PHOTO_PRINT_W_MM = 30.0;
+export const PHOTO_PRINT_H_MM = 40.0;
 
 /**
  * The photo box as a share of the card's width, for `cqw` in the preview.
  *
  * The card preview is a container-query box one card wide, so a percentage of
- * `CARD_W` is a `cqw` directly. 21.2 / 54.0 = 39.26.
+ * `CARD_W` is a `cqw` directly. 30.0 / 95.0 = 31.58.
  */
-export const PHOTO_BOX_CQW = (PHOTO_BOX_MM / CARD_W_MM) * 100;
+export const PHOTO_BOX_CQW = (PHOTO_PRINT_W_MM / CARD_W_MM) * 100;
 
 /**
  * The cropper's default aspect ratio. Portrait, 3:4.
@@ -71,26 +69,34 @@ export const OUTPUT_HEIGHT = Math.round(OUTPUT_WIDTH / PHOTO_ASPECT);
 /**
  * The smallest crop that still prints cleanly.
  *
- * The circle is inscribed in the centre square of the 3:4 frame, so the frame's
- * WIDTH is what limits print resolution: 19mm at 300dpi is 225px. A crop
- * narrower than that in source pixels cannot be printed sharply no matter what
- * it is scaled up to, which is what the cropper warns about rather than silently
- * upscaling.
+ * The printed photo's WIDTH is what limits resolution: 30mm at 300dpi is 355px.
+ * A crop narrower than that in source pixels cannot be printed sharply no matter
+ * what it is scaled up to, which is what the cropper warns about rather than
+ * silently upscaling.
+ *
+ * THIS WENT UP FROM 225 WHEN THE CARD GREW. The old CR80 badge printed a 19mm
+ * circle; this one prints a 30mm rectangle, so the same file is asked to cover
+ * 58% more width. `OUTPUT_WIDTH` is 600, so nothing the cropper produces by
+ * default is affected — what changes is that a very small hand-drawn crop is now
+ * flagged where it used to pass and print soft.
  */
 const PRINT_DPI = 300;
 const MM_PER_INCH = 25.4;
 
 export const MIN_OUTPUT_WIDTH = Math.ceil(
-  (PHOTO_CIRCLE_MM / MM_PER_INCH) * PRINT_DPI,
+  (PHOTO_PRINT_W_MM / MM_PER_INCH) * PRINT_DPI,
 );
 export const MIN_OUTPUT_HEIGHT = Math.round(MIN_OUTPUT_WIDTH / PHOTO_ASPECT);
 
 /**
- * Where the circle sits inside the stored 3:4 frame, as fractions of it.
+ * Where the LOBBY SCREEN's circle sits inside the stored frame, as fractions.
  *
- * `object-cover` in a `rounded-full` box keeps the centre square and then
- * inscribes a circle in it. The cropper draws exactly this so the registrar can
- * see what survives: anything outside is discarded by the card and by the wall.
+ * The printed card stopped being round when it was redrawn to the organisers'
+ * artwork, but the wall did not: `vms-screen` still renders the photo
+ * `rounded-full object-cover`, which keeps the centre square and inscribes a
+ * circle in it. That is why the cropper still draws a circle over the crop —
+ * the circle is now the STRICTER of the two shapes, so a crop that satisfies it
+ * satisfies the card as well.
  */
 export const VISIBLE_CIRCLE = {
   cx: 0.5,
