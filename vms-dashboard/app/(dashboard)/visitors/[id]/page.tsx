@@ -140,7 +140,7 @@ export default function VisitorDetailPage() {
             token={visitor.badge_token}
           />
           <p className="mono mt-3 text-[11px] text-ink-3">
-            Official ID card · the printed PDF is still the old CR80 design
+            Official ID card · prints at 95 × 130 mm
           </p>
 
 
