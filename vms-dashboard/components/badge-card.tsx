@@ -33,11 +33,18 @@ import { useT } from "@/lib/i18n";
  * a 0.73 ratio against CR80 portrait's 0.63. The shape is part of the design —
  * the bands and the curve only sit where they do at this ratio.
  *
- * AND THE PRINTED PDF IS NOT THIS. `apps/badges/services.py` still draws the old
- * CR80 card with ReportLab, so this preview and the printer now disagree about
- * both the design and the shape. That was a deliberate instruction (the backend
- * was not to be touched) and it is the one thing to fix next: until then, what
- * comes out of `POST /badges/card` is not what this shows.
+ * THE PRINTED PDF IS THIS CARD NOW. `apps/badges/services.py` draws it at
+ * 95 x 130 mm (0.7308, against this component's 748:1024 = 0.7305), measured out
+ * of the organisers' own production file rather than off the JPEG — so it is the
+ * better source, and three numbers here are still the JPEG's:
+ *
+ *     hem goes flat at    30.6% here, 40.0% measured
+ *     hem curve           quadratic here, cubic measured
+ *     tais strip          to the bottom edge here, stops at 96.45% measured
+ *
+ * The real hem is `M0 0 H100 V29.73 H40.0 C16.9 30.72 10.3 26.12 0 21.38 Z`.
+ * None of it has been changed here, so this preview's foot and hem are still a
+ * little wrong against what prints.
  *
  * Type is Arial/Helvetica rather than the dashboard's Plus Jakarta Sans. The
  * reference is set in it, and both are present on every machine at this event,
